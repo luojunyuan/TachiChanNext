@@ -1,0 +1,5 @@
+﻿SetParent
+GetClientRect
+SetWindowPos
+CreateRectRgn
+SetWindowRgn
