@@ -3,4 +3,5 @@ GetClientRect
 SetWindowPos
 CreateRectRgn
 SetWindowRgn
-RedrawWindow
+SetWinEventHook
+GetWindowThreadProcessId

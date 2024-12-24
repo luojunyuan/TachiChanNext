@@ -40,6 +40,7 @@ public partial class App : Application
             }
             gameWindowHandle = process?.MainWindowHandle ?? nint.Zero;
         }
+        // TODO: gameWindowHandle 只考虑非系统缩放 dpi 的情况
         _mainWindow = new MainWindow(gameWindowHandle);
 
         var monitor = new WindowMessageMonitor(_mainWindow);
