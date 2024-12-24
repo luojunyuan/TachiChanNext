@@ -11,6 +11,7 @@ using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.WindowsAndMessaging;
 using HwndExtensions = WinUIEx.HwndExtensions;
+using WindowExtensions = WinUIEx.WindowExtensions;
 using WindowStyle = WinUIEx.WindowStyle;
 
 namespace TouchChan
@@ -25,16 +26,16 @@ namespace TouchChan
         public MainWindow(nint gameWindowHandle)
         {
             GameWindowHandle = gameWindowHandle;
-            Hwnd = WinUIEx.WindowExtensions.GetWindowHandle(this);
+            Hwnd = WindowExtensions.GetWindowHandle(this);
 
-            // 设置窗口需要的 WinUI3 样式
+            // 设置窗口样式
             this.InitializeComponent();
-            HwndExtensions.ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
             this.SystemBackdrop = new WinUIEx.TransparentTintBackdrop();
-            // 设置窗口需要的 Win32 样式
-            RemovePopupAddChildStyle(Hwnd);
+            HwndExtensions.ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
+            HwndExtensions.ToggleWindowStyle(Hwnd, false, WindowStyle.Popup);
+            HwndExtensions.ToggleWindowStyle(Hwnd, true, WindowStyle.Child);
+            HwndExtensions.ToggleWindowStyle(Hwnd, true, WindowStyle.ClipChildren);
             PInvoke.SetParent(Hwnd.ToHwnd(), GameWindowHandle.ToHwnd());
-            AddClipChildrenStyle(Hwnd);
             // Note: 设置为子窗口后，this.AppWindow 不再可靠
 
             // 绑定窗口大小
@@ -105,25 +106,6 @@ namespace TouchChan
         private static void ResizeClient(nint winHandle, System.Drawing.Size size) =>
             PInvoke.SetWindowPos(winHandle.ToHwnd(), HWND.Null,
                 0, 0, size.Width, size.Height, SET_WINDOW_POS_FLAGS.SWP_NOZORDER);
-
-        /// <summary>
-        /// 为子窗口移除 Popup 并添加 Child 样式，详情见 SetParent 文档
-        /// </summary>
-        private static void RemovePopupAddChildStyle(nint hwnd)
-        {
-            var style = HwndExtensions.GetWindowStyle(hwnd);
-            style = style & ~WindowStyle.Popup | WindowStyle.Child;
-            HwndExtensions.SetWindowStyle(hwnd, style);
-        }
-
-        /// <summary>
-        /// 为子窗口添加 ClipChildren 样式避免背景全黑以及父窗口大小改变时的重绘闪烁
-        /// </summary>
-        private static void AddClipChildrenStyle(nint hwnd)
-        {
-            var style = HwndExtensions.GetWindowStyle(hwnd);
-            HwndExtensions.SetWindowStyle(hwnd, style | WindowStyle.ClipChildren);
-        }
 
         /// <summary>
         /// 恢复窗口原始大小
