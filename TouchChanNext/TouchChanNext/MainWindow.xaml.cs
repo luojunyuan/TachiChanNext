@@ -21,9 +21,6 @@ namespace TouchChan
 {
     using TouchChan.MainWindowExtensions;
 
-    /// <summary>
-    /// An empty window that can be used on its own or navigated to within a Frame.
-    /// </summary>
     public sealed partial class MainWindow : Window
     {
         private readonly nint GameWindowHandle;
@@ -36,28 +33,67 @@ namespace TouchChan
 
             // 设置需要的 WinUI3 窗口样式
             this.InitializeComponent();
+            var windowManager = WinUIEx.WindowManager.Get(this);
+
             HwndExtensions.ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
             this.SystemBackdrop = new TransparentTintBackdrop();
             this.AppWindow.IsShownInSwitchers = false;
             // 设置需要的 Win32 窗口样式
             RemovePopupAddChildStyle(Hwnd);
             PInvoke.SetParent(Hwnd.ToHwnd(), GameWindowHandle.ToHwnd());
+            // NOTE: 设置为子窗口后，很多游戏上会显示黑屏。
+            //RemoveClipChildren(GameWindowHandle);
+            static void RemoveClipChildren(nint hwnd)
+            {
+                var style = HwndExtensions.GetWindowStyle(hwnd);
+                HwndExtensions.SetWindowStyle(hwnd, style & ~WindowStyle.ClipChildren);
+            }
+            //就算用外置窗口，也会带来新的问题，比如全屏不显示等等。
+            // 反正主要就是两条路吧。
+            //this.SetIsAlwaysOnTop(true);
+            static void AddStyle(nint hwnd, WindowStyle addedStyle)
+            {
+                var style = HwndExtensions.GetWindowStyle(hwnd);
+                HwndExtensions.SetWindowStyle(hwnd, style | addedStyle);
+            }
+            static void AddExStyle(nint hwnd, ExtendedWindowStyle addedStyle)
+            {
+                var style = HwndExtensions.GetExtendedWindowStyle(hwnd);
+                HwndExtensions.SetExtendedWindowStyle(hwnd, style | addedStyle);
+            }
+            //AddExStyle(GameWindowHandle, ExtendedWindowStyle.Layered);\
+            AddStyle(Hwnd, WindowStyle.ClipChildren);
 
             // 绑定窗口大小
-            // TODO: Set and bind Width Height Once. 
+            var dpi = HwndExtensions.GetDpiForWindow(Hwnd) / 96d;
+            // TODO: Set and bind Width Height Once.
+            
             PInvoke.GetClientRect(GameWindowHandle.ToHwnd(), out var rectClient);
             PInvoke.SetWindowPos(Hwnd.ToHwnd(), HWND.Null, 0, 0,
                 rectClient.Width, rectClient.Height, SET_WINDOW_POS_FLAGS.SWP_NOZORDER);
 
-            // 根据触摸事件设置窗口透明度
+            // 根据触摸事件设置窗口是否可穿透
             Touch.RxPointerPressed()
                 .Select(_ => GameWindowHandle.GetClientSize())
-                .Subscribe(clientArea => ResetWindowOriginalSize(Hwnd, clientArea.Width, clientArea.Height));
+                .Subscribe(clientArea =>
+                {
+                    //    PInvoke.SetWindowPos(Hwnd.ToHwnd(), HWND.Null, -10000, -10000,
+                    //clientArea.Width, clientArea.Height, SET_WINDOW_POS_FLAGS.SWP_NOZORDER | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
+                    //    //this.SetWindowSize(clientArea.Width, clientArea.Height);
+                    ResetWindowOriginalSize(Hwnd, clientArea.Width, clientArea.Height);
+                });
 
             Touch.RxPointerReleased()
-                .Select(_ => Touch.GetMargin())
-                .Prepend(Touch.GetMargin())
-                .Subscribe(t => MakeWindowClickThrough(Hwnd, t.Left, t.Top, t.Width, t.Height));
+                .Select(_ => Touch.GetRect())
+                .Prepend(Touch.GetRect())
+                .Subscribe(rect =>
+                {
+                    //        PInvoke.SetWindowPos(Hwnd.ToHwnd(), HWND.Null, 0, 0,
+                    //0, 0, SET_WINDOW_POS_FLAGS.SWP_NOZORDER | SET_WINDOW_POS_FLAGS.SWP_NOSIZE);
+
+                    //this.MoveAndResize(rect.Left,rect.Top,rect.Width,rect.Height);
+                    MakeWindowClickThrough(Hwnd, dpi, rect);
+                });
 
             // WinUI3��Avalonia����WPF����ʵ�ֶ�ݣ�����ͨ�õĲ��֣��Լ�ҵ���UI�ķ���
             // 消灭状态，后续有别的需求，不会在原始事件函数上做修改。而是额外增加可观察流。
@@ -144,14 +180,17 @@ namespace TouchChan
         /// 恢复窗口原始大小
         /// </summary>
         private static void ResetWindowOriginalSize(nint hwnd, int Width, int Height) =>
-            MakeWindowClickThrough(hwnd, 0, 0, Width, Height);
+            MakeWindowClickThrough(hwnd, 1, new(0, 0, Width, Height));
 
         /// <summary>
         /// 设置窗口可以被观测和点击的区域
         /// </summary>
-        private static void MakeWindowClickThrough(nint hwnd, int left, int top, int width, int height)
+        private static void MakeWindowClickThrough(nint hwnd, double dpi, Rect rect)
         {
-            HRGN hRgn = PInvoke.CreateRectRgn(left, top, left + width, top + height);
+            var r = rect * dpi;
+
+            //PInvoke.SetWindowPos(hwnd.ToHwnd(), HWND.Null, r.Left, r.Top, r.Left + r.Width, r.Top + r.Height, SET_WINDOW_POS_FLAGS.SWP_NOZORDER);
+            HRGN hRgn = PInvoke.CreateRectRgn(r.Left, r.Top, r.Left + r.Width, r.Top + r.Height);
             var result = PInvoke.SetWindowRgn(hwnd.ToHwnd(), hRgn, true);
             if (result == 0)
                 throw new Win32Exception(Marshal.GetLastWin32Error());
@@ -162,6 +201,19 @@ namespace TouchChan
 #pragma warning disable IDE0130 // 命名空间与文件夹结构不匹配
 namespace TouchChan.MainWindowExtensions
 {
+    record Rect(int Left, int Top, int Width, int Height)
+    {
+        public static Rect operator *(Rect a, double b) =>
+            a with
+            {
+                Left = (int)(a.Left * b),
+                Top = (int)(a.Top * b),
+                Width = (int)(a.Width * b),
+                Height = (int)(a.Height * b)
+            };
+    }
+
+
     static class ObservableEventsExtensions
     {
         public static Observable<PointerRoutedEventArgs> RxPointerPressed(this Rectangle data) =>
@@ -175,12 +227,18 @@ namespace TouchChan.MainWindowExtensions
                 h => (sender, e) => h(e),
                 e => data.PointerReleased += e,
                 e => data.PointerReleased -= e);
+
+        public static Observable<WindowActivatedEventArgs> RxActivated(this Window data) =>
+            Observable.FromEvent<TypedEventHandler<object, WindowActivatedEventArgs>, WindowActivatedEventArgs>(
+                h => (sender, e) => h(e),
+                e => data.Activated += e,
+                e => data.Activated -= e);
     }
 
     static class MainWindowExtensions
     {
-        public static (int Left, int Top, int Width, int Height) GetMargin(this Rectangle rectangle) =>
-            ((int)rectangle.Margin.Left, (int)rectangle.Margin.Top, (int)rectangle.Width, (int)rectangle.Height);
+        public static Rect GetRect(this Rectangle rectangle) =>
+            new((int)rectangle.Margin.Left, (int)rectangle.Margin.Top, (int)rectangle.Width, (int)rectangle.Height);
 
         public static (int Width, int Height) GetClientSize(this nint hwnd)
         {
