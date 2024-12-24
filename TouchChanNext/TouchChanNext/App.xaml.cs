@@ -2,8 +2,6 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using WinUIEx;
-using WinUIEx.Messaging;
 
 namespace TouchChan;
 
@@ -40,10 +38,12 @@ public partial class App : Application
             }
             gameWindowHandle = process?.MainWindowHandle ?? nint.Zero;
         }
-        // TODO: gameWindowHandle 只考虑非系统缩放 dpi 的情况
+
+        // NOTE: gameWindowHandle 只考虑非系统缩放 dpi 的情况
+        // 这是一个仅依赖于非 DPI感知-系统 的窗口的 WinUI 子窗口
         _mainWindow = new MainWindow(gameWindowHandle);
 
-        var monitor = new WindowMessageMonitor(_mainWindow);
+        var monitor = new WinUIEx.Messaging.WindowMessageMonitor(_mainWindow);
         monitor.WindowMessageReceived += (s, e) =>
         {
             const int WM_Destroy = 0x0002;
@@ -52,8 +52,7 @@ public partial class App : Application
             {
                 Debug.WriteLine("WM_Destroy || WM_NCDESTROY");
                 // 退出前重置父窗口设置0，避免 0xc000027b 错误
-                // TODO：仍旧错误
-                Windows.Win32.PInvoke.SetParent(_mainWindow.GetWindowHandle().ToHwnd(), nint.Zero.ToHwnd());
+                Windows.Win32.PInvoke.SetParent(WinUIEx.WindowExtensions.GetWindowHandle(_mainWindow).ToHwnd(), nint.Zero.ToHwnd());
                 Current.Exit();
             }
             const uint WM_DPICHANGED = 736u;

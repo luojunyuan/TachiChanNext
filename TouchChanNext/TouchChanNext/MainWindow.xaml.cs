@@ -1,23 +1,17 @@
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Shapes;
 using R3;
-using System;
 using System.ComponentModel;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Windows.ApplicationModel.Activation;
-using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Graphics;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
-using Windows.Win32.UI.Accessibility;
 using Windows.Win32.UI.WindowsAndMessaging;
-using WinUIEx;
+using HwndExtensions = WinUIEx.HwndExtensions;
+using WindowStyle = WinUIEx.WindowStyle;
 
 namespace TouchChan
 {
@@ -26,38 +20,39 @@ namespace TouchChan
     public sealed partial class MainWindow : Window
     {
         private readonly nint GameWindowHandle;
+        private readonly nint Hwnd;
 
         public MainWindow(nint gameWindowHandle)
         {
             GameWindowHandle = gameWindowHandle;
-            var hwnd = this.GetWindowHandle();
+            Hwnd = WinUIEx.WindowExtensions.GetWindowHandle(this);
 
             // 设置窗口需要的 WinUI3 样式
             this.InitializeComponent();
-            HwndExtensions.ToggleWindowStyle(hwnd, false, WindowStyle.TiledWindow);
-            this.SystemBackdrop = new TransparentTintBackdrop();
+            HwndExtensions.ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
+            this.SystemBackdrop = new WinUIEx.TransparentTintBackdrop();
             // 设置窗口需要的 Win32 样式
-            RemovePopupAddChildStyle(hwnd);
-            PInvoke.SetParent(hwnd.ToHwnd(), GameWindowHandle.ToHwnd());
-            AddClipChildrenStyle(hwnd);
+            RemovePopupAddChildStyle(Hwnd);
+            PInvoke.SetParent(Hwnd.ToHwnd(), GameWindowHandle.ToHwnd());
+            AddClipChildrenStyle(Hwnd);
             // Note: 设置为子窗口后，this.AppWindow 不再可靠
 
             // 绑定窗口大小
             GameWindowHooker
                .ClientSizeChanged(GameWindowHandle)
-               .Prepend(hwnd.GetClientSize())
-               .Subscribe(rect => ResizeClient(hwnd, rect));
+               .Prepend(Hwnd.GetClientSize())
+               .Subscribe(rect => ResizeClient(Hwnd, rect));
             // FIXME: AKAIITO 初始宽高不对，移动 window 位置后正常
 
             // 设置窗口可被观测的范围
             Touch.RxPointerPressed()
                 .Select(_ => GameWindowHandle.GetClientSize())
-                .Subscribe(clientArea => ResetWindowOriginalObservableRegion(hwnd, clientArea.Width, clientArea.Height));
+                .Subscribe(clientArea => ResetWindowOriginalObservableRegion(Hwnd, clientArea.Width, clientArea.Height));
 
             Touch.RxPointerReleased()
                 .Select(_ => Touch.GetRect())
                 .Prepend(Touch.GetRect())
-                .Subscribe(rect => SetWindowObservableRegion(hwnd, Dpi, rect));
+                .Subscribe(rect => SetWindowObservableRegion(Hwnd, Dpi, rect));
             // WARN: 部分游戏窗口，WinUI 透明子窗口会第一次捕获覆盖的画面，后续不会再重绘变化
             // 所以对于这个 WinUI 透明子窗口而言，ResetWindowOriginalObservableRegion 只能作为一个临时状态
 
@@ -97,12 +92,12 @@ namespace TouchChan
             Touch.RightTapped += (s, e) =>
             {
                 // QUESTION:  不同计算机上表现不同？有时候无效
-                PInvoke.SetParent(hwnd.ToHwnd(), nint.Zero.ToHwnd());
+                PInvoke.SetParent(Hwnd.ToHwnd(), nint.Zero.ToHwnd());
                 Close();
             };
         }
 
-        private double Dpi => HwndExtensions.GetDpiForWindow(this.GetWindowHandle()) / 96d;
+        private double Dpi => HwndExtensions.GetDpiForWindow(Hwnd) / 96d;
 
         /// <summary>
         /// 使用这个函数来调整 WinUI 窗口大小

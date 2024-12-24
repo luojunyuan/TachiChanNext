@@ -3,7 +3,7 @@ using Windows.Win32.Foundation;
 
 namespace TouchChan
 {
-    static class WinUIExExtensions
+    static class CSWin32Extensions
     {
         public static HWND ToHwnd(this nint handle) => new(handle);
     }
