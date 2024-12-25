@@ -34,7 +34,7 @@ namespace TouchChan
             ToggleWindowStyle(false, WindowStyle.Popup);
             ToggleWindowStyle(true, WindowStyle.Child);
             ToggleWindowExStyle(true, ExtendedWindowStyle.Layered);
-            SetParent(GameWindowHandle);
+            PInvoke.SetParent(Hwnd.ToHwnd(), GameWindowHandle.ToHwnd());
             // Note: 设置为子窗口后，this.AppWindow 不再可靠
 
             GameWindowHooker.ClientSizeChanged(GameWindowHandle)
@@ -86,8 +86,9 @@ namespace TouchChan
                 });
 
             Touch.RightTapped += (s, e) => Close();
+
             // 避免 0xc000027b 错误
-            this.Closed += (_, _) => SetParent(nint.Zero.ToHwnd(), true);
+            this.Closed += (_, _) => PInvoke.SetParent(Hwnd.ToHwnd(), nint.Zero.ToHwnd());
         }
 
         private double Dpi => HwndExtensions.GetDpiForWindow(Hwnd) / 96d;
@@ -103,27 +104,6 @@ namespace TouchChan
             var modStyle = HwndExtensions.GetExtendedWindowStyle(Hwnd);
             modStyle = enable ? modStyle | style : modStyle & ~style;
             HwndExtensions.SetExtendedWindowStyle(Hwnd, modStyle);
-        }
-
-        // TODO: 没必要。。应该是进程架构的原因可能，反正不是这个。
-        private void SetParent(nint parent, bool detach = false)
-        {
-            var executeFun = Observable.Return<Action>(() => PInvoke.SetParent(Hwnd.ToHwnd(), parent.ToHwnd()));
-            var setStyle = Observable.Return(() =>
-            {
-                ToggleWindowStyle(detach, WindowStyle.Popup);
-                ToggleWindowStyle(!detach, WindowStyle.Child);
-            });
-
-            var expressionStream = detach switch
-            {
-                // 先设置样式，再调用 SetParent
-                false => setStyle.Concat(executeFun),
-                true => executeFun.Concat(setStyle),
-            };
-
-            expressionStream
-                .Subscribe(exp => exp.Invoke());
         }
 
         /// <summary>

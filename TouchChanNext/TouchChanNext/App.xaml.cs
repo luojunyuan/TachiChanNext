@@ -1,4 +1,5 @@
-﻿using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
 using Microsoft.Win32.SafeHandles;
 using System;
 using System.Diagnostics;
@@ -43,10 +44,21 @@ public partial class App : Application
             {
                 proc = Process.Start(@"C:\Users\kimika\Desktop\9-nine-天色天歌天籁音(樱空)\9-nine-天色天歌天籁音.exe");
                 proc.WaitForInputIdle();
+                System.Threading.Thread.Sleep(3000);
             }
             gameWindowHandle = proc.MainWindowHandle;
             process = proc;
         }
+
+        var uiThread = DispatcherQueue.GetForCurrentThread();
+        
+        process.EnableRaisingEvents = true;
+        process.Exited += (s, e) =>
+        {
+            // HACK: 避免 0xc000027b 错误
+            if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
+                Environment.Exit(0);
+        };
 
         // NOTE: 这是一个仅依赖于非 DPI感知-系统 的窗口的 WinUI 子窗口
         if (IsSystemDpiAware(process.Id))
@@ -57,17 +69,6 @@ public partial class App : Application
         var monitor = new WinUIEx.Messaging.WindowMessageMonitor(_mainWindow);
         monitor.WindowMessageReceived += (s, e) =>
         {
-            const int WM_Destroy = 0x0002;
-            const int WM_NCDESTROY = 130;
-            if (e.Message.MessageId == WM_Destroy || e.Message.MessageId == WM_NCDESTROY)
-            {
-                Debug.WriteLine("WM_Destroy || WM_NCDESTROY");
-                // QUES: 不同计算机上表现不同？有时候无效
-                // 父窗口进程与子窗口进程架构不同导致?
-                // 两种方法都可以正常退出，SetParent是必须的
-                _mainWindow.Close();
-                //Current.Exit();
-            }
             const uint WM_DPICHANGED = 736u;
             if (e.Message.MessageId == WM_DPICHANGED)
             {
