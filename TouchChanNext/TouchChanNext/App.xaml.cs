@@ -79,10 +79,11 @@ public partial class App : Application
     /// </summary>
     private static bool IsSystemDpiAware(int pid)
     {
+        // GetProcessDpiAwareness 仅支持 Windows 8.1 及以后的系统，因为在那之前没有进程级别的 DPI 感知，
+        // 所以默认认为进程对象 pid 是非系统 DPI 感知。
         if (!OperatingSystem.IsWindowsVersionAtLeast(6, 3))
             return false;
 
-        // GetProcessDpiAwareness 仅支持 Windows 8.1 及以后的系统，因为在那之前没有进程级别的 DPI 感知
         var handle = Process.GetProcessById(pid).Handle;
         using var processHandle = new SafeProcessHandle(handle, true);
         var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
