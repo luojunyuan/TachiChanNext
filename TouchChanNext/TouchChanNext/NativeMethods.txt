@@ -5,3 +5,4 @@ CreateRectRgn
 SetWindowRgn
 SetWinEventHook
 GetWindowThreadProcessId
+GetProcessDpiAwareness

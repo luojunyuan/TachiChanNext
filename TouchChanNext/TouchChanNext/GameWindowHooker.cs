@@ -21,7 +21,10 @@ class GameWindowHooker
     public static Observable<Size> ClientSizeChanged(nint gameWindowHandle) =>
         Observable.Create<Size>(observer =>
         {
-            Size lastGameWindowSize = default;
+            PInvoke.GetClientRect(gameWindowHandle.ToHwnd(), out var initRect);
+            var lastGameWindowSize = initRect.Size;
+            observer.OnNext(lastGameWindowSize);
+
             var winEventDelegate = new WINEVENTPROC((hWinEventHook, eventId, hWnd, idObject, idChild, dwEventThread, dwmsEventTime) =>
             {
                 if (eventId == EventObjectLocationChange &&

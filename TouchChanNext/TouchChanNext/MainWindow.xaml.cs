@@ -10,13 +10,13 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.WindowsAndMessaging;
-using HwndExtensions = WinUIEx.HwndExtensions;
-using WindowExtensions = WinUIEx.WindowExtensions;
-using WindowStyle = WinUIEx.WindowStyle;
 
 namespace TouchChan
 {
     using TouchChan.MainWindowExtensions;
+    using HwndExtensions = WinUIEx.HwndExtensions;
+    using WindowExtensions = WinUIEx.WindowExtensions;
+    using WindowStyle = WinUIEx.WindowStyle;
 
     public sealed partial class MainWindow : Window
     {
@@ -28,24 +28,21 @@ namespace TouchChan
             GameWindowHandle = gameWindowHandle;
             Hwnd = WindowExtensions.GetWindowHandle(this);
 
-            // 设置窗口样式
             this.InitializeComponent();
             this.SystemBackdrop = new WinUIEx.TransparentTintBackdrop();
             HwndExtensions.ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
             HwndExtensions.ToggleWindowStyle(Hwnd, false, WindowStyle.Popup);
             HwndExtensions.ToggleWindowStyle(Hwnd, true, WindowStyle.Child);
-            HwndExtensions.ToggleWindowStyle(Hwnd, true, WindowStyle.ClipChildren);
+            var style = HwndExtensions.GetWindowStyle(Hwnd);
+            HwndExtensions.SetWindowStyle(Hwnd, style | WindowStyle.ClipChildren);
             PInvoke.SetParent(Hwnd.ToHwnd(), GameWindowHandle.ToHwnd());
             // Note: 设置为子窗口后，this.AppWindow 不再可靠
 
-            // 绑定窗口大小
-            GameWindowHooker
-               .ClientSizeChanged(GameWindowHandle)
-               .Prepend(Hwnd.GetClientSize())
-               .Subscribe(rect => ResizeClient(Hwnd, rect));
-            // FIXME: AKAIITO 初始宽高不对，移动 window 位置后正常
+            // Ques: 窗口是否是与父窗口共享焦点，以及如何确认改变这个状态，没有留意过
 
-            // 设置窗口可被观测的范围
+            GameWindowHooker.ClientSizeChanged(GameWindowHandle)
+               .Subscribe(Resize);
+
             Touch.RxPointerPressed()
                 .Select(_ => GameWindowHandle.GetClientSize())
                 .Subscribe(clientArea => ResetWindowOriginalObservableRegion(Hwnd, clientArea.Width, clientArea.Height));
@@ -65,16 +62,18 @@ namespace TouchChan
 
             var lastPosRealTime = new Point();
 
-            var draggingStream = pointerPressedStream
+            var draggingStream =
+                pointerPressedStream
                 .Do(e => Touch.CapturePointer(e.Pointer))
                 .SelectMany(pressedEvent =>
                 {
                     var relativeMousePos = pressedEvent.GetCurrentPoint(Touch).Position;
                     var pointWhenMouseDown = pressedEvent.GetCurrentPoint(this.Content).Position;
 
-                    return pointerMovedStream
+                    return
+                        pointerMovedStream
                         .TakeUntil(pointerReleasedStream
-                            .Do(e => Touch.ReleasePointerCapture(e.Pointer)))
+                                   .Do(e => Touch.ReleasePointerCapture(e.Pointer)))
                         .Select(movedEvent =>
                         {
                             var newPos = movedEvent.GetCurrentPoint(this.Content).Position.ToWarp() - relativeMousePos;
@@ -82,20 +81,21 @@ namespace TouchChan
                         });
                 });
 
-            draggingStream.Subscribe(tuple =>
-            {
-                // pointWhenMouseDown 和 lastPosRealTime 暂时不需要
-                var (newPos, pointWhenMouseDown) = tuple;
-                Touch.Margin = new Thickness(newPos.X, newPos.Y, 0, 0);
-                lastPosRealTime = newPos;
-            });
+            draggingStream
+                .Subscribe(tuple =>
+                {
+                    // pointWhenMouseDown 和 lastPosRealTime 暂时不需要
+                    var (newPos, pointWhenMouseDown) = tuple;
+                    Touch.Margin = new Thickness(newPos.X, newPos.Y, 0, 0);
+                    lastPosRealTime = newPos;
+                });
 
             Touch.RightTapped += (s, e) =>
             {
-                // QUESTION:  不同计算机上表现不同？有时候无效
                 PInvoke.SetParent(Hwnd.ToHwnd(), nint.Zero.ToHwnd());
                 Close();
             };
+            Closed += (s, e) => System.Diagnostics.Debug.WriteLine("Closed");
         }
 
         private double Dpi => HwndExtensions.GetDpiForWindow(Hwnd) / 96d;
@@ -103,8 +103,8 @@ namespace TouchChan
         /// <summary>
         /// 使用这个函数来调整 WinUI 窗口大小
         /// </summary>
-        private static void ResizeClient(nint winHandle, System.Drawing.Size size) =>
-            PInvoke.SetWindowPos(winHandle.ToHwnd(), HWND.Null,
+        private void Resize(System.Drawing.Size size) =>
+            PInvoke.SetWindowPos(WindowExtensions.GetWindowHandle(this).ToHwnd(), HWND.Null,
                 0, 0, size.Width, size.Height, SET_WINDOW_POS_FLAGS.SWP_NOZORDER);
 
         /// <summary>
