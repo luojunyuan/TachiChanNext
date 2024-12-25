@@ -30,7 +30,10 @@ public partial class App : Application
             }
             catch
             {
-                throw new ArgumentException("no process find");
+                var proc = Process.GetProcessesByName("notepad").FirstOrDefault() 
+                    ?? throw new InvalidOperationException();
+                gameWindowHandle = proc.MainWindowHandle;
+                process = proc;
             }
         }
         else
@@ -60,6 +63,7 @@ public partial class App : Application
             {
                 Debug.WriteLine("WM_Destroy || WM_NCDESTROY");
                 // QUES: 不同计算机上表现不同？有时候无效
+                // 父窗口进程与子窗口进程架构不同导致?
                 // 两种方法都可以正常退出，SetParent是必须的
                 _mainWindow.Close();
                 //Current.Exit();

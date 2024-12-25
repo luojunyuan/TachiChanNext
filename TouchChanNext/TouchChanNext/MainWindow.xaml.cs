@@ -2,19 +2,20 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Shapes;
 using R3;
-using System.ComponentModel;
-using System.Runtime.InteropServices;
 using Windows.Foundation;
 using Windows.Graphics;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
+using WinRT.Interop;
+using System.Linq;
 
 namespace TouchChan
 {
+    using System;
     using TouchChan.MainWindowExtensions;
+    using ExtendedWindowStyle = WinUIEx.ExtendedWindowStyle;
     using HwndExtensions = WinUIEx.HwndExtensions;
-    using WindowExtensions = WinUIEx.WindowExtensions;
     using WindowStyle = WinUIEx.WindowStyle;
 
     public sealed partial class MainWindow : Window
@@ -25,15 +26,15 @@ namespace TouchChan
         public MainWindow(nint gameWindowHandle)
         {
             GameWindowHandle = gameWindowHandle;
-            Hwnd = WindowExtensions.GetWindowHandle(this);
+            Hwnd = WindowNative.GetWindowHandle(this);
 
             this.InitializeComponent();
             this.SystemBackdrop = new WinUIEx.TransparentTintBackdrop();
-            ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
-            ToggleWindowStyle(Hwnd, false, WindowStyle.Popup);
-            ToggleWindowStyle(Hwnd, true, WindowStyle.Child);
-            ToggleWindowStyle(Hwnd, true, WindowStyle.ClipChildren);
-            PInvoke.SetParent(Hwnd.ToHwnd(), GameWindowHandle.ToHwnd());
+            ToggleWindowStyle(false, WindowStyle.TiledWindow);
+            ToggleWindowStyle(false, WindowStyle.Popup);
+            ToggleWindowStyle(true, WindowStyle.Child);
+            ToggleWindowExStyle(true, ExtendedWindowStyle.Layered);
+            SetParent(GameWindowHandle);
             // Note: 设置为子窗口后，this.AppWindow 不再可靠
 
             GameWindowHooker.ClientSizeChanged(GameWindowHandle)
@@ -47,8 +48,6 @@ namespace TouchChan
                 .Select(_ => Touch.GetRect())
                 .Prepend(Touch.GetRect())
                 .Subscribe(rect => SetWindowObservableRegion(Hwnd, Dpi, rect));
-            // WARN: 部分游戏窗口，WinUI 透明子窗口会第一次捕获覆盖的画面，后续不会再重绘变化
-            // 所以对于这个 WinUI 透明子窗口而言，ResetWindowOriginalObservableRegion 只能作为一个临时状态
 
             // FIXME: 多显示器不同 DPI 下，窗口跨显示器时，内部控件的大小不会自动感知改变
 
@@ -88,16 +87,43 @@ namespace TouchChan
 
             Touch.RightTapped += (s, e) => Close();
             // 避免 0xc000027b 错误
-            Closed += (s, e) => PInvoke.SetParent(WindowExtensions.GetWindowHandle(this).ToHwnd(), nint.Zero.ToHwnd());
+            this.Closed += (_, _) => SetParent(nint.Zero.ToHwnd(), true);
         }
 
         private double Dpi => HwndExtensions.GetDpiForWindow(Hwnd) / 96d;
 
-        private static void ToggleWindowStyle(nint windowHandle, bool enable, WindowStyle style)
+        private void ToggleWindowStyle(bool enable, WindowStyle style)
         {
-            var modStyle = HwndExtensions.GetWindowStyle(windowHandle);
+            var modStyle = HwndExtensions.GetWindowStyle(Hwnd);
             modStyle = enable ? modStyle | style : modStyle & ~style;
-            HwndExtensions.SetWindowStyle(windowHandle, modStyle);
+            HwndExtensions.SetWindowStyle(Hwnd, modStyle);
+        }
+        private void ToggleWindowExStyle(bool enable, ExtendedWindowStyle style)
+        {
+            var modStyle = HwndExtensions.GetExtendedWindowStyle(Hwnd);
+            modStyle = enable ? modStyle | style : modStyle & ~style;
+            HwndExtensions.SetExtendedWindowStyle(Hwnd, modStyle);
+        }
+
+        // TODO: 没必要。。应该是进程架构的原因可能，反正不是这个。
+        private void SetParent(nint parent, bool detach = false)
+        {
+            var executeFun = Observable.Return<Action>(() => PInvoke.SetParent(Hwnd.ToHwnd(), parent.ToHwnd()));
+            var setStyle = Observable.Return(() =>
+            {
+                ToggleWindowStyle(detach, WindowStyle.Popup);
+                ToggleWindowStyle(!detach, WindowStyle.Child);
+            });
+
+            var expressionStream = detach switch
+            {
+                // 先设置样式，再调用 SetParent
+                false => setStyle.Concat(executeFun),
+                true => executeFun.Concat(setStyle),
+            };
+
+            expressionStream
+                .Subscribe(exp => exp.Invoke());
         }
 
         /// <summary>
@@ -105,7 +131,7 @@ namespace TouchChan
         /// </summary>
         private void Resize(System.Drawing.Size size) =>
             // NOTE: 我没有观测到 Repaint 设置为 false 带来的任何负面影响
-            PInvoke.MoveWindow(WindowExtensions.GetWindowHandle(this).ToHwnd(), 0, 0, size.Width, size.Height, false);
+            PInvoke.MoveWindow(WindowNative.GetWindowHandle(this).ToHwnd(), 0, 0, size.Width, size.Height, false);
 
         /// <summary>
         /// 恢复窗口原始大小
@@ -121,9 +147,7 @@ namespace TouchChan
             var r = rect.Multiply(factor);
 
             HRGN hRgn = PInvoke.CreateRectRgn(r.X, r.Y, r.X + r.Width, r.Y + r.Height);
-            var result = PInvoke.SetWindowRgn(hwnd.ToHwnd(), hRgn, true);
-            if (result == 0)
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+            _ = PInvoke.SetWindowRgn(hwnd.ToHwnd(), hRgn, true);
         }
     }
 }

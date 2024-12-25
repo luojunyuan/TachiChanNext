@@ -14,7 +14,7 @@
         <Rectangle
             x:Name="Touch"
             Width="100"
-            Height="100"
+            Height="100" RadiusX="50" RadiusY="50"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
             Fill="Blue" />
