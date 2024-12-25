@@ -58,10 +58,8 @@ public partial class App : Application
             if (e.Message.MessageId == WM_Destroy || e.Message.MessageId == WM_NCDESTROY)
             {
                 Debug.WriteLine("WM_Destroy || WM_NCDESTROY");
-                // QUESTION:  不同计算机上表现不同？有时候无效
-                // 退出前重置父窗口设置0，避免 0xc000027b 错误
-                PInvoke.SetParent(WinUIEx.WindowExtensions.GetWindowHandle(_mainWindow).ToHwnd(), nint.Zero.ToHwnd());
-                // 两种方法都可以正常退出，但是SetParent是必须的
+                // QUES: 不同计算机上表现不同？有时候无效
+                // 两种方法都可以正常退出，SetParent是必须的
                 _mainWindow.Close();
                 //Current.Exit();
             }
@@ -85,7 +83,8 @@ public partial class App : Application
 
         // GetProcessDpiAwareness 仅支持 Windows 8.1 及以后的系统，因为在那之前没有进程级别的 DPI 感知
         var handle = Process.GetProcessById(pid).Handle;
-        var result = PInvoke.GetProcessDpiAwareness(new SafeProcessHandle(handle, true), out var awareType);
+        // TODO: FIXME: 这里 safehandle 设置 true 很快就会报错
+        var result = PInvoke.GetProcessDpiAwareness(new SafeProcessHandle(handle, false), out var awareType);
 
         return result == 0 && awareType == Windows.Win32.UI.HiDpi.PROCESS_DPI_AWARENESS.PROCESS_SYSTEM_DPI_AWARE;
     }

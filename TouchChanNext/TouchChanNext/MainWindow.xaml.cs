@@ -9,7 +9,6 @@ using Windows.Graphics;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
-using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace TouchChan
 {
@@ -30,15 +29,12 @@ namespace TouchChan
 
             this.InitializeComponent();
             this.SystemBackdrop = new WinUIEx.TransparentTintBackdrop();
-            HwndExtensions.ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
-            HwndExtensions.ToggleWindowStyle(Hwnd, false, WindowStyle.Popup);
-            HwndExtensions.ToggleWindowStyle(Hwnd, true, WindowStyle.Child);
-            var style = HwndExtensions.GetWindowStyle(Hwnd);
-            HwndExtensions.SetWindowStyle(Hwnd, style | WindowStyle.ClipChildren);
+            ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
+            ToggleWindowStyle(Hwnd, false, WindowStyle.Popup);
+            ToggleWindowStyle(Hwnd, true, WindowStyle.Child);
+            ToggleWindowStyle(Hwnd, true, WindowStyle.ClipChildren);
             PInvoke.SetParent(Hwnd.ToHwnd(), GameWindowHandle.ToHwnd());
             // Note: 设置为子窗口后，this.AppWindow 不再可靠
-
-            // Ques: 窗口是否是与父窗口共享焦点，以及如何确认改变这个状态，没有留意过
 
             GameWindowHooker.ClientSizeChanged(GameWindowHandle)
                .Subscribe(Resize);
@@ -90,22 +86,26 @@ namespace TouchChan
                     lastPosRealTime = newPos;
                 });
 
-            Touch.RightTapped += (s, e) =>
-            {
-                PInvoke.SetParent(Hwnd.ToHwnd(), nint.Zero.ToHwnd());
-                Close();
-            };
-            Closed += (s, e) => System.Diagnostics.Debug.WriteLine("Closed");
+            Touch.RightTapped += (s, e) => Close();
+            // 避免 0xc000027b 错误
+            Closed += (s, e) => PInvoke.SetParent(WindowExtensions.GetWindowHandle(this).ToHwnd(), nint.Zero.ToHwnd());
         }
 
         private double Dpi => HwndExtensions.GetDpiForWindow(Hwnd) / 96d;
+
+        private static void ToggleWindowStyle(nint windowHandle, bool enable, WindowStyle style)
+        {
+            var modStyle = HwndExtensions.GetWindowStyle(windowHandle);
+            modStyle = enable ? modStyle | style : modStyle & ~style;
+            HwndExtensions.SetWindowStyle(windowHandle, modStyle);
+        }
 
         /// <summary>
         /// 使用这个函数来调整 WinUI 窗口大小
         /// </summary>
         private void Resize(System.Drawing.Size size) =>
-            PInvoke.SetWindowPos(WindowExtensions.GetWindowHandle(this).ToHwnd(), HWND.Null,
-                0, 0, size.Width, size.Height, SET_WINDOW_POS_FLAGS.SWP_NOZORDER);
+            // NOTE: 我没有观测到 Repaint 设置为 false 带来的任何负面影响
+            PInvoke.MoveWindow(WindowExtensions.GetWindowHandle(this).ToHwnd(), 0, 0, size.Width, size.Height, false);
 
         /// <summary>
         /// 恢复窗口原始大小

@@ -1,5 +1,6 @@
 ﻿using Windows.Foundation;
 using Windows.Win32.Foundation;
+using WinUIEx;
 
 namespace TouchChan
 {

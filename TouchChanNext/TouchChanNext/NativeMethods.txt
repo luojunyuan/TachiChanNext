@@ -1,6 +1,6 @@
 ﻿SetParent
 GetClientRect
-SetWindowPos
+MoveWindow
 CreateRectRgn
 SetWindowRgn
 SetWinEventHook
