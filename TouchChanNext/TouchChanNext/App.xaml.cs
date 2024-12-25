@@ -3,6 +3,7 @@ using Microsoft.Win32.SafeHandles;
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Windows.Win32;
 
 namespace TouchChan;
@@ -83,8 +84,8 @@ public partial class App : Application
 
         // GetProcessDpiAwareness 仅支持 Windows 8.1 及以后的系统，因为在那之前没有进程级别的 DPI 感知
         var handle = Process.GetProcessById(pid).Handle;
-        // TODO: FIXME: 这里 safehandle 设置 true 很快就会报错
-        var result = PInvoke.GetProcessDpiAwareness(new SafeProcessHandle(handle, false), out var awareType);
+        using var processHandle = new SafeProcessHandle(handle, true);
+        var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
 
         return result == 0 && awareType == Windows.Win32.UI.HiDpi.PROCESS_DPI_AWARENESS.PROCESS_SYSTEM_DPI_AWARE;
     }
