@@ -45,6 +45,7 @@ namespace TouchChan
             GameWindowHooker.ClientSizeChanged(GameWindowHandle)
                .Subscribe(Resize);
 
+            // TODO：新建 TouchButton.xaml，并把动画作为类的私有只读字段
             var translationStoryboard = new Storyboard();
             var releaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
             var translateXAnimation = new DoubleAnimation { Duration = releaseToEdgeDuration };
@@ -73,6 +74,7 @@ namespace TouchChan
                 .Subscribe(rect => SetWindowObservableRegion(Hwnd, Dpi, rect));
             // FIXME: 要确定释放过程中能不能被点击抓住。
 
+            // Touch 释放时的移动动画
             pointerReleasedStream
                 .Select(pointer =>
                 {
@@ -86,7 +88,7 @@ namespace TouchChan
                     (translateXAnimation.To, translateYAnimation.To) = (stopPos.X, stopPos.Y);
                     translationStoryboard.Begin();
                 });
-
+                
             var draggingStream =
                 pointerPressedStream
                 .Do(e => Touch.CapturePointer(e.Pointer))
@@ -118,6 +120,7 @@ namespace TouchChan
                     TouchTransform.Y = newPos.Y;
                 });
 
+            // Touch 拖动边界释放检测
             var boundaryExceededStream =
                 draggingStream
                 .Where(item => IsBeyondBoundary(item.Delta, Touch.Width / Dpi, Hwnd.GetClientSize()))
