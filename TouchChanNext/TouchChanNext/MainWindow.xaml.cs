@@ -75,7 +75,6 @@ namespace TouchChan
                 .Subscribe(rect => SetWindowObservableRegion(Hwnd, Dpi, rect));
             // FIXME: 要确定释放过程中能不能被点击抓住。
 
-            // 增加一个 dragOutOfBoundsStream，或者还是按照原本的做法，释放一个 Release 事件，看看能不能做，我觉得都可以
             pointerReleasedStream
                 .Select(pointer =>
                 {
@@ -89,8 +88,6 @@ namespace TouchChan
                     (translateXAnimation.To, translateYAnimation.To) = (stopPos.X, stopPos.Y);
                     translationStoryboard.Begin();
                 });
-
-            PointerRoutedEventArgs? moveEventInReal = null;
 
             var draggingStream =
                 pointerPressedStream
@@ -109,7 +106,6 @@ namespace TouchChan
                                    .Do(e => Touch.ReleasePointerCapture(e.Pointer)))
                         .Select(movedEvent =>
                         {
-                            moveEventInReal = movedEvent;
                             var distanceToOrigin = movedEvent.GetCurrentPoint(this.Content).Position.ToWarp();
                             var delta = distanceToOrigin - distanceToElement;
                             return new { Delta = delta, MovedEvent = movedEvent };
@@ -124,25 +120,6 @@ namespace TouchChan
                     TouchTransform.Y = newPos.Y;
                 });
 
-
-            static bool IsBeyondBoundary(Point newPos, double touchSize, System.Drawing.Size container)
-            {
-                // TODO: 明确一下窗口中用的坐标和dpi关系
-                // win32设置时候的 size 与dpi关系，窗口中所有坐标计算，该用原始的还是应用过dpi后的？
-                // dpi 计算后的，大小数值缩小了一半，应该是用原始的才对。需要从控件开始计算起。
-                var oneThirdDistance = touchSize / 3;
-                var twoThirdDistance = oneThirdDistance * 2;
-
-                if (newPos.X < -oneThirdDistance ||
-                    newPos.Y < -oneThirdDistance ||
-                    newPos.X > container.Width - twoThirdDistance ||
-                    newPos.Y > container.Height - twoThirdDistance)
-                {
-                    return true;
-                }
-                return false;
-            }
-
             var boundaryExceededStream =
                 draggingStream
                 .Where(item => IsBeyondBoundary(item.Delta, Touch.Width / Dpi, Hwnd.GetClientSize()))
@@ -153,6 +130,25 @@ namespace TouchChan
 
             Touch.RightTapped += (s, e) => Close();
             // QUES: 启动后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。今后再检查整个程序与窗口启动方式
+        }
+        
+
+        private static bool IsBeyondBoundary(Point newPos, double touchSize, System.Drawing.Size container)
+        {
+            // TODO: 明确一下窗口中用的坐标和dpi关系
+            // win32设置时候的 size 与dpi关系，窗口中所有坐标计算，该用原始的还是应用过dpi后的？
+            // dpi 计算后的，大小数值缩小了一半，应该是用原始的才对。需要从控件开始计算起。
+            var oneThirdDistance = touchSize / 3;
+            var twoThirdDistance = oneThirdDistance * 2;
+
+            if (newPos.X < -oneThirdDistance ||
+                newPos.Y < -oneThirdDistance ||
+                newPos.X > container.Width - twoThirdDistance ||
+                newPos.Y > container.Height - twoThirdDistance)
+            {
+                return true;
+            }
+            return false;
         }
 
         [Pure]
@@ -210,7 +206,7 @@ namespace TouchChan
             PInvoke.MoveWindow(WindowNative.GetWindowHandle(this).ToHwnd(), 0, 0, size.Width, size.Height, false);
 
         /// <summary>
-        /// 恢复窗口原始大小
+        /// 恢复窗口原始可观测区域
         /// </summary>
         private static void ResetWindowOriginalObservableRegion(nint hwnd, int Width, int Height) =>
             SetWindowObservableRegion(hwnd, 1, new(0, 0, Width, Height));
@@ -227,7 +223,8 @@ namespace TouchChan
         }
     }
 
-    record TouchDockAnchor(TouchCorner Corner, double Scale, Point Position);
+    // NOTE: 移动到 ViewModel 将来
+    record TouchDockAnchor(TouchCorner Corner, double Scale);
 
     public enum TouchCorner
     {
