@@ -53,8 +53,9 @@ public partial class App : Application
             process = proc;
         }
 
-        // NOTE: 这是一个仅依赖于非 DPI感知-系统 的窗口的 WinUI 子窗口
-        if (IsSystemDpiAware(process.Id))
+        // NOTE: ?这是一个仅依赖于非 DPI感知-系统 的窗口的 WinUI 子窗口
+        // TODO: 还需要判断游戏所在显示器 dpi 是否 100%？如果游戏不支持，但是显示器默认是 100%，那么 touch 理应正常工作
+        if (IsDpiUnaware(process.Id))
             throw new InvalidOperationException();
 
         _mainWindow = new MainWindow(gameWindowHandle);
@@ -67,11 +68,20 @@ public partial class App : Application
         // 3. 在 Arm 架构下，基于 1，消息循环中也会出现该错误（暂未尝试在窗口中 Current.Exit）
         // 4. 在 Arm 架构下，基于 1，似乎父窗口进程与同为 Arm64 架构的子窗口进程相同，不会出现该错误 (同为 x86 不影响)
         // 5. 在除窗口和消息循环外其他地方无论有没有步骤 1，通过 uiThread Close() 或 Current.Exit 都会出现该错误
+        // 6. 在 Arm 架构下，编译为 x64，错误发生在 Current.Exit() 之中，甚至后续代码没法执行，直接错误退出
+        // 7. 在 Arm 架构下，编译为 x64，消息循环中 Current.Exit() 无法退出
+        // 8. 在 Arm 架构下，编译为 x64，父窗口是 arm64，消息循环中 Current.Exit() 正常退出
+        // 9. 在 Arm 架构下，编译为 x64，父窗口是 x64，消息循环中 Current.Exit() 正常退出
         // NOTE: 暂时可以搁置这个错误调查，因为还需考虑不使用消息循环，或者关闭窗口不退出进程重建窗口的情况，对这部分产生的影响。
         // 比如先隐藏，再创建新窗口，再关闭旧窗口
 
-        // QUES: 取消父窗口前，必须先 hide 一下，否则可能会脱离父窗口出现在屏幕其他地方？
-        _mainWindow.Closed += (_, _) => PInvoke.SetParent(WindowNative.GetWindowHandle(_mainWindow).ToHwnd(), nint.Zero.ToHwnd());
+        // FIXME: 取消父窗口后可能会脱离父窗口出现在屏幕其他地方，我确实观察到了
+        // プログラム '[8180] TouchChanNext.exe' はコード 3221225480(0xc0000008) 'An invalid handle was specified' で終了しました。
+        _mainWindow.Closed += (_, _) =>
+        {
+            _mainWindow.Hide();
+            PInvoke.SetParent(WindowNative.GetWindowHandle(_mainWindow).ToHwnd(), nint.Zero.ToHwnd());
+        };
         var monitor = new WinUIEx.Messaging.WindowMessageMonitor(_mainWindow);
         monitor.WindowMessageReceived += (s, e) =>
         {
@@ -82,11 +92,6 @@ public partial class App : Application
                 Debug.WriteLine("WM_Destroy || WM_NCDESTROY");
 
                 Current.Exit();
-
-                // HACK: 避免 0xc000027b 错误
-                // FEAT: 可以进一步检查父进程的架构
-                if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
-                    Environment.Exit(0);
             }
 
             const uint WM_DPICHANGED = 736u;
@@ -100,12 +105,12 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 判断进程对象是否为系统 DPI 感知
+    /// 判断进程对象是否对 DPI 不感知
     /// </summary>
-    private static bool IsSystemDpiAware(int pid)
+    private static bool IsDpiUnaware(int pid)
     {
         // GetProcessDpiAwareness 仅支持 Windows 8.1 及以后的系统，因为在那之前没有进程级别的 DPI 感知，
-        // 所以默认认为进程对象 pid 是非系统 DPI 感知。
+        // 所以默认进程对象是 DPI 感知的。
         if (!OperatingSystem.IsWindowsVersionAtLeast(6, 3))
             return false;
 
@@ -113,7 +118,8 @@ public partial class App : Application
         using var processHandle = new SafeProcessHandle(handle, true);
         var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
 
-        return result == 0 && awareType == Windows.Win32.UI.HiDpi.PROCESS_DPI_AWARENESS.PROCESS_SYSTEM_DPI_AWARE;
+        // TODO: 刚刚确定DebugView 非对应DPI 子窗口没法用，那么System DPI到底怎么样？
+        return result == 0 && awareType == 0;
     }
 
     private Window? _mainWindow;

@@ -1,12 +1,13 @@
-using CommunityToolkit.WinUI.Animations;
+using System;
+using System.Diagnostics.Contracts;
+using System.Linq;
+using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Shapes;
 using R3;
-using System;
-using System.Linq;
 using Windows.Foundation;
 using Windows.Graphics;
 using Windows.Win32;
@@ -18,9 +19,6 @@ using WindowStyle = WinUIEx.WindowStyle;
 
 namespace TouchChan
 {
-    using System.Diagnostics.Contracts;
-    using System.Numerics;
-    using System.Xml.Schema;
     using TouchChan.MainWindowExtensions;
 
     public sealed partial class MainWindow : Window
@@ -60,10 +58,13 @@ namespace TouchChan
 
             // FIXME: 多显示器不同 DPI 下，窗口跨显示器时，内部控件的大小不会自动感知改变
 
+            var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
+
             var pointerPressedStream = Touch.RxPointerPressed();
             var pointerMovedStream = Touch.RxPointerMoved();
-            var pointerReleasedStream = Touch.RxPointerReleased();
+            var pointerReleasedStream = Touch.RxPointerReleased().Merge(raisePointerReleasedSubject);
 
+            // FIXME: 连续点击两下按住，第一下的Release时间在200ms之后（也就是第二次按住后）触发了
             pointerPressedStream
                 .Select(_ => Hwnd.GetClientSize())
                 .Subscribe(clientArea => ResetWindowOriginalObservableRegion(Hwnd, clientArea.Width, clientArea.Height));
@@ -74,154 +75,22 @@ namespace TouchChan
                 .Subscribe(rect => SetWindowObservableRegion(Hwnd, Dpi, rect));
             // FIXME: 要确定释放过程中能不能被点击抓住。
 
-            pointerReleasedStream.Subscribe(pointer =>
-            {
-                // 要计算释放时候的位置，按照规则确定是竖向移动还是横向移动，移动多远设置到 Animation.To
-                // 有三种情况，横向移动，竖向移动，边角移动。确定一种移动方式后，就可以确定设置哪个动画或者两者都需要设置
-                var distanceToOrigin = pointer.GetCurrentPoint(this.Content).Position.ToWarp();
-                var distanceToElement = pointer.GetCurrentPoint(Touch).Position;
-                var touchPos = distanceToOrigin - distanceToElement;
-
-
-                [Pure]
-                static Point CalculateTouchFinalPosition(Size container, Point initPos, double touchSize)
+            // 增加一个 dragOutOfBoundsStream，或者还是按照原本的做法，释放一个 Release 事件，看看能不能做，我觉得都可以
+            pointerReleasedStream
+                .Select(pointer =>
                 {
-                    const double TouchSpace = 2;
+                    var distanceToOrigin = pointer.GetCurrentPoint(this.Content).Position.ToWarp();
+                    var distanceToElement = pointer.GetCurrentPoint(Touch).Position;
+                    var touchPos = distanceToOrigin - distanceToElement;
+                    return CalculateTouchFinalPosition(this.Content.ActualSize.ToSize(), touchPos, Touch.Width);
+                })
+                .Subscribe(stopPos =>
+                {
+                    (translateXAnimation.To, translateYAnimation.To) = (stopPos.X, stopPos.Y);
+                    translationStoryboard.Begin();
+                });
 
-                    var horizontalCenterLine = container.Width / 2;
-                    var right = container.Width - initPos.X - touchSize;
-                    var bottom = container.Height - initPos.Y - touchSize;
-
-                    var halfTouch = touchSize / 2;
-                    var twoThirdTouch = touchSize / 3 * 2;
-
-                    var centerX = initPos.X + halfTouch;
-
-                    bool VCloseTo(double distance) => distance < twoThirdTouch;
-                    bool HCloseTo(double distance) => distance < halfTouch;
-
-                    // 1 假设在中线上
-                    // 2 假设在边角上
-                    // 3 假设在边缘上
-                    // 4 假设超出边缘
-                    // TODO 把这个想清楚，保证覆盖所有情况，测试看看编译器是否会提示
-
-                    // 这个确定是可以覆盖完的
-
-                    var value1 = 123d;
-                    var value2 = 321d;
-                    var test6 = (value1, value2) switch
-                    {
-                        (0, 0) => 1,
-                        (>0, 0) => 2,
-                        (<0, 0) => 3,
-                        (0, >0) => 5,
-                        (>0, >0) => 6,
-                        (<0, >0) => 7,
-                        (0, <0) => 9,
-                        (>0, <0) => 10,
-                        (<0, <0) => 11,
-                        (double.NaN, 0) => 4,
-                        (0, double.NaN) => 13,
-                        (>0, double.NaN) => 14,
-                        (<0, double.NaN) => 15,
-                        (double.NaN, >0) => 8,
-                        (double.NaN, <0) => 12,
-                        (double.NaN, double.NaN) => 16,
-                    };
-
-                    var _ = (value1, value2) switch
-                    {
-                        (0, 0) => 1,
-                        (>0, 0) => 2,
-                        (<0, 0) => 3,
-                        (0, >0) => 5,
-                        (>0, >0) => 6,
-                        (<0, >0) => 7,
-                        (0, <0) => 9,
-                        (>0, <0) => 10,
-                        (<0, <0) => 11,
-                        (double.NaN, _) => 4,
-                        (_, double.NaN) => 13,
-                    };
-
-                    _ = (value1, value2) switch
-                    {
-                        (>0, 0) => 2,
-                        (<=0, 0) => 3,
-                        (0, >0) => 4,
-                        (0, <=0) => 5,
-                        (>0, >0) => 6,
-                        (>0, <=0) => 7,
-                        (<=0, >0) => 8,
-                        (<=0, <=0) => 9,
-                        var (x, y) when double.IsNaN(x) || double.IsNaN(y) => new(),
-
-                        //(double.NaN, _) => 10,
-                        //(_, double.NaN) => 11,
-                    };
-
-                    // >= or <
-                    // < or >=
-                    var h = (int)halfTouch;
-
-                    var result = ((int)initPos.X, (int)initPos.Y) switch
-                    {
-                        (>=h, >0) => "Both are greater than zero",
-                        (>0, <=0) => "First is greater than zero, second is less than or equal to zero",
-                        (<=0, >0) => "First is less than or equal to zero, second is greater than zero",
-                        (<=0, <=0) => "Both are less than or equal to zero",
-                    };
-
-                    var a = ((int)initPos.X, (int)initPos.Y) switch
-                    {
-                        // 我应该在前面就匹配
-                        var (x, y) when HCloseTo(x)     && VCloseTo(y) => new Point(TouchSpace, TouchSpace), // 左上
-                        var (x, y) when HCloseTo(right) && VCloseTo(y) => new Point(container.Width - touchSize - TouchSpace, TouchSpace), // 右上
-                        var (x, y) when HCloseTo(x)     && VCloseTo(bottom) => new Point(TouchSpace, container.Height - touchSize - TouchSpace), // 左下
-                        var (x, y) when HCloseTo(right) && VCloseTo(bottom) => new Point(container.Width - touchSize - TouchSpace, container.Height - touchSize - TouchSpace), // 右下
-                        var (_, y) when VCloseTo(y) => new Point(initPos.X, TouchSpace), // 上
-                        var (x, _) when centerX < horizontalCenterLine => new Point(TouchSpace, initPos.Y), // 左
-                        var (x, _) when centerX >= horizontalCenterLine => new Point(container.Width - touchSize - TouchSpace, initPos.Y), // 右
-                        var (_, y) when VCloseTo(bottom) => new Point(initPos.X, container.Height - touchSize - TouchSpace), // 下
-                    };
-
-                    return (initPos.X, initPos.Y) switch
-                    {
-                        // 我应该在前面就匹配
-                        var (x, y) when HCloseTo(x)     && VCloseTo(y) => new Point(TouchSpace, TouchSpace), // 左上
-                        var (x, y) when HCloseTo(right) && VCloseTo(y) => new Point(container.Width - touchSize - TouchSpace, TouchSpace), // 右上
-                        var (x, y) when HCloseTo(x)     && VCloseTo(bottom) => new Point(TouchSpace, container.Height - touchSize - TouchSpace), // 左下
-                        var (x, y) when HCloseTo(right) && VCloseTo(bottom) => new Point(container.Width - touchSize - TouchSpace, container.Height - touchSize - TouchSpace), // 右下
-                        var (_, y) when VCloseTo(y) => new Point(initPos.X, TouchSpace), // 上
-                        var (x, _) when centerX < horizontalCenterLine => new Point(TouchSpace, initPos.Y), // 左
-                        var (x, _) when centerX >= horizontalCenterLine => new Point(container.Width - touchSize - TouchSpace, initPos.Y), // 右
-                        var (_, y) when VCloseTo(bottom) => new Point(initPos.X, container.Height - touchSize - TouchSpace), // 下
-
-                        // 这个不可能发生，应该先使用 int 匹配保证所有可能性
-                        var (_, _) => new(initPos.X, initPos.Y),
-                    };
-                }
-
-                //var stopPos = CalculateTouchFinalPosition(this.Content.ActualSize.ToSize(), touchPos, Touch.Width);
-                //(translateXAnimation.To, translateYAnimation.To) = (stopPos.X, stopPos.Y);
-                translationStoryboard.Begin();
-
-                //Touch.TranslationTransition = new Vector3Transition
-                //{
-                //    Duration = System.TimeSpan.FromMilliseconds(400),
-                //    //Components = Vector3TransitionComponents.X,
-                //};
-                // 1. 创建一个 Vector3Animation 作用在 Touch.Translation 上
-                // 2. 创建俩个 DoubleAnimation 作用在 Touch.RenderTransform.TranslateTransform 上
-                //var translationAnime = new Vector3Animation();
-                //translationAnime.Duration = TouchReleaseToEdgeDuration;
-                //translationAnime.To = "100, 100, 0";
-                // https://stackoverflow.com/questions/74330352/how-do-i-animate-a-uwp-control-xy-position-in-code
-
-                //Touch.RenderTransform = new Microsoft.UI.Xaml.Media.TranslateTransform { X = newPos.X, Y = newPos.Y };
-                //System.Diagnostics.Debug.WriteLine(TouchTransform.X);
-            });
+            PointerRoutedEventArgs? moveEventInReal = null;
 
             var draggingStream =
                 pointerPressedStream
@@ -233,53 +102,91 @@ namespace TouchChan
                     //             Pointer 
                     var distanceToElement = pressedEvent.GetCurrentPoint(Touch).Position;
 
+                    // QUES: 移动防抖？释放的时候老是会动鼠标
                     return
                         pointerMovedStream
                         .TakeUntil(pointerReleasedStream
                                    .Do(e => Touch.ReleasePointerCapture(e.Pointer)))
                         .Select(movedEvent =>
                         {
+                            moveEventInReal = movedEvent;
                             var distanceToOrigin = movedEvent.GetCurrentPoint(this.Content).Position.ToWarp();
-                            return distanceToOrigin - distanceToElement;
+                            var delta = distanceToOrigin - distanceToElement;
+                            return new { Delta = delta, MovedEvent = movedEvent };
                         });
                 });
 
             draggingStream
-                // 在拖拽过程中检查边界？是副作用吗该如何理解？
-                .Subscribe(newPos =>
+                .Subscribe(item =>
                 {
+                    var newPos = item.Delta;
                     TouchTransform.X = newPos.X;
                     TouchTransform.Y = newPos.Y;
                 });
 
-            Touch.RightTapped += (s, e) => Close();
 
+            static bool IsBeyondBoundary(Point newPos, double touchSize, System.Drawing.Size container)
+            {
+                // TODO: 明确一下窗口中用的坐标和dpi关系
+                // win32设置时候的 size 与dpi关系，窗口中所有坐标计算，该用原始的还是应用过dpi后的？
+                // dpi 计算后的，大小数值缩小了一半，应该是用原始的才对。需要从控件开始计算起。
+                var oneThirdDistance = touchSize / 3;
+                var twoThirdDistance = oneThirdDistance * 2;
+
+                if (newPos.X < -oneThirdDistance ||
+                    newPos.Y < -oneThirdDistance ||
+                    newPos.X > container.Width - twoThirdDistance ||
+                    newPos.Y > container.Height - twoThirdDistance)
+                {
+                    return true;
+                }
+                return false;
+            }
+
+            var boundaryExceededStream =
+                draggingStream
+                .Where(item => IsBeyondBoundary(item.Delta, Touch.Width / Dpi, Hwnd.GetClientSize()))
+                .Select(item => item.MovedEvent);
+
+            boundaryExceededStream
+                .Subscribe(raisePointerReleasedSubject.OnNext);
+
+            Touch.RightTapped += (s, e) => Close();
             // QUES: 启动后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。今后再检查整个程序与窗口启动方式
         }
 
-        private static readonly TimeSpan TouchReleaseToEdgeDuration = TimeSpan.FromMilliseconds(300);
-
-        private static readonly Storyboard TranslateTouchStoryboard = new();
-
-        private static readonly DoubleAnimation TranslateXAnimation = new() { Duration = TouchReleaseToEdgeDuration };
-        private static readonly DoubleAnimation TranslateYAnimation = new() { Duration = TouchReleaseToEdgeDuration };
-
-        private static void SmoothMoveAnimation(double left, double top)
+        [Pure]
+        private static Point CalculateTouchFinalPosition(Size container, Point initPos, double touchSize)
         {
-            if (TranslateXAnimation.To == left)
-            {
-                TranslateYAnimation.To = top;
-            }
-            else if (TranslateYAnimation.To == top)
-            {
-                TranslateXAnimation.To = left;
-            }
-            else
-            {
-                TranslateXAnimation.To = left;
-                TranslateYAnimation.To = top;
-            }
-            TranslateTouchStoryboard.Begin();
+            const double TouchSpace = 2;
+
+            var xMidline = container.Width / 2;
+            var right = container.Width - initPos.X - touchSize;
+            var bottom = container.Height - initPos.Y - touchSize;
+
+            var hSnapLimit = touchSize / 2;
+            var vSnapLimit = touchSize / 3 * 2;
+
+            var centerToLeft = initPos.X + hSnapLimit;
+
+            bool VCloseTo(double distance) => distance < vSnapLimit;
+            bool HCloseTo(double distance) => distance < hSnapLimit;
+
+            double AlignToRight() => container.Width - touchSize - TouchSpace;
+            double AlignToBottom() => container.Height - touchSize - TouchSpace;
+
+            var left = initPos.X;
+            var top = initPos.Y;
+
+            return
+                HCloseTo(left)  && VCloseTo(top)    ? new Point(TouchSpace, TouchSpace) :
+                HCloseTo(right) && VCloseTo(top)    ? new Point(AlignToRight(), TouchSpace) :
+                HCloseTo(left)  && VCloseTo(bottom) ? new Point(TouchSpace, AlignToBottom()) :
+                HCloseTo(right) && VCloseTo(bottom) ? new Point(AlignToRight(), AlignToBottom()) :
+                                   VCloseTo(top)    ? new Point(left, TouchSpace) :
+                                   VCloseTo(bottom) ? new Point(left, AlignToBottom()) :
+                centerToLeft < xMidline             ? new Point(TouchSpace, top) :
+             /* centerToLeft >= xMidline */           new Point(AlignToRight(), top);
         }
 
         private void ToggleWindowStyle(bool enable, WindowStyle style)
