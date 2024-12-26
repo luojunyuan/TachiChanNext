@@ -49,8 +49,6 @@ namespace TouchChan
             var releaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
             var translateXAnimation = new DoubleAnimation { Duration = releaseToEdgeDuration };
             var translateYAnimation = new DoubleAnimation { Duration = releaseToEdgeDuration };
-            translateXAnimation.To = null;
-            translateYAnimation.To = null;
             AnimationTool.BindingAnimation(translationStoryboard, translateXAnimation, TouchTransform, AnimationTool.XProperty);
             AnimationTool.BindingAnimation(translationStoryboard, translateYAnimation, TouchTransform, AnimationTool.YProperty);
 
