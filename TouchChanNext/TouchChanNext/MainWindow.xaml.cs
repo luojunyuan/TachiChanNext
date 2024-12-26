@@ -46,6 +46,7 @@ namespace TouchChan
                .Subscribe(Resize);
 
             // TODO：新建 TouchButton.xaml，并把动画作为类的私有只读字段
+            // 有个问题下面很明显有一些，从Touch出发影响window的交互该怎么办呢
             var translationStoryboard = new Storyboard();
             var releaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
             var translateXAnimation = new DoubleAnimation { Duration = releaseToEdgeDuration };
