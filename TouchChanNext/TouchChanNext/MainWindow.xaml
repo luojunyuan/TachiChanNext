@@ -9,14 +9,22 @@
     Title="AssistiveTouch"
     mc:Ignorable="d">
 
-    <Grid>
-        <Border BorderBrush="Red" BorderThickness="1" />
+    <Grid
+        BorderBrush="Red"
+        BorderThickness="1"
+        CornerRadius="12">
         <Rectangle
             x:Name="Touch"
             Width="100"
-            Height="100" RadiusX="50" RadiusY="50"
+            Height="100"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
-            Fill="Blue" />
+            Fill="Blue"
+            RadiusX="50"
+            RadiusY="50">
+            <Rectangle.RenderTransform>
+                <TranslateTransform x:Name="TouchTransform" />
+            </Rectangle.RenderTransform>
+        </Rectangle>
     </Grid>
 </Window>
