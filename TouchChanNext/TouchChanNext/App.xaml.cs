@@ -19,7 +19,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        // WAS Shit 4: #3368
+        // WAS Shit 4: 在 desktop 下 LaunchActivatedEventArgs 接收不到命令行参数 #3368
         var arguments = Environment.GetCommandLineArgs();
         var gameWindowHandle = nint.Zero;
         Process process;

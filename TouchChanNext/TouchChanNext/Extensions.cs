@@ -17,7 +17,7 @@ namespace Windows.Win32
 
 namespace TouchChan
 {
-    // 类型转换便于与 CSWin32 的互操
+    // 类型转换便于与 CSWin32 互操
     static class CSWin32Extensions
     {
         public static HWND ToHwnd(this nint windowHandle) => new(windowHandle);
@@ -67,7 +67,7 @@ namespace TouchChan
     // NOTE: 移动到 ViewModel 将来
     record TouchDockAnchor(TouchCorner Corner, double Scale);
 
-    public enum TouchCorner
+    enum TouchCorner
     {
         Left,
         Top,

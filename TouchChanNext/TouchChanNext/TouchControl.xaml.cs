@@ -1,4 +1,3 @@
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -8,9 +7,6 @@ using System;
 using System.Diagnostics.Contracts;
 using System.Drawing;
 using System.Linq;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace TouchChan;
 
@@ -46,7 +42,7 @@ public sealed partial class TouchControl : UserControl
 
         var smoothMoveCompletedStream = TranslationStoryboard.RxCompleted();
 
-        // FIXME: 多显示器不同 DPI 下，窗口跨显示器时，内部控件的大小不会自动感知改变
+        // FUTURE: (先不考虑多显示器情景) 多显示器不同 DPI 下，窗口跨显示器时，内部控件的大小不会自动感知改变
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
@@ -54,8 +50,8 @@ public sealed partial class TouchControl : UserControl
         var pointerMovedStream = Touch.RxPointerMoved();
         var pointerReleasedStream = Touch.RxPointerReleased().Merge(raisePointerReleasedSubject);
 
-        // FIXME: 要确定释放过程中能不能被点击抓住。
         // FIXME: 连续点击两下按住，第一下的Release时间在200ms之后（也就是第二次按住后）触发了
+        // 要确定释放过程中能不能被点击抓住
         pointerPressedStream
             .Select(_ => container.ActualSize.ToSize())
             .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
@@ -121,17 +117,14 @@ public sealed partial class TouchControl : UserControl
     }
 
     private Rectangle GetTouchRect() =>
-      new(
-          (int)((TranslateTransform)Touch.RenderTransform).X,
-          (int)((TranslateTransform)Touch.RenderTransform).Y,
-          (int)Touch.Width,
-          (int)Touch.Height);
+        new((int)((TranslateTransform)Touch.RenderTransform).X,
+            (int)((TranslateTransform)Touch.RenderTransform).Y,
+            (int)Touch.Width,
+            (int)Touch.Height);
 
     private static bool IsBeyondBoundary(Point newPos, double touchSize, Size container)
     {
-        // TODO: 明确一下窗口中用的坐标和 dpi 关系，需要在 dpi 不同显示器下测试
-        // win32设置时候的 size 与 dpi 关系，窗口中所有坐标计算，该用原始的还是应用过 dpi 后的？
-        // dpi 计算后的，大小数值缩小了一半，应该是用原始的才对。需要从控件开始计算起。
+        // QUES: dpi 计算后的，大小数值缩小了一半，应该是用原始的才对。需要从控件开始计算起。
         var oneThirdDistance = touchSize / 3;
         var twoThirdDistance = oneThirdDistance * 2;
 
