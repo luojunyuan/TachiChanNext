@@ -4,7 +4,6 @@ using Microsoft.Win32.SafeHandles;
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
 using Windows.Win32;
 using WinRT.Interop;
 using WinUIEx;
@@ -53,9 +52,9 @@ public partial class App : Application
             process = proc;
         }
 
-        // NOTE: ?这是一个仅依赖于非 DPI感知-系统 的窗口的 WinUI 子窗口
-        // TODO: 还需要判断游戏所在显示器 dpi 是否 100%？如果游戏不支持，但是显示器默认是 100%，那么 touch 理应正常工作
-        if (IsDpiUnaware(process.Id))
+        // NOTE: HiDpi 高分屏不支持非 DPI 感知的窗口
+        var dpiScale = HwndExtensions.GetDpiForWindow(gameWindowHandle) / 96d;
+        if (dpiScale != 1 && IsDpiUnaware(process.Id))
             throw new InvalidOperationException();
 
         _mainWindow = new MainWindow(gameWindowHandle);
@@ -118,7 +117,17 @@ public partial class App : Application
         using var processHandle = new SafeProcessHandle(handle, true);
         var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
 
-        // TODO: 刚刚确定DebugView 非对应DPI 子窗口没法用，那么System DPI到底怎么样？
+        // 100% DPI 下启动，**任何窗口都可以正常工作**
+        // 100% DPI 下改变显示器 DPI（这里无法正常工作意为无法接收鼠标输入）
+        // “系统DPI缩放”，子窗口无法正常工作。（B站弹幕姬）
+        // “未知”，子窗口无法正常工作。（DebugView）
+
+        // 高分辨率 DPI 下启动
+        // “不可用”，子窗口能正常接受输入（区域显示暂未适配），在调整DPI后，子窗口无法正常工作。（B站弹幕姬）
+        // “未知”，子窗口无法正常工作。（DebugView）
+        // DPIv1v2：正常适配，不论是否调整DPI，都能正常工作。
+
+        // TODO: System-DPI 到底怎么样？
         return result == 0 && awareType == 0;
     }
 

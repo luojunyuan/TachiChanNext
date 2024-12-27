@@ -14,6 +14,9 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="TouchControl.xaml" />
+  </ItemGroup>
 
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
@@ -30,5 +33,11 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Update="TouchControl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 </Project>
