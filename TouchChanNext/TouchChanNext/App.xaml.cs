@@ -41,7 +41,8 @@ public partial class App : Application
         }
         else
         {
-            var proc = Process.GetProcessesByName("notepad").FirstOrDefault();
+            //var proc = Process.GetProcessesByName("notepad").FirstOrDefault();
+            Process? proc = null;
             if (proc == null)
             {
                 proc = Process.Start(@"C:\Users\kimika\Desktop\9-nine-天色天歌天籁音(樱空)\9-nine-天色天歌天籁音.exe");
@@ -52,12 +53,12 @@ public partial class App : Application
             process = proc;
         }
 
+        ServiceLocator.InitializeWindowHandle(gameWindowHandle.ToHwnd());
         // NOTE: HiDpi 高分屏不支持非 DPI 感知的窗口
-        var dpiScale = HwndExtensions.GetDpiForWindow(gameWindowHandle) / 96d;
-        if (dpiScale != 1 && IsDpiUnaware(process.Id))
+        if (ServiceLocator.GameWindowService.DpiScale != 1 && IsDpiUnaware(process.Id))
             throw new InvalidOperationException();
 
-        _mainWindow = new MainWindow(gameWindowHandle);
+        _mainWindow = new MainWindow();
 
         var uiThread = DispatcherQueue.GetForCurrentThread();
 

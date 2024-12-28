@@ -1,13 +1,27 @@
-﻿using R3;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.InteropServices;
+using R3;
 using Windows.Win32;
 using Windows.Win32.UI.Accessibility;
 
 namespace TouchChan;
 
-class GameWindowHooker
+public static partial class ServiceLocator
 {
+    private static GameWindowService? _current;
+
+    public static void InitializeWindowHandle(nint newHandle) => _current = new(newHandle); // Log
+
+    public static GameWindowService GameWindowService => _current ??
+        throw new ArgumentNullException($"{nameof(GameWindowService)} is not initialized.");
+}
+
+public class GameWindowService(nint handle)
+{
+    public nint WindowHandle { get; } = handle;
+
+    public double DpiScale => WindowHandle.GetDpiForWindow() / 96d;
+
     private const uint EventObjectLocationChange = 0x800B;
 
     private const int OBJID_WINDOW = 0;
@@ -18,17 +32,17 @@ class GameWindowHooker
 
     private const uint WinEventHookInternalFlags = WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS;
 
-    public static Observable<Size> ClientSizeChanged(nint gameWindowHandle) =>
+    public Observable<Size> ClientSizeChanged() =>
         Observable.Create<Size>(observer =>
         {
-            PInvoke.GetClientRect(gameWindowHandle.ToHwnd(), out var initRect);
+            PInvoke.GetClientRect(new(WindowHandle), out var initRect);
             var lastGameWindowSize = initRect.Size;
             observer.OnNext(lastGameWindowSize);
 
             var winEventDelegate = new WINEVENTPROC((hWinEventHook, eventId, hWnd, idObject, idChild, dwEventThread, dwmsEventTime) =>
             {
                 if (eventId == EventObjectLocationChange &&
-                    hWnd.Value == gameWindowHandle &&
+                    hWnd.Value == WindowHandle &&
                     idObject == OBJID_WINDOW &&
                     idChild == SWEH_CHILDID_SELF)
                 {
@@ -41,7 +55,7 @@ class GameWindowHooker
                 }
             });
             var winEventDelegateHandle = GCHandle.Alloc(winEventDelegate);
-            var targetThreadId = PInvoke.GetWindowThreadProcessId(gameWindowHandle.ToHwnd(), out var processId);
+            var targetThreadId = PInvoke.GetWindowThreadProcessId(new(WindowHandle), out var processId);
             var windowsEventHook = PInvoke.SetWinEventHook(
                 EventObjectLocationChange, EventObjectLocationChange,
                 null, winEventDelegate, processId, targetThreadId,
@@ -55,4 +69,3 @@ class GameWindowHooker
             });
         });
 }
-

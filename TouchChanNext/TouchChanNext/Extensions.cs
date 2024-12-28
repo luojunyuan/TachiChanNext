@@ -26,25 +26,7 @@ namespace TouchChan
     // 几何类型转换的扩展方法，项目中统一使用 System.Drawing 命名空间下的 int 类型
     static class GeometryExtensions
     {
-        public static Rectangle Multiply(this Rectangle rect, double factor) =>
-            new()
-            {
-                X = (int)(rect.X * factor),
-                Y = (int)(rect.Y * factor),
-                Width = (int)(rect.Width * factor),
-                Height = (int)(rect.Height * factor)
-            };
-
         public static Size ToSize(this Vector2 size) => new((int)size.X, (int)size.Y);
-
-        private const int BottomRightOffset = 2;
-
-        public static Size HackOffset(this Size window)
-        {
-            window.Width -= BottomRightOffset;
-            window.Height -= BottomRightOffset;
-            return window;
-        }
     }
 
     // 用于扩展 Windows.Foundation.Point 之间的减法运算操作符，并返回 System.Drawing.Point

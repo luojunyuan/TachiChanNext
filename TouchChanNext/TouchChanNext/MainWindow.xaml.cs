@@ -1,11 +1,12 @@
+using System;
+using System.Drawing;
+using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
-using System;
-using System.Drawing;
 using Windows.Win32;
 using Windows.Win32.Graphics.Gdi;
 using WinRT.Interop;
@@ -17,14 +18,12 @@ namespace TouchChan;
 
 public sealed partial class MainWindow : Window
 {
-    private readonly nint GameWindowHandle;
     private readonly nint Hwnd;
+    private readonly GameWindowService GameWidowService;
 
-    public double DpiScale => HwndExtensions.GetDpiForWindow(Hwnd) / 96d;
-
-    public MainWindow(nint gameWindowHandle)
+    public MainWindow()
     {
-        GameWindowHandle = gameWindowHandle;
+        GameWidowService = ServiceLocator.GameWindowService;
         Hwnd = WindowNative.GetWindowHandle(this);
 
         this.InitializeComponent();
@@ -33,14 +32,14 @@ public sealed partial class MainWindow : Window
         ToggleWindowStyle(false, WindowStyle.Popup);
         ToggleWindowStyle(true, WindowStyle.Child);
         ToggleWindowExStyle(true, ExtendedWindowStyle.Layered);
-        PInvoke.SetParent(Hwnd.ToHwnd(), GameWindowHandle.ToHwnd());
+        PInvoke.SetParent(Hwnd.ToHwnd(), GameWidowService.Handle);
         // NOTE: 设置为子窗口后，this.AppWindow 不再可靠
 
-        GameWindowHooker.ClientSizeChanged(GameWindowHandle)
-           .Subscribe(ResizeClient);
+        GameWidowService.ClientSizeChanged()
+            .Subscribe(ResizeClient);
 
-        Touch.ResetWindowObservable = size => ResetWindowOriginalObservableRegion(size.Width, size.Height);
-        Touch.SetWindowObservable = rect => SetWindowObservableRegion(DpiScale, rect);
+        Touch.ResetWindowObservable = ResetWindowOriginalObservableRegion;
+        Touch.SetWindowObservable = SetWindowObservableRegion;
         Touch.RightTapped += (s, e) => Close();
         // QUES: 启动后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。今后再检查整个程序与窗口启动方式
     }
@@ -71,20 +70,41 @@ public sealed partial class MainWindow : Window
     /// <summary>
     /// 恢复窗口原始可观测区域
     /// </summary>
-    private void ResetWindowOriginalObservableRegion(int Width, int Height) =>
-        SetWindowObservableRegion(DpiScale, new(0, 0, Width, Height));
+    private void ResetWindowOriginalObservableRegion(Size size) =>
+        SetWindowObservableRegion(new(Point.Empty, size));
 
     /// <summary>
-    /// 设置窗口可以被观测和点击的区域，受 DPI 影响
+    /// 设置窗口可以被观测和点击的区域
     /// </summary>
-    private void SetWindowObservableRegion(double factor, Rectangle rect)
+    private void SetWindowObservableRegion(Rectangle rect)
     {
-        // QUES: 虽然修复了，传入函数的是翻倍后的值，但是需要思考框架产生的值是已经适应过 dpi 的吗
-        // 以及计算到底要先恢复真实大小还是就按现在这样
-        var r = rect.Multiply(factor);
-
-        HRGN hRgn = PInvoke.CreateRectRgn(r.X, r.Y, r.X + r.Width, r.Y + r.Height);
+        HRGN hRgn = PInvoke.CreateRectRgn(rect.X, rect.Y, rect.X + rect.Width, rect.Y + rect.Height);
         _ = PInvoke.SetWindowRgn(Hwnd.ToHwnd(), hRgn, true);
+    }
+}
+
+static class ControllerSizeCoverDpiExtensions
+{
+    // REFACT: 这是一个扩展方法，应该将 dpi 作为扩展参数传入
+    private static double DpiScale => ServiceLocator.GameWindowService.DpiScale;
+
+    // XDpi 意味着将框架内部任何元素产生的点或面的值还原回真实的物理像素大小
+
+    public static Size ActualSizeXDpi(this FrameworkElement element)
+    {
+        var size = element.ActualSize.ToSize();
+        size.Width = (int)(size.Width * DpiScale);
+        size.Height = (int)(size.Height * DpiScale);
+        return size;
+    }
+
+    public static Rectangle XDpi(this Rectangle rect)
+    {
+        rect.X = (int)(rect.X * DpiScale);
+        rect.Y = (int)(rect.Y * DpiScale);
+        rect.Width = (int)(rect.Width * DpiScale);
+        rect.Height = (int)(rect.Height * DpiScale);
+        return rect;
     }
 }
 

@@ -1,0 +1,12 @@
+﻿SetParent
+GetClientRect
+MoveWindow
+CreateRectRgn
+SetWindowRgn
+SetWinEventHook
+GetWindowThreadProcessId
+GetProcessDpiAwareness
+
+GetDpiForWindow
+GetWindowLong
+SetWindowLong

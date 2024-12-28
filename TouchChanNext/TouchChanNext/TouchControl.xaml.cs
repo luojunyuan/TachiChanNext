@@ -30,6 +30,9 @@ public sealed partial class TouchControl : UserControl
             .Select(_ => this.FindParent<Panel>() ?? throw new InvalidOperationException())
             .Subscribe(InitializeTouchControl);
 
+        TouchTransform.X = 2;
+        TouchTransform.Y = 2;
+
         TranslateXAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
         TranslateYAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
         AnimationTool.BindingAnimation(TranslationStoryboard, TranslateXAnimation, TouchTransform, AnimationTool.XProperty);
@@ -38,11 +41,7 @@ public sealed partial class TouchControl : UserControl
 
     private void InitializeTouchControl(Panel container)
     {
-        var dpi = 1;
-
         var smoothMoveCompletedStream = TranslationStoryboard.RxCompleted();
-
-        // FUTURE: (先不考虑多显示器情景) 多显示器不同 DPI 下，窗口跨显示器时，内部控件的大小不会自动感知改变
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
@@ -53,12 +52,12 @@ public sealed partial class TouchControl : UserControl
         // FIXME: 连续点击两下按住，第一下的Release时间在200ms之后（也就是第二次按住后）触发了
         // 要确定释放过程中能不能被点击抓住
         pointerPressedStream
-            .Select(_ => container.ActualSize.ToSize())
+            .Select(_ => container.ActualSizeXDpi())
             .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
 
         smoothMoveCompletedStream
-            .Select(_ => GetTouchRect())
-            .Prepend(GetTouchRect())
+            .Select(_ => GetTouchRect().XDpi())
+            .Prepend(GetTouchRect().XDpi())
             .Subscribe(rect => SetWindowObservable?.Invoke(rect));
 
         // Touch 释放时的移动动画
@@ -99,9 +98,9 @@ public sealed partial class TouchControl : UserControl
             });
 
         draggingStream
-            .Subscribe(item =>
+            .Select(item => item.Delta)
+            .Subscribe(newPos =>
             {
-                var newPos = item.Delta;
                 TouchTransform.X = newPos.X;
                 TouchTransform.Y = newPos.Y;
             });
@@ -109,7 +108,7 @@ public sealed partial class TouchControl : UserControl
         // Touch 拖动边界释放检测
         var boundaryExceededStream =
         draggingStream
-            .Where(item => IsBeyondBoundary(item.Delta, Touch.Width / dpi, container.ActualSize.ToSize()))
+            .Where(item => IsBeyondBoundary(item.Delta, Touch.Width, container.ActualSize.ToSize()))
             .Select(item => item.MovedEvent);
 
         boundaryExceededStream
@@ -124,7 +123,6 @@ public sealed partial class TouchControl : UserControl
 
     private static bool IsBeyondBoundary(Point newPos, double touchSize, Size container)
     {
-        // QUES: dpi 计算后的，大小数值缩小了一半，应该是用原始的才对。需要从控件开始计算起。
         var oneThirdDistance = touchSize / 3;
         var twoThirdDistance = oneThirdDistance * 2;
 
