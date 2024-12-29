@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Runtime.Versioning;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
 using Windows.Win32;
 

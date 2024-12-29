@@ -1,12 +1,11 @@
-﻿using System.Diagnostics;
-using System;
+﻿using System;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using TouchChan;
 using Avalonia.Threading;
 
-namespace AvaFramelessChildWindow;
+namespace TouchChan.Ava;
 
 public partial class App : Application
 {
@@ -35,7 +34,7 @@ public partial class App : Application
             desktop.MainWindow = new MainWindow
             {
             };
-            
+
             desktop.MainWindow.Closed += (s, e) => Debug.WriteLine("Closed");
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Invoke(() => desktop.Shutdown());

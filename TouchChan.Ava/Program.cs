@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using System;
 
-namespace AvaFramelessChildWindow.Desktop;
+namespace TouchChan.Ava;
 
 class Program
 {

@@ -2,9 +2,8 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using R3;
-using TouchChan;
 
-namespace AvaFramelessChildWindow;
+namespace TouchChan.Ava;
 
 public partial class MainWindow : Window
 {
@@ -31,17 +30,21 @@ public partial class MainWindow : Window
         GameWindowService.ClientSizeChanged()
             .Subscribe(size => Hwnd.ResizeClient(size));
 
-        Touch.ResetWindowObservable = size => HwndExtensions.ResetWindowOriginalObservableRegion(Hwnd, size);
-        Touch.SetWindowObservable = rect => HwndExtensions.SetWindowObservableRegion(Hwnd, rect);
+        Touch.ResetWindowObservable = size => HwndExtensions.ResetWindowOriginalObservableRegion(Hwnd, size.ToGdiSize());
+        Touch.SetWindowObservable = rect => HwndExtensions.SetWindowObservableRegion(Hwnd, rect.ToGdiRect());
         Touch.RxPointerPressed()
             .Where(e => e.GetCurrentPoint(Touch).Properties.PointerUpdateKind == Avalonia.Input.PointerUpdateKind.RightButtonPressed)
             .Subscribe(_ => Close());
-        // プログラム '[10828] AvaFramelessChildWindow.exe' はコード 3221225480 (0xc0000008) 'An invalid handle was specified' で終了しました。
+        // プログラム '[10828] TouchChan.Ava.exe' はコード 3221225480 (0xc0000008) 'An invalid handle was specified' で終了しました。
     }
 }
 
-static partial class ObservableEventsExtensions
+static partial class MainWindowEventsExtensions
 {
+    public static System.Drawing.Size ToGdiSize(this Avalonia.Size size) => new((int)size.Width, (int)size.Height);
+
+    public static System.Drawing.Rectangle ToGdiRect(this Avalonia.Rect size) => new((int)size.X, (int)size.Y, (int)size.Width, (int)size.Height);
+
     public static Observable<RoutedEventArgs> RxLoaded(this Window data) =>
         Observable.FromEvent<EventHandler<RoutedEventArgs>, RoutedEventArgs>(
             h => (sender, e) => h(e),
