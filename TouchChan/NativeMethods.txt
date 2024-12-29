@@ -6,7 +6,10 @@ SetWindowRgn
 SetWinEventHook
 GetWindowThreadProcessId
 GetProcessDpiAwareness
-
 GetDpiForWindow
 GetWindowLong
 SetWindowLong
+GetModuleHandle
+SetWindowsHookEx
+CallNextHookEx
+CWPSTRUCT

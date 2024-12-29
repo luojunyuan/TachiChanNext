@@ -27,6 +27,7 @@ public partial class MainWindow : Window
                 NativeMethods.SetParent(Hwnd, GameWindowService.WindowHandle);
             });
 
+        // QUES: 这个应该需要开发者显式 Dispose 吧？一个很明显的特征是，这个服务由 ServiceLocator 管理，所以应该在外部释放它
         GameWindowService.ClientSizeChanged()
             .Subscribe(size => Hwnd.ResizeClient(size));
 

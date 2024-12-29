@@ -5,6 +5,7 @@ using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
 using Windows.Win32.Graphics.Gdi;
 
+// CSWin32 的包装代码，本来应该是 CSWin32 负责生成的工作
 namespace Windows.Win32
 {
     partial class PInvoke
@@ -19,6 +20,9 @@ namespace Windows.Win32
 
 namespace TouchChan
 {
+    /// <summary>
+    /// Windows Handle 相关的 Win32 封装方法
+    /// </summary>
     public static class HwndExtensions
     {
         public static void ToggleWindowStyle(this nint hwnd, bool enable, WindowStyle style)

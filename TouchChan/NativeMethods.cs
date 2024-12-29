@@ -10,17 +10,17 @@ using Windows.Win32;
 
 namespace TouchChan;
 
+/// <summary>
+/// 对 Win32 Api 的业务逻辑封装
+/// </summary>
 public static class Win32
 {
     /// <summary>
     /// 判断进程对象是否对 DPI 不感知
     /// </summary>
-    //[SupportedOSPlatform("windows8.1")]
+    [SupportedOSPlatform("windows8.1")]
     public static bool IsDpiUnaware(int pid)
     {
-        if (!OperatingSystem.IsWindowsVersionAtLeast(6, 3)) // Windows 8.1
-            return false;
-
         var handle = Process.GetProcessById(pid).Handle;
         using var processHandle = new SafeProcessHandle(handle, true);
         var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
@@ -29,9 +29,13 @@ public static class Win32
     }
 }
 
+/// <summary>
+/// 对 CSWin32 PInvoke 调用的直接封装
+/// </summary>
 public static class NativeMethods
 {
     public static void SetParent(this nint child, nint parent) => PInvoke.SetParent(new(child), new(parent));
 
+    [SupportedOSPlatform("windows10.0.14393")]
     public static uint GetDpiForWindow(this nint hwnd) => PInvoke.GetDpiForWindow(new(hwnd));
 }

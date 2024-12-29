@@ -123,12 +123,11 @@ public partial class App : Application
         // “系统DPI缩放”，子窗口无法正常工作。（B站弹幕姬）
         // “未知”，子窗口无法正常工作。（DebugView）
 
-        // 高分辨率 DPI 下启动
-        // “不可用”，子窗口能正常接受输入（区域显示暂未适配），在调整DPI后，子窗口无法正常工作。（B站弹幕姬）
-        // “未知”，子窗口无法正常工作。（DebugView）
-        // DPIv1v2：正常适配，不论是否调整DPI，都能正常工作。
-
+        // DPIv1v2：正常适配
         // TODO: System-DPI 到底怎么样？
+
+        // FUTURE：HiDpi 下，“不可用 awareType == 0，系统会将这类窗口放大，全屏无法正常显示，拿到 dpi 是为 1
+        // 考虑支持这种情况下的窗口模式，子窗口没有正常设置到 0，0 位置，提示用户如果需要全屏游玩请使用 TouchChan启动 还需测试触控输入是否偏移
         return result == 0 && awareType == 0;
     }
 

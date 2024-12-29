@@ -21,10 +21,15 @@ public partial class App : Application
         {
             var args = desktop.Args ?? [];
 
+            //startInfo.EnvironmentVariables["__COMPAT_LAYER"] = "HighDpiAware";
+
             var process = Process.GetProcessById(int.Parse(args[0]));
             ServiceLocator.InitializeWindowHandle(process.MainWindowHandle);
             // NOTE: HiDpi 高分屏不支持非 DPI 感知的窗口
-            if (ServiceLocator.GameWindowService.DpiScale != 1 && Win32.IsDpiUnaware(process.Id))
+
+            var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) && Win32.IsDpiUnaware(process.Id);
+
+            if (ServiceLocator.GameWindowService.DpiScale != 1 && isDpiUnaware)
                 throw new InvalidOperationException();
 
             desktop.MainWindow = new MainWindow
