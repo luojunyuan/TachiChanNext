@@ -2,7 +2,7 @@
   "profiles": {
     "TouchChanNext": {
       "commandName": "Project",
-      "commandLineArgs": "6172"
+      "commandLineArgs": "25400"
     }
   }
 }

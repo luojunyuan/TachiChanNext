@@ -1,14 +1,14 @@
+using System;
+using System.Diagnostics.Contracts;
+using System.Linq;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
-using System;
-using System.Diagnostics.Contracts;
-using System.Drawing;
-using System.Linq;
+using Windows.Foundation;
 
-namespace TouchChan;
+namespace TouchChan.WinUI;
 
 public sealed partial class TouchControl : UserControl
 {
@@ -20,10 +20,14 @@ public sealed partial class TouchControl : UserControl
     // WAS Shit 5: Xaml Code-Behind 中 require 或 prop init 会生成错误的代码 #8723
     public Action<Size>? ResetWindowObservable { get; set; }
 
-    public Action<Rectangle>? SetWindowObservable { get; set; }
+    public Action<Rect>? SetWindowObservable { get; set; }
+
+    private readonly GameWindowService GameService;
 
     public TouchControl()
     {
+        GameService = ServiceLocator.GameWindowService;
+
         this.InitializeComponent();
 
         this.RxLoaded()
@@ -52,12 +56,12 @@ public sealed partial class TouchControl : UserControl
         // FIXME: 连续点击两下按住，第一下的Release时间在200ms之后（也就是第二次按住后）触发了
         // 要确定释放过程中能不能被点击抓住
         pointerPressedStream
-            .Select(_ => container.ActualSizeXDpi())
+            .Select(_ => container.ActualSizeXDpi(GameService.DpiScale))
             .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
 
         smoothMoveCompletedStream
-            .Select(_ => GetTouchRect().XDpi())
-            .Prepend(GetTouchRect().XDpi())
+            .Select(_ => GetTouchRect().XDpi(GameService.DpiScale))
+            .Prepend(GetTouchRect().XDpi(GameService.DpiScale))
             .Subscribe(rect => SetWindowObservable?.Invoke(rect));
 
         // Touch 释放时的移动动画
@@ -67,7 +71,7 @@ public sealed partial class TouchControl : UserControl
                 var distanceToOrigin = pointer.GetCurrentPoint(container).Position.ToWarp();
                 var distanceToElement = pointer.GetCurrentPoint(Touch).Position;
                 var touchPos = distanceToOrigin - distanceToElement;
-                return CalculateTouchFinalPosition(container.ActualSize.ToSize(), touchPos, (int)Touch.Width);
+                return PositionCalculator.CalculateTouchFinalPosition(container.ActualSize.ToSize(), touchPos, (int)Touch.Width);
             })
             .Subscribe(stopPos =>
             {
@@ -108,65 +112,17 @@ public sealed partial class TouchControl : UserControl
         // Touch 拖动边界释放检测
         var boundaryExceededStream =
         draggingStream
-            .Where(item => IsBeyondBoundary(item.Delta, Touch.Width, container.ActualSize.ToSize()))
+            .Where(item => PositionCalculator.IsBeyondBoundary(item.Delta, Touch.Width, container.ActualSize.ToSize()))
             .Select(item => item.MovedEvent);
 
         boundaryExceededStream
             .Subscribe(raisePointerReleasedSubject.OnNext);
     }
 
-    private Rectangle GetTouchRect() =>
+    private Rect GetTouchRect() =>
         new((int)((TranslateTransform)Touch.RenderTransform).X,
             (int)((TranslateTransform)Touch.RenderTransform).Y,
             (int)Touch.Width,
             (int)Touch.Height);
 
-    private static bool IsBeyondBoundary(Point newPos, double touchSize, Size container)
-    {
-        var oneThirdDistance = touchSize / 3;
-        var twoThirdDistance = oneThirdDistance * 2;
-
-        if (newPos.X < -oneThirdDistance ||
-            newPos.Y < -oneThirdDistance ||
-            newPos.X > container.Width - twoThirdDistance ||
-            newPos.Y > container.Height - twoThirdDistance)
-        {
-            return true;
-        }
-        return false;
-    }
-
-    [Pure]
-    private static Point CalculateTouchFinalPosition(Size container, Point initPos, int touchSize)
-    {
-        const int TouchSpace = 2;
-
-        var xMidline = container.Width / 2;
-        var right = container.Width - initPos.X - touchSize;
-        var bottom = container.Height - initPos.Y - touchSize;
-
-        var hSnapLimit = touchSize / 2;
-        var vSnapLimit = touchSize / 3 * 2;
-
-        var centerToLeft = initPos.X + hSnapLimit;
-
-        bool VCloseTo(int distance) => distance < vSnapLimit;
-        bool HCloseTo(int distance) => distance < hSnapLimit;
-
-        int AlignToRight() => container.Width - touchSize - TouchSpace;
-        int AlignToBottom() => container.Height - touchSize - TouchSpace;
-
-        var left = initPos.X;
-        var top = initPos.Y;
-
-        return
-            HCloseTo(left)  && VCloseTo(top) ? new Point(TouchSpace, TouchSpace) :
-            HCloseTo(right) && VCloseTo(top) ? new Point(AlignToRight(), TouchSpace) :
-            HCloseTo(left)  && VCloseTo(bottom) ? new Point(TouchSpace, AlignToBottom()) :
-            HCloseTo(right) && VCloseTo(bottom) ? new Point(AlignToRight(), AlignToBottom()) :
-                               VCloseTo(top) ? new Point(left, TouchSpace) :
-                               VCloseTo(bottom) ? new Point(left, AlignToBottom()) :
-            centerToLeft < xMidline ? new Point(TouchSpace, top) :
-         /* centerToLeft >= xMidline */           new Point(AlignToRight(), top);
-    }
 }

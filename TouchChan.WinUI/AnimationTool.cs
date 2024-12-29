@@ -1,7 +1,7 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media.Animation;
 
-namespace TouchChan;
+namespace TouchChan.WinUI;
 
 internal class AnimationTool
 {

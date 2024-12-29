@@ -1,4 +1,3 @@
-using System;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
@@ -96,7 +95,7 @@ public partial class TouchControl : UserControl
                 var distanceToOrigin = pointer.GetPosition(parent);
                 var distanceToElement = pointer.GetPosition(Touch);
                 var touchPos = distanceToOrigin - distanceToElement;
-                return (touchPos, CalculateTouchFinalPosition(parent.Bounds.Size, touchPos, (int)Touch.Width));
+                return (touchPos, PositionCalculator.CalculateTouchFinalPosition(parent.Bounds.Size, touchPos, (int)Touch.Width));
             })
             .Subscribe(async pair =>
             {
@@ -133,60 +132,12 @@ public partial class TouchControl : UserControl
         // Touch Õœ∂Ø±ﬂΩÁ Õ∑≈ºÏ≤‚
         var boundaryExceededStream =
         draggingStream
-            .Where(item => IsBeyondBoundary(item.Delta, Touch.Width, parent.Bounds.Size))
+            .Where(item => PositionCalculator.IsBeyondBoundary(item.Delta, Touch.Width, parent.Bounds.Size))
             .Select(item => item.MovedEvent);
 
         // FIXME: ◊≤œÚ±ﬂ‘µÕœ◊ß Õ∑≈£¨ø…π€≤‚«¯”Ú…¡À∏
         boundaryExceededStream
             .Subscribe(raiseRelesedInCodeSubject.OnNext);
-    }
-
-    private static bool IsBeyondBoundary(Point newPos, double touchSize, Size container)
-    {
-        var oneThirdDistance = touchSize / 3;
-        var twoThirdDistance = oneThirdDistance * 2;
-
-        if (newPos.X < -oneThirdDistance ||
-            newPos.Y < -oneThirdDistance ||
-            newPos.X > container.Width - twoThirdDistance ||
-            newPos.Y > container.Height - twoThirdDistance)
-        {
-            return true;
-        }
-        return false;
-    }
-
-    private static Point CalculateTouchFinalPosition(Size container, Point initPos, int touchSize)
-    {
-        const int TouchSpace = 2;
-
-        var xMidline = container.Width / 2;
-        var right = container.Width - initPos.X - touchSize;
-        var bottom = container.Height - initPos.Y - touchSize;
-
-        var hSnapLimit = touchSize / 2;
-        var vSnapLimit = touchSize / 3 * 2;
-
-        var centerToLeft = initPos.X + hSnapLimit;
-
-        bool VCloseTo(double distance) => distance < vSnapLimit;
-        bool HCloseTo(double distance) => distance < hSnapLimit;
-
-        double AlignToRight() => container.Width - touchSize - TouchSpace;
-        double AlignToBottom() => container.Height - touchSize - TouchSpace;
-
-        var left = initPos.X;
-        var top = initPos.Y;
-
-        return
-            HCloseTo(left) && VCloseTo(top) ? new Point(TouchSpace, TouchSpace) :
-            HCloseTo(right) && VCloseTo(top) ? new Point(AlignToRight(), TouchSpace) :
-            HCloseTo(left) && VCloseTo(bottom) ? new Point(TouchSpace, AlignToBottom()) :
-            HCloseTo(right) && VCloseTo(bottom) ? new Point(AlignToRight(), AlignToBottom()) :
-                               VCloseTo(top) ? new Point(left, TouchSpace) :
-                               VCloseTo(bottom) ? new Point(left, AlignToBottom()) :
-            centerToLeft < xMidline ? new Point(TouchSpace, top) :
-         /* centerToLeft >= xMidline */           new Point(AlignToRight(), top);
     }
 }
 

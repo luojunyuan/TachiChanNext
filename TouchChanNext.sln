@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.12.35506.116
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChanNext", "TouchChanNext\TouchChanNext\TouchChanNext.csproj", "{C1875B3D-F99A-48EB-B8F8-BA862F246011}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{0AE677C0-EFDB-40A2-BFEF-976FC39B4A30}"
 	ProjectSection(SolutionItems) = preProject
 		README.txt = README.txt
@@ -13,6 +11,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan", "TouchChan\TouchChan.csproj", "{5AEAE161-6248-49BB-AD0F-4C04A55F7D29}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan.Ava", "TouchChan.Ava\TouchChan.Ava.csproj", "{BE78A160-8506-4683-A23A-BA24C41FE775}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan.WinUI", "TouchChan.WinUI\TouchChan.WinUI.csproj", "{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "TouchChan.SourceReference", "TouchChan.SourceReference\TouchChan.SourceReference.shproj", "{C35B72F8-FC69-4406-929A-BDD402FEEB72}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,18 +26,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Debug|ARM64.ActiveCfg = Debug|ARM64
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Debug|ARM64.Build.0 = Debug|ARM64
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Debug|x64.ActiveCfg = Debug|x64
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Debug|x64.Build.0 = Debug|x64
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Debug|x86.ActiveCfg = Debug|x86
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Debug|x86.Build.0 = Debug|x86
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Release|ARM64.ActiveCfg = Release|ARM64
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Release|ARM64.Build.0 = Release|ARM64
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Release|x64.ActiveCfg = Release|x64
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Release|x64.Build.0 = Release|x64
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Release|x86.ActiveCfg = Release|x86
-		{C1875B3D-F99A-48EB-B8F8-BA862F246011}.Release|x86.Build.0 = Release|x86
 		{5AEAE161-6248-49BB-AD0F-4C04A55F7D29}.Debug|ARM64.ActiveCfg = Debug|Any CPU
 		{5AEAE161-6248-49BB-AD0F-4C04A55F7D29}.Debug|ARM64.Build.0 = Debug|Any CPU
 		{5AEAE161-6248-49BB-AD0F-4C04A55F7D29}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -60,8 +50,25 @@ Global
 		{BE78A160-8506-4683-A23A-BA24C41FE775}.Release|x64.Build.0 = Release|Any CPU
 		{BE78A160-8506-4683-A23A-BA24C41FE775}.Release|x86.ActiveCfg = Release|Any CPU
 		{BE78A160-8506-4683-A23A-BA24C41FE775}.Release|x86.Build.0 = Release|Any CPU
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Debug|ARM64.Build.0 = Debug|ARM64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Debug|x64.ActiveCfg = Debug|x64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Debug|x64.Build.0 = Debug|x64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Debug|x86.ActiveCfg = Debug|x64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Debug|x86.Build.0 = Debug|x64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Release|ARM64.ActiveCfg = Release|ARM64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Release|ARM64.Build.0 = Release|ARM64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Release|x64.ActiveCfg = Release|x64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Release|x64.Build.0 = Release|x64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Release|x86.ActiveCfg = Release|x64
+		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		TouchChan.SourceReference\TouchChan.SourceReference.projitems*{be78a160-8506-4683-a23a-ba24c41fe775}*SharedItemsImports = 5
+		TouchChan.SourceReference\TouchChan.SourceReference.projitems*{c35b72f8-fc69-4406-929a-bdd402feeb72}*SharedItemsImports = 13
+		TouchChan.SourceReference\TouchChan.SourceReference.projitems*{c36aafe9-8c14-4bb6-8365-b6b84ddd4ef7}*SharedItemsImports = 5
 	EndGlobalSection
 EndGlobal
