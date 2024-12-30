@@ -54,6 +54,27 @@ public sealed partial class TouchControl : UserControl
             .Merge(raisePointerReleasedSubject)
             .Do(e => Touch.ReleasePointerCapture(e.Pointer));
 
+        var dragStartedStream =
+            pointerPressedStream
+            .SelectMany(_ =>
+                pointerMovedStream
+                .Take(1)
+                .TakeUntil(pointerReleasedStream));
+
+        // NOTE: 这里 drag end 时机是依赖按下放开时的鼠标位置决定的
+        var dragEndedStream =
+            pointerReleasedStream
+            .WithLatestFrom(pointerPressedStream,
+                (releaseEvent, pressedEvent) =>
+                {
+                    var pressedPos = pressedEvent.GetPosition(container);
+                    var releasePos = releaseEvent.GetPosition(container);
+
+                    return new { DragReleased = releaseEvent, PressedPosition = pressedPos, ReleasePosition = releasePos, };
+                })
+            .Where(x => x.ReleasePosition != x.PressedPosition)
+            .Select(x => x.DragReleased);
+
         // Time -->
         // |
         // |    Pressed suddenly released
@@ -67,31 +88,6 @@ public sealed partial class TouchControl : UserControl
         // |                 DragEnded
         // |                -*---------------------*|-->
         // |                 Start    Animation    End
-
-        var dragStartedStream =
-            pointerPressedStream
-            .SelectMany(_ =>
-                pointerMovedStream
-                .Take(1)
-                .TakeUntil(pointerReleasedStream));
-
-        // NOTE: 这里 drag end 时机是依赖按下放开时的鼠标位置决定的
-        var dragEndedStream =
-            pointerReleasedStream
-            .WithLatestFrom(pointerPressedStream, (releaseEvent, pressedEvent) =>
-            {
-                var releasePosition = releaseEvent.GetPosition(container);
-                var pressedPosition = pressedEvent.GetPosition(container);
-
-                return new
-                {
-                    ReleaseEvent = releaseEvent,
-                    ReleasePosition = releasePosition,
-                    PressedPosition = pressedPosition,
-                };
-            })
-            .Where(x => x.ReleasePosition != x.PressedPosition)
-            .Select(x => x.ReleaseEvent);
 
         // Touch 的拖拽逻辑
         var draggingStream =
