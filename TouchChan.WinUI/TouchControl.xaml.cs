@@ -68,6 +68,7 @@ public sealed partial class TouchControl : UserControl
             {
                 var releasePosition = releaseEvent.GetPosition(container);
                 var pressedPosition = pressedEvent.GetPosition(container);
+
                 return new { DragReleased = releaseEvent, EndPoint = releasePosition, StartPoint = pressedPosition, };
             })
             .Where(x => x.EndPoint != x.StartPoint)
@@ -104,6 +105,7 @@ public sealed partial class TouchControl : UserControl
                     {
                         var distanceToOrigin = movedEvent.GetPosition(container).Warp();
                         var delta = distanceToOrigin - distanceToElement;
+
                         return new { Delta = delta, MovedEvent = movedEvent };
                     });
             });
@@ -136,6 +138,7 @@ public sealed partial class TouchControl : UserControl
                 var distanceToOrigin = pointer.GetPosition(container).Warp();
                 var distanceToElement = pointer.GetPosition(Touch);
                 var touchPos = distanceToOrigin - distanceToElement;
+
                 return PositionCalculator.CalculateTouchFinalPosition(
                     container.ActualSize.ToSize(), touchPos, (int)Touch.Width);
             })
