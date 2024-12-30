@@ -64,15 +64,13 @@ public sealed partial class TouchControl : UserControl
         // NOTE: 这里 drag end 时机是依赖按下放开时的鼠标位置决定的
         var dragEndedStream =
             pointerReleasedStream
-            .WithLatestFrom(pointerPressedStream,
-                (releaseEvent, pressedEvent) =>
-                {
-                    var pressedPos = pressedEvent.GetPosition(container);
-                    var releasePos = releaseEvent.GetPosition(container);
-
-                    return new { DragReleased = releaseEvent, PressedPosition = pressedPos, ReleasePosition = releasePos, };
-                })
-            .Where(x => x.ReleasePosition != x.PressedPosition)
+            .WithLatestFrom(pointerPressedStream, (releaseEvent, pressedEvent) =>
+            {
+                var releasePosition = releaseEvent.GetPosition(container);
+                var pressedPosition = pressedEvent.GetPosition(container);
+                return new { DragReleased = releaseEvent, EndPoint = releasePosition, StartPoint = pressedPosition, };
+            })
+            .Where(x => x.EndPoint != x.StartPoint)
             .Select(x => x.DragReleased);
 
         // Time -->
@@ -147,7 +145,7 @@ public sealed partial class TouchControl : UserControl
                 TranslationStoryboard.Begin();
             });
 
-        // 设置容器窗口的可观察区域回调
+        // 回调设置容器窗口的可观察区域
         dragStartedStream
             .Select(_ => container.ActualSizeXDpi(GameService.DpiScale))
             .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
