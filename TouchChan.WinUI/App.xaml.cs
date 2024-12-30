@@ -1,10 +1,8 @@
-﻿using System;
+﻿using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using System;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
-using Microsoft.Win32.SafeHandles;
-using Windows.Win32;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
