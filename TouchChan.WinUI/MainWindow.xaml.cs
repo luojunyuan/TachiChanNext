@@ -1,10 +1,10 @@
-using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
+using System;
 using Windows.Foundation;
 using WinRT.Interop;
 
@@ -63,50 +63,5 @@ static class ControllerSizeCoverDpiExtensions
         rect.Width *= factor;
         rect.Height *= factor;
         return rect;
-    }
-}
-
-static partial class ObservableEventsExtensions
-{
-    public static Observable<object> RxCompleted(this Storyboard data) =>
-        Observable.FromEvent<EventHandler<object>, object>(
-            h => (sender, e) => h(e),
-            e => data.Completed += e,
-            e => data.Completed -= e);
-
-    public static Observable<PointerRoutedEventArgs> RxPointerPressed(this FrameworkElement data) =>
-        Observable.FromEvent<PointerEventHandler, PointerRoutedEventArgs>(
-            h => (sender, e) => h(e),
-            e => data.PointerPressed += e,
-            e => data.PointerPressed -= e);
-
-    public static Observable<PointerRoutedEventArgs> RxPointerMoved(this FrameworkElement data) =>
-        Observable.FromEvent<PointerEventHandler, PointerRoutedEventArgs>(
-            h => (sender, e) => h(e),
-            e => data.PointerMoved += e,
-            e => data.PointerMoved -= e);
-
-    public static Observable<PointerRoutedEventArgs> RxPointerReleased(this FrameworkElement data) =>
-        Observable.FromEvent<PointerEventHandler, PointerRoutedEventArgs>(
-            h => (sender, e) => h(e),
-            e => data.PointerReleased += e,
-            e => data.PointerReleased -= e);
-
-    public static Observable<RoutedEventArgs> RxLoaded(this UserControl data) =>
-        Observable.FromEvent<RoutedEventHandler, RoutedEventArgs>(
-            h => (sender, e) => h(e),
-            e => data.Loaded += e,
-            e => data.Loaded -= e);
-}
-
-static class VisualTreeHelperExtensions
-{
-    public static T? FindParent<T>(this DependencyObject child) where T : DependencyObject
-    {
-        DependencyObject parentObject = VisualTreeHelper.GetParent(child);
-        if (parentObject == null)
-            return null;
-
-        return parentObject is T parent ? parent : FindParent<T>(parentObject);
     }
 }

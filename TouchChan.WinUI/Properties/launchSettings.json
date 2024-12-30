@@ -1,8 +1,8 @@
 {
   "profiles": {
-    "TouchChanNext": {
+    "TouchChan.WinUI": {
       "commandName": "Project",
-      "commandLineArgs": "25400"
+      "commandLineArgs": "17268"
     }
   }
 }

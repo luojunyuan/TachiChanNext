@@ -1,12 +1,15 @@
-using System;
-using System.Diagnostics.Contracts;
-using System.Linq;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
+using System;
+using System.ComponentModel;
+using System.Linq;
+using System.Threading.Tasks;
 using Windows.Foundation;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace TouchChan.WinUI;
 
@@ -45,57 +48,72 @@ public sealed partial class TouchControl : UserControl
 
     private void InitializeTouchControl(Panel container)
     {
-        var smoothMoveCompletedStream = TranslationStoryboard.RxCompleted();
+        var moveAnimationEndedStream = TranslationStoryboard.RxCompleted();
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
-        var pointerPressedStream = Touch.RxPointerPressed();
+        var pointerPressedStream = Touch.RxPointerPressed().Do(e => Touch.CapturePointer(e.Pointer));
         var pointerMovedStream = Touch.RxPointerMoved();
-        var pointerReleasedStream = Touch.RxPointerReleased().Merge(raisePointerReleasedSubject);
+        var pointerReleasedStream =
+            Touch.RxPointerReleased()
+            .Merge(raisePointerReleasedSubject)
+            .Do(e => Touch.ReleasePointerCapture(e.Pointer));
 
-        // FIXME: 连续点击两下按住，第一下的Release时间在200ms之后（也就是第二次按住后）触发了
-        // 要确定释放过程中能不能被点击抓住
-        pointerPressedStream
-            .Select(_ => container.ActualSizeXDpi(GameService.DpiScale))
-            .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
+        // Time -->
+        // |
+        // |    Pressed suddenly released
+        // | x -*|----->
+        // |
+        // |    Dragging
+        // | x -*--*---------*------->
+        // |       Released  Released
+        // |      (by raise)
+        // |                 ↓
+        // |                 DragEnded
+        // |                -*---------------------*|-->
+        // |                 Start    Animation    End
 
-        smoothMoveCompletedStream
-            .Select(_ => GetTouchRect().XDpi(GameService.DpiScale))
-            .Prepend(GetTouchRect().XDpi(GameService.DpiScale))
-            .Subscribe(rect => SetWindowObservable?.Invoke(rect));
-
-        // Touch 释放时的移动动画
-        pointerReleasedStream
-            .Select(pointer =>
-            {
-                var distanceToOrigin = pointer.GetCurrentPoint(container).Position.ToWarp();
-                var distanceToElement = pointer.GetCurrentPoint(Touch).Position;
-                var touchPos = distanceToOrigin - distanceToElement;
-                return PositionCalculator.CalculateTouchFinalPosition(container.ActualSize.ToSize(), touchPos, (int)Touch.Width);
-            })
-            .Subscribe(stopPos =>
-            {
-                (TranslateXAnimation.To, TranslateYAnimation.To) = (stopPos.X, stopPos.Y);
-                TranslationStoryboard.Begin();
-            });
-
-        var draggingStream =
+        var dragStartedStream =
             pointerPressedStream
-            .Do(e => Touch.CapturePointer(e.Pointer))
+            .SelectMany(_ =>
+                pointerMovedStream
+                .Take(1)
+                .TakeUntil(pointerReleasedStream));
+
+        // NOTE: 这里 drag end 时机是依赖按下放开时的鼠标位置决定的
+        var dragEndedStream =
+            pointerReleasedStream
+            .WithLatestFrom(pointerPressedStream, (releaseEvent, pressedEvent) =>
+            {
+                var releasePosition = releaseEvent.GetPosition(container);
+                var pressedPosition = pressedEvent.GetPosition(container);
+
+                return new
+                {
+                    ReleaseEvent = releaseEvent,
+                    ReleasePosition = releasePosition,
+                    PressedPosition = pressedPosition,
+                };
+            })
+            .Where(x => x.ReleasePosition != x.PressedPosition)
+            .Select(x => x.ReleaseEvent);
+
+        // Touch 的拖拽逻辑
+        var draggingStream =
+            dragStartedStream
             .SelectMany(pressedEvent =>
             {
                 // Origin   Element
                 // *--------*--*------
                 //             Pointer 
-                var distanceToElement = pressedEvent.GetCurrentPoint(Touch).Position;
+                var distanceToElement = pressedEvent.GetPosition(Touch);
 
                 return
                     pointerMovedStream
-                    .TakeUntil(pointerReleasedStream
-                               .Do(e => Touch.ReleasePointerCapture(e.Pointer)))
+                    .TakeUntil(pointerReleasedStream)
                     .Select(movedEvent =>
                     {
-                        var distanceToOrigin = movedEvent.GetCurrentPoint(container).Position.ToWarp();
+                        var distanceToOrigin = movedEvent.GetPosition(container).Warp();
                         var delta = distanceToOrigin - distanceToElement;
                         return new { Delta = delta, MovedEvent = movedEvent };
                     });
@@ -109,14 +127,45 @@ public sealed partial class TouchControl : UserControl
                 TouchTransform.Y = newPos.Y;
             });
 
-        // Touch 拖动边界释放检测
+        // Touch 拖动边界检测
         var boundaryExceededStream =
-        draggingStream
-            .Where(item => PositionCalculator.IsBeyondBoundary(item.Delta, Touch.Width, container.ActualSize.ToSize()))
+            draggingStream
+            .Where(item => PositionCalculator.IsBeyondBoundary(
+                item.Delta, Touch.Width, container.ActualSize.ToSize()))
             .Select(item => item.MovedEvent);
 
         boundaryExceededStream
             .Subscribe(raisePointerReleasedSubject.OnNext);
+
+        var moveAnimationStartedStream = dragEndedStream;
+
+        // Touch 边缘停靠动画
+        moveAnimationStartedStream
+            .Do(_ => Touch.IsHitTestVisible = false)
+            .Select(pointer =>
+            {
+                var distanceToOrigin = pointer.GetPosition(container).Warp();
+                var distanceToElement = pointer.GetPosition(Touch);
+                var touchPos = distanceToOrigin - distanceToElement;
+                return PositionCalculator.CalculateTouchFinalPosition(
+                    container.ActualSize.ToSize(), touchPos, (int)Touch.Width);
+            })
+            .Subscribe(stopPos =>
+            {
+                (TranslateXAnimation.To, TranslateYAnimation.To) = (stopPos.X, stopPos.Y);
+                TranslationStoryboard.Begin();
+            });
+
+        // 设置容器窗口的可观察区域回调
+        dragStartedStream
+            .Select(_ => container.ActualSizeXDpi(GameService.DpiScale))
+            .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
+
+        moveAnimationEndedStream
+            .Do(_ => Touch.IsHitTestVisible = true)
+            .Select(_ => GetTouchRect().XDpi(GameService.DpiScale))
+            .Prepend(GetTouchRect().XDpi(GameService.DpiScale))
+            .Subscribe(rect => SetWindowObservable?.Invoke(rect));
     }
 
     private Rect GetTouchRect() =>
@@ -124,5 +173,4 @@ public sealed partial class TouchControl : UserControl
             (int)((TranslateTransform)Touch.RenderTransform).Y,
             (int)Touch.Width,
             (int)Touch.Height);
-
 }

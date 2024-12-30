@@ -5,9 +5,6 @@ using Size = Windows.Foundation.Size;
 #elif Avalonia
 using Point = Avalonia.Point;
 using Size = Avalonia.Size;
-#else
-using Point = System.Drawing.Point;
-using Size = System.Drawing.Size;
 #endif
 
 namespace TouchChan;
@@ -54,9 +51,9 @@ public static class PositionCalculator
         var top = initPos.Y;
 
         return
-            HCloseTo(left) && VCloseTo(top) ? new Point(TouchSpace, TouchSpace) :
+            HCloseTo(left)  && VCloseTo(top) ? new Point(TouchSpace, TouchSpace) :
             HCloseTo(right) && VCloseTo(top) ? new Point(AlignToRight(), TouchSpace) :
-            HCloseTo(left) && VCloseTo(bottom) ? new Point(TouchSpace, AlignToBottom()) :
+            HCloseTo(left)  && VCloseTo(bottom) ? new Point(TouchSpace, AlignToBottom()) :
             HCloseTo(right) && VCloseTo(bottom) ? new Point(AlignToRight(), AlignToBottom()) :
                                VCloseTo(top) ? new Point(left, TouchSpace) :
                                VCloseTo(bottom) ? new Point(left, AlignToBottom()) :
