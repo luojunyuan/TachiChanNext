@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<Window
-    x:Class="TouchChan.WinUI.MainWindow"
+<Window x:Class="TouchChan.WinUI.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -10,10 +9,7 @@
     mc:Ignorable="d">
 
     <Grid>
-        <Border
-            BorderBrush="red"
-            BorderThickness="1"
-            CornerRadius="12" />
+        <Border BorderBrush="red" BorderThickness="1" CornerRadius="12" />
 
         <local:TouchControl x:Name="Touch" />
     </Grid>

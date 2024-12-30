@@ -16,6 +16,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan.WinUI", "TouchCha
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "TouchChan.SourceReference", "TouchChan.SourceReference\TouchChan.SourceReference.shproj", "{C35B72F8-FC69-4406-929A-BDD402FEEB72}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TouchChan.ShellMenuHandler", "TouchChan.ShellMenuHandler\TouchChan.ShellMenuHandler.vcxproj", "{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}"
+EndProject
+Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "TouchChan.WinUI (Package)", "TouchChan.WinUI (Package)\TouchChan.WinUI (Package).wapproj", "{C6B007E4-E456-4909-BAE4-39E84D5DFA05}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -62,6 +66,36 @@ Global
 		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Release|x64.Build.0 = Release|x64
 		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Release|x86.ActiveCfg = Release|x64
 		{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}.Release|x86.Build.0 = Release|x64
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Debug|ARM64.ActiveCfg = Debug|x64
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Debug|ARM64.Build.0 = Debug|x64
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Debug|x64.ActiveCfg = Debug|x64
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Debug|x64.Build.0 = Debug|x64
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Debug|x86.ActiveCfg = Debug|Win32
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Debug|x86.Build.0 = Debug|Win32
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Release|ARM64.ActiveCfg = Release|x64
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Release|ARM64.Build.0 = Release|x64
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Release|x64.ActiveCfg = Release|x64
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Release|x64.Build.0 = Release|x64
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Release|x86.ActiveCfg = Release|Win32
+		{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}.Release|x86.Build.0 = Release|Win32
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Debug|ARM64.Build.0 = Debug|ARM64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Debug|ARM64.Deploy.0 = Debug|ARM64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Debug|x64.ActiveCfg = Debug|x64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Debug|x64.Build.0 = Debug|x64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Debug|x64.Deploy.0 = Debug|x64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Debug|x86.ActiveCfg = Debug|x86
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Debug|x86.Build.0 = Debug|x86
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Debug|x86.Deploy.0 = Debug|x86
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|ARM64.ActiveCfg = Release|ARM64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|ARM64.Build.0 = Release|ARM64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|ARM64.Deploy.0 = Release|ARM64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|x64.ActiveCfg = Release|x64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|x64.Build.0 = Release|x64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|x64.Deploy.0 = Release|x64
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|x86.ActiveCfg = Release|x86
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|x86.Build.0 = Release|x86
+		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|x86.Deploy.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

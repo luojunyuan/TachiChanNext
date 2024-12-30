@@ -1,10 +1,9 @@
-<Window
-    x:Class="TouchChan.Ava.MainWindow"
+<Window x:Class="TouchChan.Ava.MainWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:TouchChan.Ava"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-	xmlns:local="using:TouchChan.Ava"
     Title="TouchChan.Ava"
     d:DesignHeight="600"
     d:DesignWidth="480"
@@ -14,6 +13,6 @@
     <Grid>
         <Border BorderBrush="Red" BorderThickness="1" />
 
-		<local:TouchControl x:Name="Touch" />
+        <local:TouchControl x:Name="Touch" />
     </Grid>
 </Window>

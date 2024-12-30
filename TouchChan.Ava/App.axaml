@@ -1,7 +1,4 @@
-<Application
-    x:Class="TouchChan.Ava.App"
+<Application x:Class="TouchChan.Ava.App"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    RequestedThemeVariant="Default">
-
-</Application>
+    RequestedThemeVariant="Default" />

@@ -15,7 +15,7 @@
   <mp:PhoneIdentity PhoneProductId="20ddb5b1-1f33-4b76-8f55-08b6bc9467a0" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>TouchChanNext (Package)</DisplayName>
+    <DisplayName>TouchChan.WinUI (Package)</DisplayName>
     <PublisherDisplayName>CYCY</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
   </Properties>
@@ -34,8 +34,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="TouchChanNext (Package)"
-        Description="TouchChanNext (Package)"
+        DisplayName="TouchChan.WinUI (Package)"
+        Description="TouchChan.WinUI (Package)"
         BackgroundColor="transparent"
         Square150x150Logo="Images\Square150x150Logo.png"
         Square44x44Logo="Images\Square44x44Logo.png">
