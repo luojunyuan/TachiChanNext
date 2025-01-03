@@ -7,6 +7,8 @@ SetWinEventHook
 GetWindowThreadProcessId
 GetProcessDpiAwareness
 GetDpiForWindow
+MonitorFromWindow
+GetDpiForMonitor
 GetWindowLong
 SetWindowLong
 GetModuleHandle

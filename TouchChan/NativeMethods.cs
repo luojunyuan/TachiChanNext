@@ -1,7 +1,10 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.Win32.SafeHandles;
+using System.Diagnostics;
+using System.Drawing;
 using System.Runtime.Versioning;
-using Microsoft.Win32.SafeHandles;
 using Windows.Win32;
+using Windows.Win32.Graphics.Gdi;
+using Windows.Win32.UI.HiDpi;
 
 namespace TouchChan;
 
@@ -20,7 +23,27 @@ public static class Win32
         using var processHandle = new SafeProcessHandle(handle, true);
         var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
 
-        return result == 0 && awareType == 0;
+        return result == 0 && (awareType == 0 || awareType == PROCESS_DPI_AWARENESS.PROCESS_SYSTEM_DPI_AWARE);
+    }
+
+    /// <summary>
+    /// 获取窗口所在显示器的 DPI
+    /// </summary>
+    [SupportedOSPlatform("windows8.1")]
+    public static uint GetDpiForWindowsMonitor(nint hwnd)
+    {
+        var monitorHandle = PInvoke.MonitorFromWindow(new(hwnd), MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONEAREST);
+        PInvoke.GetDpiForMonitor(monitorHandle, MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI, out var dpiX, out _);
+        return dpiX;
+    }
+
+    /// <summary>
+    /// 获取客户区窗口大小
+    /// </summary>
+    public static Size GetWindowSize(nint hwnd)
+    {
+        PInvoke.GetClientRect(new(hwnd), out var initRect);
+        return initRect.Size;
     }
 }
 

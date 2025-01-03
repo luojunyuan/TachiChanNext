@@ -1,7 +1,7 @@
-﻿using System.ComponentModel;
+﻿using R3;
+using System.ComponentModel;
 using System.Drawing;
 using System.Runtime.InteropServices;
-using R3;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Accessibility;
@@ -13,24 +13,18 @@ public static partial class ServiceLocator
 {
     private static GameWindowService? _current;
 
-    public static void InitializeWindowHandle(nint newHandle) => _current = new(newHandle); // Log
+    public static void InitializeWindowHandle(nint newHandle, bool dpiUnaware) =>
+        _current = new(newHandle, dpiUnaware); // Log
 
     public static GameWindowService GameWindowService => _current ??
         throw new ArgumentNullException($"{nameof(GameWindowService)} is not initialized.");
 }
 
-public class GameWindowService : IDisposable
+public class GameWindowService(nint handle, bool dpiUnaware)
 {
-    public GameWindowService(nint handle)
-    {
-        WindowHandle = handle;
-        DpiScale = OperatingSystem.IsWindowsVersionAtLeast(10, 0, 14398) ? handle.GetDpiForWindow() / 96d : 1;
-        InstallDpiChangedMessage();
-    }
+    public nint WindowHandle { get; } = handle;
 
-    public nint WindowHandle { get; }
-
-    public double DpiScale { get; private set; }
+    public bool IsDpiUnaware { get; } = dpiUnaware;
 
     private const uint EventObjectLocationChange = 0x800B;
 
@@ -78,41 +72,4 @@ public class GameWindowService : IDisposable
                 winEventDelegateHandle.Free();
             });
         });
-
-    private static SafeHandle? HookId;
-
-    private static void InstallDpiChangedMessage()
-    {
-        var moduleHandle = PInvoke.GetModuleHandle((string?)null); // get current exe instant handle
-
-        HookId = PInvoke.SetWindowsHookEx(WINDOWS_HOOK_ID.WH_KEYBOARD_LL, Hook, moduleHandle, 0); // tid 0 set global hook
-        if (HookId.IsInvalid)
-            throw new Win32Exception(Marshal.GetLastWin32Error());
-
-        static LRESULT Hook(int nCode, WPARAM wParam, LPARAM lParam)
-        {
-            if (nCode < 0)
-                return PInvoke.CallNextHookEx(HookId, nCode, wParam, lParam);
-
-            var msg = Marshal.PtrToStructure<CWPSTRUCT>(lParam);
-
-            const int WM_DPICHANGED = 0x02e0;
-            if (msg.message == WM_DPICHANGED)
-            {
-                int newDpiX = (int)(wParam & 0xFFFF);
-                int newDpiY = (int)((wParam >> 16) & 0xFFFF);
-
-                System.Diagnostics.Debug.WriteLine($"DPI Changed: {newDpiX}x{newDpiY}");
-            }
-
-            return PInvoke.CallNextHookEx(HookId, nCode, wParam, lParam);
-        }
-    }
-
-    public void Dispose()
-    {
-        HookId?.Close();
-        GC.SuppressFinalize(this);
-    }
-
 }

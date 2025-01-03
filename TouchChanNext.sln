@@ -20,6 +20,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TouchChan.ShellMenuHandler"
 EndProject
 Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "TouchChan.WinUI (Package)", "TouchChan.WinUI (Package)\TouchChan.WinUI (Package).wapproj", "{C6B007E4-E456-4909-BAE4-39E84D5DFA05}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan.ViewModel", "TouchChan.ViewModel\TouchChan.ViewModel.csproj", "{31C2E759-DFE0-4009-B0DA-15A505379A1F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -96,6 +98,18 @@ Global
 		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|x86.ActiveCfg = Release|x86
 		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|x86.Build.0 = Release|x86
 		{C6B007E4-E456-4909-BAE4-39E84D5DFA05}.Release|x86.Deploy.0 = Release|x86
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Debug|x64.Build.0 = Debug|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Debug|x86.Build.0 = Debug|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Release|ARM64.Build.0 = Release|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Release|x64.ActiveCfg = Release|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Release|x64.Build.0 = Release|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Release|x86.ActiveCfg = Release|Any CPU
+		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

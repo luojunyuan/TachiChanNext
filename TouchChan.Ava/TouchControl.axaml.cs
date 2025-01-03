@@ -18,16 +18,12 @@ public partial class TouchControl : UserControl
 
     private readonly TranslateTransform TouchTransform = new();
 
-    private readonly GameWindowService GameService;
-
     public Action<Size>? ResetWindowObservable { get; set; }
 
     public Action<Rect>? SetWindowObservable { get; set; }
 
     public TouchControl()
     {
-        GameService = ServiceLocator.GameWindowService;
-
         InitializeComponent();
 
         TouchTransform.X = 2;
@@ -39,16 +35,8 @@ public partial class TouchControl : UserControl
             FillMode = FillMode.Forward,
             Children =
             {
-                new ()
-                {
-                    Cue = new Cue(0d),
-                    Setters = { new Setter(TranslateTransform.XProperty, default), new Setter(TranslateTransform.YProperty, default) }
-                },
-                new ()
-                {
-                    Cue = new Cue(1d),
-                    Setters = { new Setter(TranslateTransform.XProperty, default), new Setter(TranslateTransform.YProperty, default) }
-                },
+                AnimationTool.CreatePointKeyFrame(0d),
+                AnimationTool.CreatePointKeyFrame(1d),
             },
         };
 
@@ -56,37 +44,29 @@ public partial class TouchControl : UserControl
             .Subscribe(InitializeTouch);
     }
 
-    private void UpdateSmoothMoveStoryboard(Point start, Point end)
-    {
-        ((Setter)SmoothMoveStoryboard.Children[0].Setters[0]).Value = start.X;
-        ((Setter)SmoothMoveStoryboard.Children[0].Setters[1]).Value = start.Y;
-        ((Setter)SmoothMoveStoryboard.Children[1].Setters[0]).Value = end.X;
-        ((Setter)SmoothMoveStoryboard.Children[1].Setters[1]).Value = end.Y;
-    }
-
     private void InitializeTouch(RoutedEventArgs args)
     {
         var parent = this.GetLogicalParent<Grid>() ?? throw new InvalidOperationException();
 
         var smoothMoveCompletedSubject = new Subject<Unit>();
-        var raiseRelesedInCodeSubject = new Subject<PointerEventArgs>();
+        var raiseReleasedInCodeSubject = new Subject<PointerEventArgs>();
 
         var pointerPressedStream = Touch.RxPointerPressed();
         var pointerMovedStream = Touch.RxPointerMoved();
         var pointerReleasedStream =
             Touch.RxPointerReleased()
             .Select(releasedEvent => releasedEvent as PointerEventArgs)
-            .Merge(raiseRelesedInCodeSubject);
+            .Merge(raiseReleasedInCodeSubject);
 
         pointerPressedStream
-            .Select(_ => parent.Bounds.XDpi(GameService.DpiScale).Size)
+            .Select(_ => parent.Bounds.Size)
             .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
 
-        Rect TouchRect() =>
+        Rect GetTouchRect() =>
             new(new(TouchTransform.X, TouchTransform.Y), Touch.Bounds.Size);
         smoothMoveCompletedSubject
-            .Select(_ => TouchRect().XDpi(GameService.DpiScale))
-            .Prepend(TouchRect().XDpi(GameService.DpiScale))
+            .Select(_ => GetTouchRect())
+            .Prepend(GetTouchRect())
             .Subscribe(rect => SetWindowObservable?.Invoke(rect));
 
         pointerReleasedStream
@@ -109,9 +89,6 @@ public partial class TouchControl : UserControl
             pointerPressedStream
             .SelectMany(pressedEvent =>
             {
-                // Origin   Element
-                // *--------*--*------
-                //             Pointer 
                 var distanceToElement = pressedEvent.GetPosition(Touch);
 
                 return
@@ -129,7 +106,6 @@ public partial class TouchControl : UserControl
             .Select(item => item.Delta)
             .Subscribe(newPos => (TouchTransform.X, TouchTransform.Y) = newPos);
 
-        // Touch ÍÏ¶¯±ß½çÊÍ·Å¼ì²â
         var boundaryExceededStream =
         draggingStream
             .Where(item => PositionCalculator.IsBeyondBoundary(item.Delta, Touch.Width, parent.Bounds.Size))
@@ -137,15 +113,20 @@ public partial class TouchControl : UserControl
 
         // FIXME: ×²Ïò±ßÔµÍÏ×§ÊÍ·Å£¬¿É¹Û²âÇøÓòÉÁË¸
         boundaryExceededStream
-            .Subscribe(raiseRelesedInCodeSubject.OnNext);
+            .Subscribe(raiseReleasedInCodeSubject.OnNext);
+    }
+
+    private void UpdateSmoothMoveStoryboard(Point start, Point end)
+    {
+        ((Setter)SmoothMoveStoryboard.Children[0].Setters[0]).Value = start.X;
+        ((Setter)SmoothMoveStoryboard.Children[0].Setters[1]).Value = start.Y;
+        ((Setter)SmoothMoveStoryboard.Children[1].Setters[0]).Value = end.X;
+        ((Setter)SmoothMoveStoryboard.Children[1].Setters[1]).Value = end.Y;
     }
 }
 
 static partial class ObservableEventsExtensions
 {
-    public static Rect XDpi(this Rect rect, double factor) =>
-        new(rect.X * factor, rect.Y * factor, rect.Width * factor, rect.Height * factor);
-
     public static Observable<PointerPressedEventArgs> RxPointerPressed(this Control data) =>
         Observable.FromEvent<EventHandler<PointerPressedEventArgs>, PointerPressedEventArgs>(
             h => (sender, e) => h(e),
