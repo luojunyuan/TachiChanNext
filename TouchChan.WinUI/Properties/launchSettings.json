@@ -2,7 +2,7 @@
   "profiles": {
     "TouchChan.WinUI": {
       "commandName": "Project",
-      "commandLineArgs": "27580"
+      "commandLineArgs": "27500"
     }
   }
 }

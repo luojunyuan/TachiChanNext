@@ -25,8 +25,8 @@ public sealed partial class MainWindow : Window
         if (GameWindowService.IsDpiUnaware)
             UnawareGameWindowShowHideHack();
 
-        // NOTE: 设置为子窗口后，this.AppWindow 不再可靠
         NativeMethods.SetParent(Hwnd, GameWindowService.WindowHandle);
+        // NOTE: 设置为子窗口后，this.AppWindow 不再可靠
 
         // QUES: 这个应该需要开发者显式 Dispose 吧？ 一个很明显的特征是，这个服务由 ServiceLocator 管理，所以应该在外部释放它
         GameWindowService.ClientSizeChanged()
@@ -34,6 +34,7 @@ public sealed partial class MainWindow : Window
 
         Touch.ResetWindowObservable = size => HwndExtensions.ResetWindowOriginalObservableRegion(Hwnd, size.ToGdiSize());
         Touch.SetWindowObservable = rect => HwndExtensions.SetWindowObservableRegion(Hwnd, rect.ToGdiRect());
+
         // FIXME: プログラム '[9636] TouchChan.WinUI.exe' はコード 3221225480(0xc0000008) 'An invalid handle was specified' で終了しました。
         Touch.RightTapped += (s, e) => Close();
         // QUES: 启动后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。今后再检查整个程序与窗口启动方式

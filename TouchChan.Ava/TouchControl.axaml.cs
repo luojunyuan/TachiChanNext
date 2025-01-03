@@ -151,3 +151,16 @@ static partial class ObservableEventsExtensions
             e => data.Loaded += e,
             e => data.Loaded -= e);
 }
+
+static class AnimationTool
+{
+    public static KeyFrame CreatePointKeyFrame(double timePoint) => new()
+    {
+        Cue = new Cue(timePoint),
+        Setters =
+            {
+                new Setter(TranslateTransform.XProperty, default),
+                new Setter(TranslateTransform.YProperty, default)
+            }
+    };
+}
