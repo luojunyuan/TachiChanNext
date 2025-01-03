@@ -83,19 +83,4 @@ namespace TouchChan.WinUI
             return parentObject is T parent ? parent : FindParent<T>(parentObject);
         }
     }
-
-    // NOTE: 移动到 ViewModel 将来
-    record TouchDockAnchor(TouchCorner Corner, double Scale);
-
-    enum TouchCorner
-    {
-        Left,
-        Top,
-        Right,
-        Bottom,
-        TopLeft,
-        TopRight,
-        BottomLeft,
-        BottomRight
-    }
 }

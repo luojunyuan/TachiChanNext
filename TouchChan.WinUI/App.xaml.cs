@@ -70,32 +70,5 @@ public partial class App : Application
         _mainWindow.Activate();
     }
 
-    /// <summary>
-    /// 判断进程对象是否对 DPI 不感知
-    /// </summary>
-    //private static bool IsDpiUnaware(int pid)
-    //{
-    //    // GetProcessDpiAwareness 仅支持 Windows 8.1 及以后的系统，因为在那之前没有进程级别的 DPI 感知，
-    //    // 所以默认进程对象是 DPI 感知的。
-    //    if (!OperatingSystem.IsWindowsVersionAtLeast(6, 3))
-    //        return false;
-
-    //    var handle = Process.GetProcessById(pid).Handle;
-    //    using var processHandle = new SafeProcessHandle(handle, true);
-    //    var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
-
-    //    // 100% DPI 下启动，**任何窗口都可以正常工作**
-    //    // 100% DPI 下改变显示器 DPI（这里无法正常工作意为无法接收鼠标输入）
-    //    // “系统DPI缩放”，子窗口无法正常工作。（B站弹幕姬）
-    //    // “未知”，子窗口无法正常工作。（DebugView）
-
-    //    // DPIv1v2：正常适配
-    //    // TODO: System-DPI 到底怎么样？
-
-    //    // FUTURE：HiDpi 下，“不可用 awareType == 0，系统会将这类窗口放大，全屏无法正常显示，拿到 dpi 是为 1
-    //    // 考虑支持这种情况下的窗口模式，子窗口没有正常设置到 0，0 位置，提示用户如果需要全屏游玩请使用 TouchChan启动 还需测试触控输入是否偏移
-    //    return result == 0 && awareType == 0;
-    //}
-
     private Window? _mainWindow;
 }
