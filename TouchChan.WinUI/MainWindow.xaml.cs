@@ -1,6 +1,5 @@
 using Microsoft.UI.Xaml;
 using R3;
-using System;
 using Windows.Foundation;
 using WinRT.Interop;
 
@@ -40,6 +39,12 @@ public sealed partial class MainWindow : Window
         // QUES: 启动后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。今后再检查整个程序与窗口启动方式
     }
 
+    /// <summary>
+    /// DPI Unaware 窗口处于高 DPI 上时隐藏游戏窗口
+    /// </summary>
+    /// <remarks>
+    /// 必须在 SetParent 之前设置，否则似乎不会感知 Unaware 下的游戏窗口大小变化
+    /// </remarks>
     private void UnawareGameWindowShowHideHack()
     {
         void SetWindowVisible(bool visible)
@@ -47,7 +52,6 @@ public sealed partial class MainWindow : Window
             if (visible) WinUIEx.WindowExtensions.Show(this);
             else WinUIEx.WindowExtensions.Hide(this);
         }
-        // NOTE: 必须在 SetParent 之前设置，否则似乎不会感知 Unaware 下的游戏窗口大小变化
         GameWindowService.ClientSizeChanged()
             .Select(_ => Win32.GetDpiForWindowsMonitor(GameWindowService.WindowHandle) / 96d)
             .DistinctUntilChanged()

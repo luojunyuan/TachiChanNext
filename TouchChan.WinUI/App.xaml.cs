@@ -2,7 +2,6 @@
 using Microsoft.UI.Xaml;
 using System;
 using System.Diagnostics;
-using System.Linq;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
