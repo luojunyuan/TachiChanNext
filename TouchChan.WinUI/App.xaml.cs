@@ -18,42 +18,11 @@ public partial class App : Application
     {
         // WAS Shit 4: 在 desktop 下 LaunchActivatedEventArgs 接收不到命令行参数 #3368
         var arguments = Environment.GetCommandLineArgs();
-        var gameWindowHandle = nint.Zero;
-        Process process;
-        if (arguments.Length == 2)
-        {
-            try
-            {
-                process = Process.GetProcessById(int.Parse(arguments[1]));
-                gameWindowHandle = process.MainWindowHandle;
-            }
-            catch
-            {
-                Debug.WriteLine("异常：设置了 pid 没有找到进程，将去找 notepad");
-                var proc = Process.GetProcessesByName("notepad").FirstOrDefault()
-                    ?? throw new InvalidOperationException();
-                gameWindowHandle = proc.MainWindowHandle;
-                process = proc;
-            }
-        }
-        else
-        {
-            //var proc = Process.GetProcessesByName("notepad").FirstOrDefault();
-            Process? proc = null;
-            if (proc == null)
-            {
-                proc = Process.Start(@"C:\Users\kimika\Desktop\9-nine-天色天歌天籁音(樱空)\9-nine-天色天歌天籁音.exe");
-                proc.WaitForInputIdle();
-                System.Threading.Thread.Sleep(3000);
-            }
-            gameWindowHandle = proc.MainWindowHandle;
-            process = proc;
-        }
+        var process = Process.GetProcessById(int.Parse(arguments[1]));
 
-        ServiceLocator.InitializeWindowHandle(gameWindowHandle);
         // NOTE: HiDpi 高分屏不支持非 DPI 感知的窗口
-        if (ServiceLocator.GameWindowService.DpiScale != 1 && Win32.IsDpiUnaware(process.Id))
-            throw new InvalidOperationException();
+        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) && Win32.IsDpiUnaware(process.Id);
+        ServiceLocator.InitializeWindowHandle(process.MainWindowHandle, isDpiUnaware);
 
         _mainWindow = new MainWindow();
 

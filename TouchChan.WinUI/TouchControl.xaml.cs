@@ -20,12 +20,8 @@ public sealed partial class TouchControl : UserControl
 
     public Action<Rect>? SetWindowObservable { get; set; }
 
-    private readonly GameWindowService GameService;
-
     public TouchControl()
     {
-        GameService = ServiceLocator.GameWindowService;
-
         this.InitializeComponent();
 
         this.RxLoaded()
@@ -149,20 +145,22 @@ public sealed partial class TouchControl : UserControl
             });
 
         // 回调设置容器窗口的可观察区域
+        // WAS Shit 6: DPI 改变后，XamlRoot.RasterizationScale 永远是启动时候的值
+        var scale = container.XamlRoot.RasterizationScale;
         dragStartedStream
-            .Select(_ => container.ActualSizeXDpi(GameService.DpiScale))
+            .Select(_ => container.ActualSizeXDpi(scale))
             .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
 
         moveAnimationEndedStream
             .Do(_ => Touch.IsHitTestVisible = true)
-            .Select(_ => GetTouchRect().XDpi(GameService.DpiScale))
-            .Prepend(GetTouchRect().XDpi(GameService.DpiScale))
+            .Select(_ => GetTouchRect().XDpi(scale))
+            .Prepend(GetTouchRect().XDpi(scale))
             .Subscribe(rect => SetWindowObservable?.Invoke(rect));
     }
 
     private Rect GetTouchRect() =>
-        new((int)((TranslateTransform)Touch.RenderTransform).X,
-            (int)((TranslateTransform)Touch.RenderTransform).Y,
-            (int)Touch.Width,
-            (int)Touch.Height);
+        new(((TranslateTransform)Touch.RenderTransform).X,
+            ((TranslateTransform)Touch.RenderTransform).Y,
+            Touch.Width,
+            Touch.Height);
 }
