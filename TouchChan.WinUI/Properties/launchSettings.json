@@ -2,7 +2,7 @@
   "profiles": {
     "TouchChan.WinUI": {
       "commandName": "Project",
-      "commandLineArgs": "27500"
+      "commandLineArgs": "c:/windows/notepad.exe"
     }
   }
 }

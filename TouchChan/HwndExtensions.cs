@@ -2,21 +2,8 @@
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
-using Windows.Win32.UI.WindowsAndMessaging;
 using Windows.Win32.Graphics.Gdi;
-
-// CSWin32 的包装代码，本来应该是 CSWin32 负责生成的工作
-namespace Windows.Win32
-{
-    partial class PInvoke
-    {
-        internal unsafe static uint GetWindowThreadProcessId(HWND hwnd, out uint lpdwProcessId)
-        {
-            fixed (uint* _lpdwProcessId = &lpdwProcessId)
-                return GetWindowThreadProcessId(hwnd, _lpdwProcessId);
-        }
-    }
-}
+using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace TouchChan
 {

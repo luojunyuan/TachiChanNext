@@ -17,6 +17,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Update="assets\klee.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
@@ -24,11 +28,17 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.241114003" />
-    <PackageReference Include="WinUIEx" Version="2.5.0" />
+    <PackageReference Include="WinUIEx.SplashStream" Version="2.5.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\TouchChan\TouchChan.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Update="PreferenceWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 
   <ItemGroup>

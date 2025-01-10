@@ -3,8 +3,10 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.Windows.AppLifecycle;
 using R3;
 using System;
+using System.Diagnostics;
 using System.Numerics;
 using Windows.Foundation;
 
@@ -21,13 +23,13 @@ namespace TouchChan.WinUI
         }
     }
 
-    // 用于扩展 Windows.Foundation.Point 之间的减法运算操作符，并返回 System.Drawing.Point
+    // 用于扩展 Windows.Foundation.Point 之间的减法运算操作符
     static class MyPointExtensions
     {
         public static PointWarp Warp(this Point point) => new(point);
     }
 
-    // 几何类型转换的扩展方法，项目中统一使用 System.Drawing 命名空间下的 int 类型
+    // 几何类型转换的扩展方法
     static class GeometryExtensions
     {
         public static Size ToSize(this Vector2 size) => new((int)size.X, (int)size.Y);
@@ -35,6 +37,18 @@ namespace TouchChan.WinUI
 
     static partial class ObservableEventsExtensions
     {
+        public static Observable<AppActivationArguments> RxActivated(this AppInstance data) =>
+            Observable.FromEvent<EventHandler<AppActivationArguments>, AppActivationArguments>(
+                h => (sender, e) => h(e),
+                e => data.Activated += e,
+                e => data.Activated -= e);
+
+        public static Observable<EventArgs> RxExited(this Process data) =>
+            Observable.FromEvent<EventHandler, EventArgs>(
+                h => (sender, e) => h(e),
+                e => data.Exited += e,
+                e => data.Exited -= e);
+
         public static Observable<object> RxCompleted(this Storyboard data) =>
             Observable.FromEvent<EventHandler<object>, object>(
                 h => (sender, e) => h(e),

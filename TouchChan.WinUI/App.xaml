@@ -6,8 +6,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!--  暂时不需要这个控件资源  -->
-                <!--  <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />  -->
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!--  其他 MergedDictionaries 放这里  -->
             </ResourceDictionary.MergedDictionaries>
             <!--  其他应用资源放这里  -->
