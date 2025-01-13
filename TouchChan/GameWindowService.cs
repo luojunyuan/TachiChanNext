@@ -68,7 +68,6 @@ public class GameWindowService(nint handle, bool dpiUnaware)
 
             return Disposable.Create(() =>
             {
-                // 可能会生产 EventObjectDestroy 事件
                 windowsEventHook.Close();
                 winEventDelegateHandle.Free();
             });
@@ -77,10 +76,10 @@ public class GameWindowService(nint handle, bool dpiUnaware)
     private const uint EventObjectDestroy = 0x8001;
 
     /// <summary>
-    /// 监听游戏窗口大小变化
+    /// 监听游戏窗口销毁消息
     /// </summary>
     /// <remarks>必须在 UI 线程中订阅</remarks>
-    public Observable<Unit> WindowDestoyed() =>
+    public Observable<Unit> WindowDestroyed() =>
         Observable.Create<Unit>(observer =>
         {
             var winEventDelegate = new WINEVENTPROC((hWinEventHook, eventId, hWnd, idObject, idChild, dwEventThread, dwmsEventTime) =>

@@ -1,3 +1,7 @@
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
+using R3;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -5,62 +9,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppLifecycle;
-using R3;
 using WindowsShortcutFactory;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
 
-public class LogArttubute : MethodBoundaryAspect.Fody.Attributes.OnMethodBoundaryAspect
-{
-    public static readonly Stopwatch Stopwatch = new();
-
-    private static readonly string[] MethodsName = { "MoveNext", "GetXamlType", "BindMainWindowToGame" };
-
-    public override void OnEntry(MethodBoundaryAspect.Fody.Attributes.MethodExecutionArgs args)
-    {
-        if (args.Method.IsSpecialName)
-            return;
-
-        if (MethodsName.Contains(args.Method.Name))
-            return;
-
-        var elapsedMilliseconds = Stopwatch.ElapsedMilliseconds;
-
-        Console.WriteLine($"{elapsedMilliseconds,-4} ms Enter {args.Method.Name,-20}");
-
-        Stopwatch.Restart();
-    }
-
-    public override void OnExit(MethodBoundaryAspect.Fody.Attributes.MethodExecutionArgs args)
-    {
-        if (args.Method.IsSpecialName)
-            return;
-
-        if (MethodsName.Contains(args.Method.Name))
-            return;
-
-        var elapsedMilliseconds = Stopwatch.ElapsedMilliseconds;
-
-        Console.WriteLine($"{elapsedMilliseconds,-4} ms Leave {args.Method.Name,-20}");
-
-        Stopwatch.Restart();
-    }
-
-    public static void Do(string message)
-    {
-        var elapsedMilliseconds = Stopwatch.ElapsedMilliseconds;
-
-        Console.WriteLine($"{elapsedMilliseconds,-4} ms {message}");
-
-        Stopwatch.Restart();
-    }
-}
-
-[LogArttubute]
 public partial class App : Application
 {
     public static readonly SynchronizationContext UISyncContext;
@@ -69,7 +22,7 @@ public partial class App : Application
 
     public App()
     {
-        // warm up (AOT)
+        // Benchmark: 预加载 (AOT)
         _ = int.TryParse(string.Empty, out _);
 
         this.InitializeComponent();
@@ -90,18 +43,11 @@ public partial class App : Application
 
         var isDefaultLaunch = arguments.Length == 0;
 
-        LaunchResult result;
-        switch (isDefaultLaunch)
+        var result = isDefaultLaunch switch
         {
-            case true:
-                result = await LaunchPreferenceAsync();
-                break;
-            case false:
-                result = await StartMainWindowAsync(arguments);
-                break;
-            default:
-                throw new InvalidOperationException("Invalid launch mode.");
-        }
+            true => await LaunchPreferenceAsync(),
+            false => await StartMainWindowAsync(arguments),
+        };
 
         if (result is LaunchResult.Redirected or LaunchResult.Failed)
             Current.Exit();
@@ -109,6 +55,76 @@ public partial class App : Application
 
     private static void WhenGameProcessExit(EventArgs args) => Environment.Exit(0);
 
+    private static async Task<LaunchResult> StartMainWindowAsync(string[] arguments)
+    {
+        var pathOrPid = arguments[0];
+
+        var processResult = await PrepareValidProcessAsync(pathOrPid);
+        if (processResult.IsFailure(out var error, out var process))
+        {
+            await MessageBox.ShowAsync(error.Message);
+            return LaunchResult.Failed;
+        }
+
+        // Refactor: 只在启动进程时才打 Splash，收集进程找不到时
+        // ... 还需要返回有效的路径
+
+        var fileImage = "assets\\klee.png";
+        var splash = WinUIEx.SimpleSplashScreen.ShowSplashScreenImage(fileImage);
+
+        // TODO: Instaed of ... await GameMainWindowHandleAsync(process);
+        process.WaitForInputIdle();
+
+        process.EnableRaisingEvents = true;
+        process.RxExited().Subscribe(WhenGameProcessExit);
+
+        // QUES: 似乎Process启动游戏后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。而附加窗口没有影响
+        var childWindow = new MainWindow();
+        childWindow.Activate();
+
+        splash.Hide();
+
+        _ = Task.Factory.StartNew(() => BindWindowToGame(childWindow, process), TaskCreationOptions.LongRunning);
+
+        return LaunchResult.Success;
+    }
+
+    private static async Task<Result<Process>> PrepareValidProcessAsync(string arg)
+    {
+        if (int.TryParse(arg, out var processId))
+        {
+            try
+            {
+                return Process.GetProcessById(processId);
+            }
+            catch (Exception ex)
+            {
+                // NOTE: 对于高级用户直接返回有效的默认英文错误信息
+                return Result.Failure<Process>(ex.Message);
+            }
+        }
+
+        var gamePathResult = PrepareValidGamePath(arg);
+        if (gamePathResult.IsFailure(out var error, out var gamePath))
+            return Result.Failure<Process>(error.Message);
+
+        var firstProcess = await GetProcessByPathAsync(gamePath);
+        if (firstProcess != null)
+            return firstProcess;
+
+        // TODO: 通过 LE 启动，思考检查游戏id好的方法，处理超时和错误情况
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = gamePath,
+            WorkingDirectory = Path.GetDirectoryName(gamePath),
+            EnvironmentVariables = { ["__COMPAT_LAYER"] = "HighDpiAware" }
+        };
+        return Process.Start(startInfo) ?? Result.Failure<Process>("error when start game.");
+    }
+
+    /// <summary>
+    /// 准备有效的游戏路径
+    /// </summary>
     private static Result<string> PrepareValidGamePath(string path)
     {
         if (!File.Exists(path))
@@ -127,7 +143,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             Debug.WriteLine(ex);
-            return Result.Failure<string>($"Failed when resolve \"{path}\".");
+            return Result.Failure<string>($"Failed when resolve \"{path}\", please try start from game folder.");
         }
 
         if (!File.Exists(resolvedPath))
@@ -136,83 +152,23 @@ public partial class App : Application
         return resolvedPath;
     }
 
-    private static async Task<Result<Process>> PrepareValidProcessAsync(string arg)
-    {
-        if (int.TryParse(arg, out var processId))
-        {
-            try
-            {
-                return Process.GetProcessById(processId);
-            }
-            catch (Exception ex)
-            {
-                return Result.Failure<Process>(ex.Message);
-            }
-        }
-
-        var gamePathResult = PrepareValidGamePath(arg);
-        if (gamePathResult.IsFailure(out var error, out var gamePath))
-            return Result.Failure<Process>(error.Message);
-
-        var firstProcess = await GetProcessByGamePathAsync(gamePath);
-        if (firstProcess != null)
-            return firstProcess;
-
-        // MASSIVE: Start by locale emulator, and retrive game process by loop
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = gamePath,
-            WorkingDirectory = Path.GetDirectoryName(gamePath),
-            EnvironmentVariables = { ["__COMPAT_LAYER"] = "HighDpiAware" }
-        };
-        return Process.Start(startInfo) ?? Result.Failure<Process>("error when start game.");
-    }
-
-    private static Task<Process?> GetProcessByGamePathAsync(string gamePath)
+    /// <summary>
+    /// 尝试通过路径获取进程
+    /// </summary>
+    private static Task<Process?> GetProcessByPathAsync(string gamePath)
     {
         var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
-        return Task.Run(() => 
+        return Task.Run(() =>
             Process.GetProcessesByName(friendlyName)
                 .OrderBy(p => p.StartTime)
                 .FirstOrDefault());
     }
 
-    private static async Task<LaunchResult> StartMainWindowAsync(string[] arguments)
-    {
-        var pathOrPid = arguments[0];
-
-        var processResult = await PrepareValidProcessAsync(pathOrPid);
-        if (processResult.IsFailure(out var error, out var process))
-        {
-            await MessageBox.ShowAsync(error.Message);
-            return LaunchResult.Failed;
-        }
-
-        var fileImage = "assets\\klee.png";
-        var splash = WinUIEx.SimpleSplashScreen.ShowSplashScreenImage(fileImage);
-
-        // TODO: Instaed of ... await GameMainWindowHandleAsync(process);
-        process.WaitForInputIdle();
-        splash.Hide();
-
-        process.EnableRaisingEvents = true;
-        process.RxExited().Subscribe(WhenGameProcessExit);
-
-        // QUES: 似乎Process启动游戏后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。而附加窗口没有影响
-        var childWindow = new MainWindow();
-        childWindow.Activate();
-
-        _ = Task.Factory.StartNew(() => BindWindowToGame(childWindow, process), TaskCreationOptions.LongRunning);
-
-        return LaunchResult.Success;
-    }
-
     /// <summary>
     /// 绑定窗口到游戏进程
     /// </summary>
-    /// <param name="childWindow"></param>
-    /// <param name="process"></param>
-    /// <returns></returns>
+    /// <param name="childWindow">WinUI 3 子窗口</param>
+    /// <param name="process">目标进程</param>
     private static async Task BindWindowToGame(MainWindow childWindow, Process process)
     {
         // 设计一个游戏的CurrentMainWindowHandleService, in process
@@ -222,13 +178,12 @@ public partial class App : Application
         while (process.HasExited is false)
         {
             CompositeDisposable disposables = [];
-            Debug.WriteLine("try to bind window");
             await Task.Delay(1000);
 
             ServiceLocator.InitializeWindowHandle(process.MainWindowHandle, isDpiUnaware);
 
             var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
-            ServiceLocator.GameWindowService.WindowDestoyed()
+            ServiceLocator.GameWindowService.WindowDestroyed()
                 .SubscribeOn(UISyncContext)
                 .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
                 .DisposeWith(disposables);

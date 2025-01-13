@@ -2,7 +2,6 @@ using Microsoft.UI.Xaml;
 using R3;
 using System;
 using Windows.Foundation;
-using Windows.Services.Maps;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
@@ -27,14 +26,9 @@ public sealed partial class MainWindow : Window
 
         // NOTE: 设置为子窗口后，this.AppWindow 不再可靠
 
-        //Touch.RightTapped += (_contentLoaded, e) => System.Diagnostics.Debug.WriteLine();
-
         Touch.ResetWindowObservable = size => HwndExtensions.ResetWindowOriginalObservableRegion(Hwnd, size.ToGdiSize());
         Touch.SetWindowObservable = rect => HwndExtensions.SetWindowObservableRegion(Hwnd, rect.ToGdiRect());
     }
-
-    // REFACTOR: 不再依赖 GameWindowService，初始化后再设置 SetParent ClientSizeChanged 等
-   
 
     /// <summary>
     /// DPI Unaware 窗口处于高 DPI 上时隐藏游戏窗口
