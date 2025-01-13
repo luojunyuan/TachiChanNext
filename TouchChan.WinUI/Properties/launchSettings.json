@@ -2,7 +2,7 @@
   "profiles": {
     "TouchChan.WinUI": {
       "commandName": "Project",
-      "commandLineArgs": "c:/windows/notepad.exe"
+      "commandLineArgs": "\"C:\\Users\\kimika\\Desktop\\あの日の君を振り向かせて\\あの日の君を振り向かせて_Crack.exe\""
     }
   }
 }

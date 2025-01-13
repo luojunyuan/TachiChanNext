@@ -1,4 +1,7 @@
-﻿using Microsoft.UI.Xaml;
+﻿global using LightResults;
+global using Result = LightResults.Result;
+
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -35,8 +38,20 @@ namespace TouchChan.WinUI
         public static Size ToSize(this Vector2 size) => new((int)size.X, (int)size.Y);
     }
 
+    static class DisposableExtensions
+    {
+        public static void DisposeWith(this IDisposable disposable, CompositeDisposable compositeDisposable) =>
+            compositeDisposable.Add(disposable);
+    }
+
     static partial class ObservableEventsExtensions
     {
+        public static Observable<WinUIEx.Messaging.WindowMessageEventArgs> RxWindowMessageReceived(this WinUIEx.Messaging.WindowMessageMonitor data) =>
+            Observable.FromEvent<EventHandler<WinUIEx.Messaging.WindowMessageEventArgs>, WinUIEx.Messaging.WindowMessageEventArgs>(
+                h => (sender, e) => h(e),
+                e => data.WindowMessageReceived += e,
+                e => data.WindowMessageReceived -= e);
+
         public static Observable<AppActivationArguments> RxActivated(this AppInstance data) =>
             Observable.FromEvent<EventHandler<AppActivationArguments>, AppActivationArguments>(
                 h => (sender, e) => h(e),

@@ -33,6 +33,10 @@ public class GameWindowService(nint handle, bool dpiUnaware)
 
     private const uint WinEventHookInternalFlags = WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS;
 
+    /// <summary>
+    /// 监听游戏窗口大小变化
+    /// </summary>
+    /// <remarks>必须在 UI 线程中订阅</remarks>
     public Observable<Size> ClientSizeChanged() =>
         Observable.Create<Size>(observer =>
         {
@@ -65,6 +69,39 @@ public class GameWindowService(nint handle, bool dpiUnaware)
             return Disposable.Create(() =>
             {
                 // 可能会生产 EventObjectDestroy 事件
+                windowsEventHook.Close();
+                winEventDelegateHandle.Free();
+            });
+        });
+
+    private const uint EventObjectDestroy = 0x8001;
+
+    /// <summary>
+    /// 监听游戏窗口大小变化
+    /// </summary>
+    /// <remarks>必须在 UI 线程中订阅</remarks>
+    public Observable<Unit> WindowDestoyed() =>
+        Observable.Create<Unit>(observer =>
+        {
+            var winEventDelegate = new WINEVENTPROC((hWinEventHook, eventId, hWnd, idObject, idChild, dwEventThread, dwmsEventTime) =>
+            {
+                if (eventId == EventObjectDestroy &&
+                    hWnd.Value == WindowHandle &&
+                    idObject == OBJID_WINDOW &&
+                    idChild == SWEH_CHILDID_SELF)
+                {
+                    observer.OnNext(Unit.Default);
+                }
+            });
+            var winEventDelegateHandle = GCHandle.Alloc(winEventDelegate);
+            var targetThreadId = PInvoke.GetWindowThreadProcessId(new(WindowHandle), out var processId);
+            var windowsEventHook = PInvoke.SetWinEventHook(
+                EventObjectDestroy, EventObjectDestroy,
+                null, winEventDelegate, processId, targetThreadId,
+                WinEventHookInternalFlags);
+
+            return Disposable.Create(() =>
+            {
                 windowsEventHook.Close();
                 winEventDelegateHandle.Free();
             });

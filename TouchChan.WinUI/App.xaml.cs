@@ -1,28 +1,83 @@
-﻿using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppLifecycle;
-using R3;
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
-using System.Runtime.CompilerServices;
+using System.Linq;
+using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
+using R3;
 using WindowsShortcutFactory;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
 
+public class LogArttubute : MethodBoundaryAspect.Fody.Attributes.OnMethodBoundaryAspect
+{
+    public static readonly Stopwatch Stopwatch = new();
+
+    private static readonly string[] MethodsName = { "MoveNext", "GetXamlType", "BindMainWindowToGame" };
+
+    public override void OnEntry(MethodBoundaryAspect.Fody.Attributes.MethodExecutionArgs args)
+    {
+        if (args.Method.IsSpecialName)
+            return;
+
+        if (MethodsName.Contains(args.Method.Name))
+            return;
+
+        var elapsedMilliseconds = Stopwatch.ElapsedMilliseconds;
+
+        Console.WriteLine($"{elapsedMilliseconds,-4} ms Enter {args.Method.Name,-20}");
+
+        Stopwatch.Restart();
+    }
+
+    public override void OnExit(MethodBoundaryAspect.Fody.Attributes.MethodExecutionArgs args)
+    {
+        if (args.Method.IsSpecialName)
+            return;
+
+        if (MethodsName.Contains(args.Method.Name))
+            return;
+
+        var elapsedMilliseconds = Stopwatch.ElapsedMilliseconds;
+
+        Console.WriteLine($"{elapsedMilliseconds,-4} ms Leave {args.Method.Name,-20}");
+
+        Stopwatch.Restart();
+    }
+
+    public static void Do(string message)
+    {
+        var elapsedMilliseconds = Stopwatch.ElapsedMilliseconds;
+
+        Console.WriteLine($"{elapsedMilliseconds,-4} ms {message}");
+
+        Stopwatch.Restart();
+    }
+}
+
+[LogArttubute]
 public partial class App : Application
 {
+    public static readonly SynchronizationContext UISyncContext;
+
+    static App() => UISyncContext = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
+
     public App()
     {
+        // warm up (AOT)
+        _ = int.TryParse(string.Empty, out _);
+
         this.InitializeComponent();
 
 #if !DEBUG
         UnhandledException += (sender, e) =>
         {
-            Debug.WriteLine(e.Exception.Message);
+            Debug.WriteLine(e.Exception);
             Environment.Exit(1);
         };
 #endif
@@ -35,11 +90,18 @@ public partial class App : Application
 
         var isDefaultLaunch = arguments.Length == 0;
 
-        var result = isDefaultLaunch switch
+        LaunchResult result;
+        switch (isDefaultLaunch)
         {
-            true => await LaunchPreference(),
-            false => await StartMainWindow(arguments),
-        };
+            case true:
+                result = await LaunchPreferenceAsync();
+                break;
+            case false:
+                result = await StartMainWindowAsync(arguments);
+                break;
+            default:
+                throw new InvalidOperationException("Invalid launch mode.");
+        }
 
         if (result is LaunchResult.Redirected or LaunchResult.Failed)
             Current.Exit();
@@ -47,76 +109,153 @@ public partial class App : Application
 
     private static void WhenGameProcessExit(EventArgs args) => Environment.Exit(0);
 
-    private static async Task<LaunchResult> StartMainWindow(string[] arguments)
+    private static Result<string> PrepareValidGamePath(string path)
     {
-        // return unknown arguments passing
-        var pathOrPid = arguments[0];
+        if (!File.Exists(path))
+            return Result.Failure<string>($"Game path \"{path}\" not found, please check if it exist.");
 
-        if (!int.TryParse(pathOrPid, out var processId))
+        var isNotLnkFile = !Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase);
+
+        if (isNotLnkFile)
+            return path;
+
+        string? resolvedPath;
+        try
         {
-            var gamePath = pathOrPid;
-            if (File.Exists(gamePath) && Path.GetExtension(gamePath).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
-            {
-                gamePath = WindowsShortcut.Load(gamePath).Path;
-            }
-            if (!File.Exists(gamePath))
-            {
-                await MessageBox.ShowAsync("error", "TachiChan");
-                return LaunchResult.Failed;
-            }
-
-            var fileImage = "assets\\klee.png";
-            var splash = WinUIEx.SimpleSplashScreen.ShowSplashScreenImage(fileImage);
-
-            // start by locale emulator
-            var aaa = Process.Start(gamePath);
-            aaa.WaitForInputIdle();
-
-            splash.Hide();
-
-            // get process id
-            processId = aaa.Id;
+            resolvedPath = WindowsShortcut.Load(path).Path;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            return Result.Failure<string>($"Failed when resolve \"{path}\".");
         }
 
-        var process = Process.GetProcessById(processId);
-        // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的窗口
-        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) && Win32.IsDpiUnaware(process.Id);
+        if (!File.Exists(resolvedPath))
+            return Result.Failure<string>($"Resolved link path \"{resolvedPath}\" not found, please try start from game folder.");
+
+        return resolvedPath;
+    }
+
+    private static async Task<Result<Process>> PrepareValidProcessAsync(string arg)
+    {
+        if (int.TryParse(arg, out var processId))
+        {
+            try
+            {
+                return Process.GetProcessById(processId);
+            }
+            catch (Exception ex)
+            {
+                return Result.Failure<Process>(ex.Message);
+            }
+        }
+
+        var gamePathResult = PrepareValidGamePath(arg);
+        if (gamePathResult.IsFailure(out var error, out var gamePath))
+            return Result.Failure<Process>(error.Message);
+
+        var firstProcess = await GetProcessByGamePathAsync(gamePath);
+        if (firstProcess != null)
+            return firstProcess;
+
+        // MASSIVE: Start by locale emulator, and retrive game process by loop
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = gamePath,
+            WorkingDirectory = Path.GetDirectoryName(gamePath),
+            EnvironmentVariables = { ["__COMPAT_LAYER"] = "HighDpiAware" }
+        };
+        return Process.Start(startInfo) ?? Result.Failure<Process>("error when start game.");
+    }
+
+    private static Task<Process?> GetProcessByGamePathAsync(string gamePath)
+    {
+        var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
+        return Task.Run(() => 
+            Process.GetProcessesByName(friendlyName)
+                .OrderBy(p => p.StartTime)
+                .FirstOrDefault());
+    }
+
+    private static async Task<LaunchResult> StartMainWindowAsync(string[] arguments)
+    {
+        var pathOrPid = arguments[0];
+
+        var processResult = await PrepareValidProcessAsync(pathOrPid);
+        if (processResult.IsFailure(out var error, out var process))
+        {
+            await MessageBox.ShowAsync(error.Message);
+            return LaunchResult.Failed;
+        }
+
+        var fileImage = "assets\\klee.png";
+        var splash = WinUIEx.SimpleSplashScreen.ShowSplashScreenImage(fileImage);
+
+        // TODO: Instaed of ... await GameMainWindowHandleAsync(process);
+        process.WaitForInputIdle();
+        splash.Hide();
 
         process.EnableRaisingEvents = true;
         process.RxExited().Subscribe(WhenGameProcessExit);
 
-        var uiThread = DispatcherQueue.GetForCurrentThread();
-        _ = Task.Factory.StartNew(async () =>
-        {
-            while (process.HasExited is false)
-            {
-                // Begin 问题在于我如何得知窗口关闭了
-                // 第一种方式，循环等待窗口关闭，去找新的窗口
-                // 第二种方式，得到窗口关闭事件，去找新的窗口
-                // 找新窗口
-                ServiceLocator.InitializeWindowHandle(process.MainWindowHandle, isDpiUnaware);
+        // QUES: 似乎Process启动游戏后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。而附加窗口没有影响
+        var childWindow = new MainWindow();
+        childWindow.Activate();
 
-                // QUES: 启动后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。今后再检查整个程序与窗口启动方式。（第二次又暂未观测到）
-                uiThread.TryEnqueue(() =>
-                {
-                    // WAS Shit 7: 窗口存在内存泄漏 #9063
-                    // TODO: 考虑将 MainWindow 设置到新的 GameWindowHandle，而不是关闭窗口
-                    // TODO P0: 带来的新问题是，当他作为子窗口被关闭时，还可以附加到新的窗口上吗？待测试
-                    var mainWindow = new MainWindow();
-                    mainWindow.Activate();
-                });
-                await Task.Delay(-1);
-                // await MainWindow/GameWindow Close
-                // 要确保 窗口关闭后，有一段等待进程结束的结束期，不要再次进入查找窗口的循环
-                // End
-            }
-        }, TaskCreationOptions.LongRunning);
-
+        _ = Task.Factory.StartNew(() => BindWindowToGame(childWindow, process), TaskCreationOptions.LongRunning);
 
         return LaunchResult.Success;
     }
 
-    private static async Task<LaunchResult> LaunchPreference()
+    /// <summary>
+    /// 绑定窗口到游戏进程
+    /// </summary>
+    /// <param name="childWindow"></param>
+    /// <param name="process"></param>
+    /// <returns></returns>
+    private static async Task BindWindowToGame(MainWindow childWindow, Process process)
+    {
+        // 设计一个游戏的CurrentMainWindowHandleService, in process
+        // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的窗口
+        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) && Win32.IsDpiUnaware(process.Id);
+        // use reactive, avoid async Task?
+        while (process.HasExited is false)
+        {
+            CompositeDisposable disposables = [];
+            Debug.WriteLine("try to bind window");
+            await Task.Delay(1000);
+
+            ServiceLocator.InitializeWindowHandle(process.MainWindowHandle, isDpiUnaware);
+
+            var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
+            ServiceLocator.GameWindowService.WindowDestoyed()
+                .SubscribeOn(UISyncContext)
+                .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
+                .DisposeWith(disposables);
+
+            if (isDpiUnaware)
+            {
+                childWindow.UnawareGameWindowShowHideHack(ServiceLocator.GameWindowService)
+                    .DisposeWith(disposables);
+            }
+
+            NativeMethods.SetParent(childWindow.Hwnd, ServiceLocator.GameWindowService.WindowHandle);
+
+            ServiceLocator.GameWindowService.ClientSizeChanged()
+                .SubscribeOn(UISyncContext)
+                .Subscribe(size => HwndExtensions.ResizeClient(childWindow.Hwnd, size))
+                .DisposeWith(disposables);
+
+            await childWindowClosedChannel.Reader.WaitToReadAsync();
+
+            disposables.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// 设置生命周期，启动偏好设置面板。
+    /// </summary>
+    private static async Task<LaunchResult> LaunchPreferenceAsync()
     {
         const string InstanceID = "13615F35-469B-4341-B3CE-121C694C042C";
         var mainInstance = AppInstance.FindOrRegisterForKey(InstanceID);
@@ -133,7 +272,7 @@ public partial class App : Application
         AppInstance.GetCurrent().RxActivated()
             .Subscribe(_ =>
             {
-                // QUES: UI 线程中 preference.Activate() 似乎不启用
+                // QUES: 即使回到 UI 线程中 preference.Activate() 似乎不启用
                 var preferenceHandle = WindowNative.GetWindowHandle(preference);
                 Win32.ActiveWindow(preferenceHandle);
             });

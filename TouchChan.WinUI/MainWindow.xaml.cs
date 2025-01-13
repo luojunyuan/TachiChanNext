@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using R3;
 using System;
 using Windows.Foundation;
+using Windows.Services.Maps;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
@@ -10,12 +11,12 @@ public sealed partial class MainWindow : Window
 {
     public nint Hwnd { get; }
 
-    private readonly GameWindowService GameWindowService;
-
-    public MainWindow(GameWindowService? gameWindowService = null)
+    public MainWindow()
     {
-        GameWindowService = gameWindowService ??= ServiceLocator.GameWindowService;
         Hwnd = WindowNative.GetWindowHandle(this);
+
+        this.AppWindow.MoveAndResize(new(-32000, -320000, 0, 0));
+        this.AppWindow.IsShownInSwitchers = false;
 
         this.InitializeComponent();
         this.SystemBackdrop = new WinUIEx.TransparentTintBackdrop();
@@ -24,22 +25,16 @@ public sealed partial class MainWindow : Window
         HwndExtensions.ToggleWindowStyle(Hwnd, true, WindowStyle.Child);
         HwndExtensions.ToggleWindowExStyle(Hwnd, true, ExtendedWindowStyle.Layered);
 
-        // REFACTOR: 不再依赖 GameWindowService，初始化后再设置 SetParent ClientSizeChanged 等
-        //if (GameWindowService.IsDpiUnaware)
-        //{
-        //    var subscription = UnawareGameWindowShowHideHack();
-        //}
-
-        //NativeMethods.SetParent(Hwnd, GameWindowService.WindowHandle);
         // NOTE: 设置为子窗口后，this.AppWindow 不再可靠
 
-        //var gameWindowSizeSubscription =
-        //GameWindowService.ClientSizeChanged()
-        //    .Subscribe(size => HwndExtensions.ResizeClient(Hwnd, size));
+        //Touch.RightTapped += (_contentLoaded, e) => System.Diagnostics.Debug.WriteLine();
 
         Touch.ResetWindowObservable = size => HwndExtensions.ResetWindowOriginalObservableRegion(Hwnd, size.ToGdiSize());
         Touch.SetWindowObservable = rect => HwndExtensions.SetWindowObservableRegion(Hwnd, rect.ToGdiRect());
     }
+
+    // REFACTOR: 不再依赖 GameWindowService，初始化后再设置 SetParent ClientSizeChanged 等
+   
 
     /// <summary>
     /// DPI Unaware 窗口处于高 DPI 上时隐藏游戏窗口
@@ -47,15 +42,15 @@ public sealed partial class MainWindow : Window
     /// <remarks>
     /// 必须在 SetParent 之前设置，否则似乎不会感知 Unaware 下的游戏窗口大小变化
     /// </remarks>
-    private IDisposable UnawareGameWindowShowHideHack()
+    public IDisposable UnawareGameWindowShowHideHack(GameWindowService gameWindowService)
     {
         void SetWindowVisible(bool visible)
         {
             if (visible) WinUIEx.WindowExtensions.Show(this);
             else WinUIEx.WindowExtensions.Hide(this);
         }
-        return GameWindowService.ClientSizeChanged()
-            .Select(_ => Win32.GetDpiForWindowsMonitor(GameWindowService.WindowHandle) / 96d)
+        return gameWindowService.ClientSizeChanged()
+            .Select(_ => Win32.GetDpiForWindowsMonitor(gameWindowService.WindowHandle) / 96d)
             .DistinctUntilChanged()
             .Subscribe(dpiScale => SetWindowVisible(dpiScale == 1));
     }

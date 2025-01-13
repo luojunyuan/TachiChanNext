@@ -85,7 +85,7 @@ namespace TouchChan
     {
         public static void Show(string text, string caption) => PInvoke.MessageBox(HWND.Null, text, caption, MESSAGEBOX_STYLE.MB_OK);
 
-        public static Task ShowAsync(string text, string caption) =>
+        public static Task ShowAsync(string text, string caption = "TachiChan") =>
             Task.Run(() => PInvoke.MessageBox(HWND.Null, text, caption, MESSAGEBOX_STYLE.MB_OK));
     }
 }

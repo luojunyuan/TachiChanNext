@@ -16,7 +16,7 @@ public sealed partial class TouchControl : UserControl
     private readonly DoubleAnimation TranslateXAnimation;
     private readonly DoubleAnimation TranslateYAnimation;
 
-    // WAS Shit 5: Xaml Code-Behind ÖĞ require »ò prop init »áÉú³É´íÎóµÄ´úÂë #8723
+    // WAS Shit 5: Xaml Code-Behind ä¸­ require æˆ– prop init ä¼šç”Ÿæˆé”™è¯¯çš„ä»£ç  #8723
     public Action<Size>? ResetWindowObservable { get; set; }
 
     public Action<Rect>? SetWindowObservable { get; set; }
@@ -58,7 +58,7 @@ public sealed partial class TouchControl : UserControl
                 .Take(1)
                 .TakeUntil(pointerReleasedStream));
 
-        // NOTE: ÕâÀï drag end Ê±»úÊÇÒÀÀµ°´ÏÂ·Å¿ªÊ±µÄÊó±êÎ»ÖÃ¾ö¶¨µÄ
+        // NOTE: è¿™é‡Œ drag end æ—¶æœºæ˜¯ä¾èµ–æŒ‰ä¸‹æ”¾å¼€æ—¶çš„é¼ æ ‡ä½ç½®å†³å®šçš„
         var dragEndedStream =
             pointerReleasedStream
             .WithLatestFrom(pointerPressedStream, (releaseEvent, pressedEvent) =>
@@ -80,12 +80,12 @@ public sealed partial class TouchControl : UserControl
         // | x -*--*---------*------->
         // |       Released  Released
         // |      (by raise)
-        // |                 ¡ı
+        // |                 â†“
         // |                 DragEnded
         // |                -*---------------------*|-->
         // |                 Start    Animation    End
 
-        // Touch µÄÍÏ×§Âß¼­
+        // Touch çš„æ‹–æ‹½é€»è¾‘
         var draggingStream =
             dragStartedStream
             .SelectMany(pressedEvent =>
@@ -115,7 +115,7 @@ public sealed partial class TouchControl : UserControl
                 TouchTransform.Y = newPos.Y;
             });
 
-        // Touch ÍÏ¶¯±ß½ç¼ì²â
+        // Touch æ‹–åŠ¨è¾¹ç•Œæ£€æµ‹
         var boundaryExceededStream =
             draggingStream
             .Where(item => PositionCalculator.IsBeyondBoundary(
@@ -127,7 +127,7 @@ public sealed partial class TouchControl : UserControl
 
         var moveAnimationStartedStream = dragEndedStream;
 
-        // Touch ±ßÔµÍ£¿¿¶¯»­
+        // Touch è¾¹ç¼˜åœé åŠ¨ç”»
         moveAnimationStartedStream
             .Do(_ => Touch.IsHitTestVisible = false)
             .Select(pointer =>
@@ -145,8 +145,8 @@ public sealed partial class TouchControl : UserControl
                 TranslationStoryboard.Begin();
             });
 
-        // »Øµ÷ÉèÖÃÈİÆ÷´°¿ÚµÄ¿É¹Û²ìÇøÓò
-        // WAS Shit 6: DPI ¸Ä±äºó£¬XamlRoot.RasterizationScale ÓÀÔ¶ÊÇÆô¶¯Ê±ºòµÄÖµ
+        // å›è°ƒè®¾ç½®å®¹å™¨çª—å£çš„å¯è§‚å¯ŸåŒºåŸŸ
+        // WAS Shit 6: DPI æ”¹å˜åï¼ŒXamlRoot.RasterizationScale æ°¸è¿œæ˜¯å¯åŠ¨æ—¶å€™çš„å€¼
         var scale = container.XamlRoot.RasterizationScale;
         dragStartedStream
             .Select(_ => container.ActualSizeXDpi(scale))
@@ -168,7 +168,7 @@ public sealed partial class TouchControl : UserControl
 
 class AnimationTool
 {
-    // ÔÚÉèÖÃ storyboard Ê±Ê¹ÓÃ²¢ÇÒÈ·±£°ó¶¨¶ÔÏóÃ»ÓĞÔÚ TransformGroup ÀïÃæ
+    // åœ¨è®¾ç½® storyboard æ—¶ä½¿ç”¨å¹¶ä¸”ç¡®ä¿ç»‘å®šå¯¹è±¡æ²¡æœ‰åœ¨ TransformGroup é‡Œé¢
     public const string XProperty = "X";
     public const string YProperty = "Y";
 
