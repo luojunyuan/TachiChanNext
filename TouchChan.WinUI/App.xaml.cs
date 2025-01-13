@@ -6,6 +6,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -69,24 +70,45 @@ public partial class App : Application
         // Refactor: 只在启动进程时才打 Splash，收集进程找不到时
         // ... 还需要返回有效的路径
 
+        Log.Do(1);
         var fileImage = "assets\\klee.png";
         var splash = WinUIEx.SimpleSplashScreen.ShowSplashScreenImage(fileImage);
-
+        Log.Do(2);
+        var image = typeof(Program).Assembly.GetManifestResourceStream("TouchChan.WinUI.Assets.klee.png");
+        Log.Do(3);
+        var splash2 = new SplashScreenGdiPlus.SplashScreen().Show(image);
+        Log.Do(4);
         // TODO: Instaed of ... await GameMainWindowHandleAsync(process);
         process.WaitForInputIdle();
+        splash.Hide();
 
         process.EnableRaisingEvents = true;
         process.RxExited().Subscribe(WhenGameProcessExit);
 
         // QUES: 似乎Process启动游戏后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。而附加窗口没有影响
-        var childWindow = new MainWindow();
+        var childWindow = new MainWindow(); // Ryzen 7 5800H: 33ms
         childWindow.Activate();
-
-        splash.Hide();
 
         _ = Task.Factory.StartNew(() => BindWindowToGame(childWindow, process), TaskCreationOptions.LongRunning);
 
         return LaunchResult.Success;
+    }
+
+    private static Result<Process> Xxx(string arg)
+    {
+        if (int.TryParse(arg, out var processId))
+        {
+            try
+            {
+                return Process.GetProcessById(processId);
+            }
+            catch (Exception ex)
+            {
+                // NOTE: 对于高级用户直接返回有效的默认英文错误信息
+                return Result.Failure<Process>(ex.Message);
+            }
+        }
+        return Result.Failure<Process>();
     }
 
     private static async Task<Result<Process>> PrepareValidProcessAsync(string arg)

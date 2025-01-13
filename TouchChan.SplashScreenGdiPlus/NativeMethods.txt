@@ -1,0 +1,8 @@
+﻿RegisterClassEx
+CreateWindowEx
+GetDC
+ReleaseDC
+DestroyWindow
+PostQuitMessage
+DefWindowProc
+WM_DESTROY

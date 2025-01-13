@@ -2,7 +2,7 @@
   "profiles": {
     "TouchChan.WinUI": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\kimika\\Desktop\\あの日の君を振り向かせて\\あの日の君を振り向かせて_Crack.exe\""
+      "commandLineArgs": "\"C:\\Program Files (x86)\\Steam\\steamapps\\common\\NUKITASHI 2\\NUKITASHI2.exe\""
     }
   }
 }

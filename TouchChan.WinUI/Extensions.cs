@@ -27,6 +27,8 @@ public class Log
 
         Stopwatch.Restart();
     }
+
+    public static void Do(int message) => Do(message.ToString());
 }
 
 readonly struct PointWarp(Point point)
