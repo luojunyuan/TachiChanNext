@@ -6,7 +6,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -32,6 +31,7 @@ public partial class App : Application
         UnhandledException += (sender, e) =>
         {
             Debug.WriteLine(e.Exception);
+            // NOTE: 发生未处理异常直接退出程序
             Environment.Exit(1);
         };
 #endif
@@ -58,90 +58,77 @@ public partial class App : Application
 
     private static async Task<LaunchResult> StartMainWindowAsync(string[] arguments)
     {
-        var pathOrPid = arguments[0];
+        var path = arguments[0];
 
-        var processResult = await PrepareValidProcessAsync(pathOrPid);
-        if (processResult.IsFailure(out var error, out var process))
+        var gamePathResult = PrepareValidGamePath(path);
+        if (gamePathResult.IsFailure(out var pathError, out var gamePath))
         {
-            await MessageBox.ShowAsync(error.Message);
+            await MessageBox.ShowAsync(pathError.Message);
             return LaunchResult.Failed;
         }
 
-        // Refactor: 只在启动进程时才打 Splash，收集进程找不到时
-        // ... 还需要返回有效的路径
+        var process = await GetProcessByPathAsync(gamePath);
 
-        Log.Do(1);
-        var fileImage = "assets\\klee.png";
-        var splash = WinUIEx.SimpleSplashScreen.ShowSplashScreenImage(fileImage);
-        Log.Do(2);
-        var image = typeof(Program).Assembly.GetManifestResourceStream("TouchChan.WinUI.Assets.klee.png");
-        Log.Do(3);
-        var splash2 = new SplashScreenGdiPlus.SplashScreen().Show(image);
-        Log.Do(4);
-        // TODO: Instaed of ... await GameMainWindowHandleAsync(process);
-        process.WaitForInputIdle();
-        splash.Hide();
+        if (process == null)
+        {
+            const string fileImage = "assets\\klee.png";
+            var splash = WinUIEx.SimpleSplashScreen.ShowSplashScreenImage(fileImage);
 
-        process.EnableRaisingEvents = true;
-        process.RxExited().Subscribe(WhenGameProcessExit);
+            var launchResult = await LaunchGameAsync(gamePath, arguments.Contains("-le"));
+            if (launchResult.IsFailure(out var launchGameError, out process))
+            {
+                splash.Hide();
+                await MessageBox.ShowAsync(launchGameError.Message);
+                return LaunchResult.Failed;
+            }
+
+            splash.Hide();
+        }
 
         // QUES: 似乎Process启动游戏后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。而附加窗口没有影响
         var childWindow = new MainWindow(); // Ryzen 7 5800H: 33ms
         childWindow.Activate();
 
-        _ = Task.Factory.StartNew(() => BindWindowToGame(childWindow, process), TaskCreationOptions.LongRunning);
+        // QUES: 如果是 _ = XxxAsync() 任务，能够捕捉到吗，是不是还区分方法内部有没有 await 等待。
+        _ = Task.Factory.StartNew(async () =>
+        {
+            try
+            {
+                await ManageGameWindowBindingAsync(childWindow, process);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+        }, TaskCreationOptions.LongRunning);
 
         return LaunchResult.Success;
     }
 
-    private static Result<Process> Xxx(string arg)
+    /// <summary>
+    /// 启动游戏进程
+    /// </summary>
+    private static async Task<Result<Process>> LaunchGameAsync(string path, bool leEnable)
     {
-        if (int.TryParse(arg, out var processId))
-        {
-            try
-            {
-                return Process.GetProcessById(processId);
-            }
-            catch (Exception ex)
-            {
-                // NOTE: 对于高级用户直接返回有效的默认英文错误信息
-                return Result.Failure<Process>(ex.Message);
-            }
-        }
-        return Result.Failure<Process>();
-    }
-
-    private static async Task<Result<Process>> PrepareValidProcessAsync(string arg)
-    {
-        if (int.TryParse(arg, out var processId))
-        {
-            try
-            {
-                return Process.GetProcessById(processId);
-            }
-            catch (Exception ex)
-            {
-                // NOTE: 对于高级用户直接返回有效的默认英文错误信息
-                return Result.Failure<Process>(ex.Message);
-            }
-        }
-
-        var gamePathResult = PrepareValidGamePath(arg);
-        if (gamePathResult.IsFailure(out var error, out var gamePath))
-            return Result.Failure<Process>(error.Message);
-
-        var firstProcess = await GetProcessByPathAsync(gamePath);
-        if (firstProcess != null)
-            return firstProcess;
-
+        // NOTE: NUKITASHI2(steam) 会先启动一个进程闪现黑屏窗口，然后再重新启动游戏进程
         // TODO: 通过 LE 启动，思考检查游戏id好的方法，处理超时和错误情况
+        // 考虑 LE 通过注册表查找还是通过配置文件，还是通过指定路径来启动
         var startInfo = new ProcessStartInfo
         {
-            FileName = gamePath,
-            WorkingDirectory = Path.GetDirectoryName(gamePath),
+            FileName = path,
+            WorkingDirectory = Path.GetDirectoryName(path),
             EnvironmentVariables = { ["__COMPAT_LAYER"] = "HighDpiAware" }
         };
-        return Process.Start(startInfo) ?? Result.Failure<Process>("error when start game.");
+        var process = Process.Start(startInfo);
+        // process 可能不是我们真实想要的进程
+
+        if (process == null)
+            return Result.Failure<Process>();
+
+        process.WaitForInputIdle();
+
+        await Task.Delay(1000);
+        return process;
     }
 
     /// <summary>
@@ -175,30 +162,32 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 尝试通过路径获取进程
+    /// 尝试通过限定的程序路径获取对应正在运行的进程
     /// </summary>
     private static Task<Process?> GetProcessByPathAsync(string gamePath)
     {
         var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
-        return Task.Run(() =>
-            Process.GetProcessesByName(friendlyName)
-                .OrderBy(p => p.StartTime)
-                .FirstOrDefault());
+        return Task.Run(() => Process.GetProcessesByName(friendlyName)
+            .Where(p => p.MainModule != null &&
+                p.MainModule.FileName.Equals(gamePath, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.StartTime)
+            .FirstOrDefault());
     }
 
     /// <summary>
-    /// 绑定窗口到游戏进程
+    /// 绑定窗口到游戏进程，跟随整个进程生命周期
     /// </summary>
     /// <param name="childWindow">WinUI 3 子窗口</param>
     /// <param name="process">目标进程</param>
-    private static async Task BindWindowToGame(MainWindow childWindow, Process process)
+    private static async Task ManageGameWindowBindingAsync(MainWindow childWindow, Process process)
     {
         // 设计一个游戏的CurrentMainWindowHandleService, in process
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的窗口
-        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) && Win32.IsDpiUnaware(process.Id);
+        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) && Win32.IsDpiUnawareWithoutCatch(process.Id);
         // use reactive, avoid async Task?
         while (process.HasExited is false)
         {
+            Debug.WriteLine("im coming in");
             CompositeDisposable disposables = [];
             await Task.Delay(1000);
 
@@ -220,13 +209,15 @@ public partial class App : Application
 
             ServiceLocator.GameWindowService.ClientSizeChanged()
                 .SubscribeOn(UISyncContext)
-                .Subscribe(size => HwndExtensions.ResizeClient(childWindow.Hwnd, size))
+                .Subscribe(size => childWindow.Hwnd.ResizeClient(size))
                 .DisposeWith(disposables);
 
             await childWindowClosedChannel.Reader.WaitToReadAsync();
 
             disposables.Dispose();
         }
+
+        Environment.Exit(0);
     }
 
     /// <summary>

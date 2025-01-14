@@ -1,9 +1,7 @@
 ﻿using Microsoft.Win32.SafeHandles;
 using System.Diagnostics;
 using System.Drawing;
-using System.IO.Pipelines;
 using System.Runtime.Versioning;
-using System.Threading.Channels;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
@@ -36,9 +34,45 @@ namespace TouchChan
         [SupportedOSPlatform("windows8.1")]
         public static bool IsDpiUnaware(int pid)
         {
+            // FIXME: 仍旧需要探究，启动进程拿到了进程 Id，但是提示
+            // System.ArgumentException: Process with an Id of 26252 is not running.
+            // TaskScheduler.UnobservedTaskException 不启用
+            // 非UI线程
+            nint handle;
+            try
+            {
+                handle = Process.GetProcessById(pid).Handle;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                throw;
+            }
+            var processHandle = new SafeProcessHandle(handle, true);
+            var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
+
+            return result == 0 && (awareType == 0 || awareType == PROCESS_DPI_AWARENESS.PROCESS_SYSTEM_DPI_AWARE);
+        }
+
+        [SupportedOSPlatform("windows8.1")]
+        public static bool IsDpiUnawareWithoutCatch(int pid)
+        {
             var handle = Process.GetProcessById(pid).Handle;
             using var processHandle = new SafeProcessHandle(handle, true);
             var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
+
+            return result == 0 && (awareType == 0 || awareType == PROCESS_DPI_AWARENESS.PROCESS_SYSTEM_DPI_AWARE);
+        }
+
+        /// <summary>
+        /// 判断进程对象是否对 DPI 不感知
+        /// </summary>
+        [SupportedOSPlatform("windows8.1")]
+        public static bool IsDpiUnaware(Process process)
+        {
+            // NOTE: 你不能在这里释放进程 Handle ?
+            var handle = process.SafeHandle;
+            var result = PInvoke.GetProcessDpiAwareness(handle, out var awareType);
 
             return result == 0 && (awareType == 0 || awareType == PROCESS_DPI_AWARENESS.PROCESS_SYSTEM_DPI_AWARE);
         }
@@ -75,17 +109,17 @@ namespace TouchChan
     /// </summary>
     public static class NativeMethods
     {
-        public static void SetParent(this nint child, nint parent) => PInvoke.SetParent(new(child), new(parent));
+        public static void SetParent(nint child, nint parent) => PInvoke.SetParent(new(child), new(parent));
 
         [SupportedOSPlatform("windows10.0.14393")]
-        public static uint GetDpiForWindow(this nint hwnd) => PInvoke.GetDpiForWindow(new(hwnd));
+        public static uint GetDpiForWindow(nint hwnd) => PInvoke.GetDpiForWindow(new(hwnd));
     }
 
     public static class MessageBox
     {
         public static void Show(string text, string caption) => PInvoke.MessageBox(HWND.Null, text, caption, MESSAGEBOX_STYLE.MB_OK);
 
-        public static Task ShowAsync(string text, string caption = "TachiChan") =>
+        public static Task ShowAsync(string text, string caption = Constants.DisplayName) =>
             Task.Run(() => PInvoke.MessageBox(HWND.Null, text, caption, MESSAGEBOX_STYLE.MB_OK));
     }
 }

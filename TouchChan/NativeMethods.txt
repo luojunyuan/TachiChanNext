@@ -11,10 +11,13 @@ MonitorFromWindow
 GetDpiForMonitor
 GetWindowLong
 SetWindowLong
+WINDOW_STYLE
+WINDOW_EX_STYLE
+ShowWindow
+SetForegroundWindow
+MessageBox
+
 GetModuleHandle
 SetWindowsHookEx
 CallNextHookEx
 CWPSTRUCT
-ShowWindow
-SetForegroundWindow
-MessageBox

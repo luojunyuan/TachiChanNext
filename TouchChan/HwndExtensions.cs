@@ -8,7 +8,7 @@ using Windows.Win32.UI.WindowsAndMessaging;
 namespace TouchChan
 {
     /// <summary>
-    /// Windows Handle 相关的 Win32 封装方法
+    /// Windows Handle 相关的 Win32 扩展函数封装方法
     /// </summary>
     public static class HwndExtensions
     {
@@ -57,15 +57,15 @@ namespace TouchChan
         }
     }
 
-    public enum WindowStyle
+    public enum WindowStyle : uint
     {
-        TiledWindow = 0xCF0000,
-        Popup = int.MinValue,
-        Child = 0x40000000,
+        TiledWindow = WINDOW_STYLE.WS_TILEDWINDOW,
+        Popup = WINDOW_STYLE.WS_POPUP,
+        Child = WINDOW_STYLE.WS_CHILD,
     }
 
-    public enum ExtendedWindowStyle
+    public enum ExtendedWindowStyle : uint
     {
-        Layered = 0x80000,
+        Layered = WINDOW_EX_STYLE.WS_EX_LAYERED,
     }
 }
