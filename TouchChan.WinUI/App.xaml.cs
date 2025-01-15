@@ -31,7 +31,7 @@ public partial class App : Application
         UnhandledException += (sender, e) =>
         {
             Debug.WriteLine(e.Exception);
-            // NOTE: 发生未处理异常直接退出程序
+            // WAS Shit 8: e.Handled 默认为 false，但是却不会退出程序
             Environment.Exit(1);
         };
 #endif
@@ -65,8 +65,11 @@ public partial class App : Application
             return LaunchResult.Failed;
         }
 
-        var process = await GetProcessByPathAsync(gamePath);
+        var process = await GetWindowProcessByPathAsync(gamePath);
 
+        // TODO: Win32 native gdi+ splash
+        // 比较流和文件哪个速度更快，理应流更快，因为没有磁盘IO，但是COM的转化有可能比计算机上的文件IO慢
+        // LaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"))
         if (process == null)
         {
             const string fileImage = "assets\\klee.png";
@@ -79,7 +82,6 @@ public partial class App : Application
                 await MessageBox.ShowAsync(launchGameError.Message);
                 return LaunchResult.Failed;
             }
-            await Task.Delay(5000);
 
             splash.Hide();
         }
@@ -87,6 +89,8 @@ public partial class App : Application
         // QUES: 似乎Process启动游戏后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。而附加窗口没有影响
         var childWindow = new MainWindow(); // Ryzen 7 5800H: 33ms
         childWindow.Activate();
+
+        // var process = await Async(
 
         // QUES: 如果是 _ = XxxAsync() 任务，能够捕捉到吗，是不是还区分方法内部有没有 await 等待。
         _ = Task.Factory.StartNew(async () =>
@@ -122,13 +126,13 @@ public partial class App : Application
         };
         _ = Process.Start(startInfo);
 
-        var gameProcess = await GetProcessByPathAsync(path);
+        const int WaitGameStartTimeout = 20000;
+        const int UIMinimumResponseTime = 50;
+
+        var gameProcess = await GetWindowProcessByPathAsync(path);
 
         if (gameProcess == null)
             return Result.Failure<Process>("error not implement");
-
-        var a = gameProcess.MainWindowHandle;
-        var b = Win32.GetWindowSize(a);
 
         // leProc.kill()
         return gameProcess;
@@ -165,16 +169,16 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 尝试通过限定的程序路径获取对应正在运行的进程
+    /// 尝试通过限定的程序路径获取对应正在运行的，存在 MainWindowHandle 的进程
     /// </summary>
-    private static Task<Process?> GetProcessByPathAsync(string gamePath)
+    private static Task<Process?> GetWindowProcessByPathAsync(string gamePath)
     {
         var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
         return Task.Run(() => Process.GetProcessesByName(friendlyName)
             .Where(p => p.MainModule != null &&
                 p.MainModule.FileName.Equals(gamePath, StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => p.StartTime)
-            .FirstOrDefault());
+            .FirstOrDefault(p => p.MainWindowHandle != nint.Zero));
     }
 
     /// <summary>
