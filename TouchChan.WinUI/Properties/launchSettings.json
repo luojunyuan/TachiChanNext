@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "TouchChan.WinUI": {
-      "commandName": "Project",
-      "commandLineArgs": "\"C:\\Program Files (x86)\\Steam\\steamapps\\common\\NUKITASHI 2\\NUKITASHI2.exe\""
-    }
-  }
-}

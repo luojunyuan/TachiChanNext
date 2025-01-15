@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 # MacOS
 .DS_Store
+
+# Startup config file
+launchSettings.json

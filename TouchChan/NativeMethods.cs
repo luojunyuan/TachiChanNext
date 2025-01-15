@@ -32,47 +32,9 @@ namespace TouchChan
         /// 判断进程对象是否对 DPI 不感知
         /// </summary>
         [SupportedOSPlatform("windows8.1")]
-        public static bool IsDpiUnaware(int pid)
-        {
-            // FIXME: 仍旧需要探究，启动进程拿到了进程 Id，但是提示
-            // System.ArgumentException: Process with an Id of 26252 is not running.
-            // TaskScheduler.UnobservedTaskException 不启用
-            // 非UI线程
-            nint handle;
-            try
-            {
-                handle = Process.GetProcessById(pid).Handle;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex);
-                throw;
-            }
-            var processHandle = new SafeProcessHandle(handle, true);
-            var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
-
-            return result == 0 && (awareType == 0 || awareType == PROCESS_DPI_AWARENESS.PROCESS_SYSTEM_DPI_AWARE);
-        }
-
-        [SupportedOSPlatform("windows8.1")]
-        public static bool IsDpiUnawareWithoutCatch(int pid)
-        {
-            var handle = Process.GetProcessById(pid).Handle;
-            using var processHandle = new SafeProcessHandle(handle, true);
-            var result = PInvoke.GetProcessDpiAwareness(processHandle, out var awareType);
-
-            return result == 0 && (awareType == 0 || awareType == PROCESS_DPI_AWARENESS.PROCESS_SYSTEM_DPI_AWARE);
-        }
-
-        /// <summary>
-        /// 判断进程对象是否对 DPI 不感知
-        /// </summary>
-        [SupportedOSPlatform("windows8.1")]
         public static bool IsDpiUnaware(Process process)
         {
-            // NOTE: 你不能在这里释放进程 Handle ?
-            var handle = process.SafeHandle;
-            var result = PInvoke.GetProcessDpiAwareness(handle, out var awareType);
+            var result = PInvoke.GetProcessDpiAwareness(process.SafeHandle, out var awareType);
 
             return result == 0 && (awareType == 0 || awareType == PROCESS_DPI_AWARENESS.PROCESS_SYSTEM_DPI_AWARE);
         }

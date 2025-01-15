@@ -79,6 +79,7 @@ public partial class App : Application
                 await MessageBox.ShowAsync(launchGameError.Message);
                 return LaunchResult.Failed;
             }
+            await Task.Delay(5000);
 
             splash.Hide();
         }
@@ -110,6 +111,7 @@ public partial class App : Application
     private static async Task<Result<Process>> LaunchGameAsync(string path, bool leEnable)
     {
         // NOTE: NUKITASHI2(steam) 会先启动一个进程闪现黑屏窗口，然后再重新启动游戏进程
+
         // TODO: 通过 LE 启动，思考检查游戏id好的方法，处理超时和错误情况
         // 考虑 LE 通过注册表查找还是通过配置文件，还是通过指定路径来启动
         var startInfo = new ProcessStartInfo
@@ -120,13 +122,16 @@ public partial class App : Application
         };
         _ = Process.Start(startInfo);
 
-        var process = await GetProcessByPathAsync(path);
+        var gameProcess = await GetProcessByPathAsync(path);
 
-        if (process == null)
-            return Result.Failure<Process>();
+        if (gameProcess == null)
+            return Result.Failure<Process>("error not implement");
 
-        // leproc.kill()
-        return process;
+        var a = gameProcess.MainWindowHandle;
+        var b = Win32.GetWindowSize(a);
+
+        // leProc.kill()
+        return gameProcess;
     }
 
     /// <summary>
@@ -181,13 +186,12 @@ public partial class App : Application
     {
         // 设计一个游戏的CurrentMainWindowHandleService, in process
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的窗口
-        var isDpiUnaware = Win32.IsDpiUnawareWithoutCatch(process.Id);
+        var isDpiUnaware = Win32.IsDpiUnaware(process);
         // use reactive, avoid async Task?
         while (process.HasExited is false)
         {
             Debug.WriteLine("im coming in");
             CompositeDisposable disposables = [];
-            await Task.Delay(1000);
 
             ServiceLocator.InitializeWindowHandle(process.MainWindowHandle, isDpiUnaware);
 
