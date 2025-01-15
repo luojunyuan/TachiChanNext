@@ -22,7 +22,7 @@ public partial class App : Application
 
     public App()
     {
-        // Benchmark: 预加载 (AOT)
+        // Benchmark: 预加载 (Warm Up AOT)
         _ = int.TryParse(string.Empty, out _);
 
         this.InitializeComponent();
@@ -53,8 +53,6 @@ public partial class App : Application
         if (result is LaunchResult.Redirected or LaunchResult.Failed)
             Current.Exit();
     }
-
-    private static void WhenGameProcessExit(EventArgs args) => Environment.Exit(0);
 
     private static async Task<LaunchResult> StartMainWindowAsync(string[] arguments)
     {
@@ -99,6 +97,7 @@ public partial class App : Application
             catch (Exception ex)
             {
                 Debug.WriteLine(ex);
+                Environment.Exit(1);
             }
         }, TaskCreationOptions.LongRunning);
 
@@ -119,15 +118,14 @@ public partial class App : Application
             WorkingDirectory = Path.GetDirectoryName(path),
             EnvironmentVariables = { ["__COMPAT_LAYER"] = "HighDpiAware" }
         };
-        var process = Process.Start(startInfo);
-        // process 可能不是我们真实想要的进程
+        _ = Process.Start(startInfo);
+
+        var process = await GetProcessByPathAsync(path);
 
         if (process == null)
             return Result.Failure<Process>();
 
-        process.WaitForInputIdle();
-
-        await Task.Delay(1000);
+        // leproc.kill()
         return process;
     }
 
@@ -183,7 +181,7 @@ public partial class App : Application
     {
         // 设计一个游戏的CurrentMainWindowHandleService, in process
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的窗口
-        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) && Win32.IsDpiUnawareWithoutCatch(process.Id);
+        var isDpiUnaware = Win32.IsDpiUnawareWithoutCatch(process.Id);
         // use reactive, avoid async Task?
         while (process.HasExited is false)
         {
