@@ -4,12 +4,10 @@ using Microsoft.Windows.AppLifecycle;
 using R3;
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using WindowsShortcutFactory;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
@@ -28,10 +26,10 @@ public partial class App : Application
         this.InitializeComponent();
 
 #if !DEBUG
+        // WAS Shit 8: 异常发生时默认不会结束程序
         UnhandledException += (sender, e) =>
         {
-            Debug.WriteLine(e.Exception);
-            // WAS Shit 8: e.Handled 默认为 false，但是却不会退出程序
+            Trace.WriteLine(e.Exception);
             Environment.Exit(1);
         };
 #endif
@@ -54,54 +52,45 @@ public partial class App : Application
             Current.Exit();
     }
 
+    /// <summary>
+    /// 启动小圆点主窗口
+    /// </summary>
     private static async Task<LaunchResult> StartMainWindowAsync(string[] arguments)
     {
         var path = arguments[0];
 
-        var gamePathResult = PrepareValidGamePath(path);
+        var gamePathResult = GameStartup.PrepareValidGamePath(path);
         if (gamePathResult.IsFailure(out var pathError, out var gamePath))
         {
             await MessageBox.ShowAsync(pathError.Message);
             return LaunchResult.Failed;
         }
 
-        var process = await GetWindowProcessByPathAsync(gamePath);
+        var processTask = GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
 
-        // TODO: Win32 native gdi+ splash
-        // 比较流和文件哪个速度更快，理应流更快，因为没有磁盘IO，但是COM的转化有可能比计算机上的文件IO慢
-        // LaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"))
-        if (process == null)
-        {
-            const string fileImage = "assets\\klee.png";
-            var splash = WinUIEx.SimpleSplashScreen.ShowSplashScreenImage(fileImage);
-
-            var launchResult = await LaunchGameAsync(gamePath, arguments.Contains("-le"));
-            if (launchResult.IsFailure(out var launchGameError, out process))
-            {
-                splash.Hide();
-                await MessageBox.ShowAsync(launchGameError.Message);
-                return LaunchResult.Failed;
-            }
-
-            splash.Hide();
-        }
-
-        // QUES: 似乎Process启动游戏后，获得焦点无法放在最前面？是什么原因，需要重新激活焦点。而附加窗口没有影响
         var childWindow = new MainWindow(); // Ryzen 7 5800H: 33ms
         childWindow.Activate();
 
-        // var process = await Async(
+        var processResult = await processTask;
+        if (processResult.IsFailure(out var processError, out var process))
+        {
+            await MessageBox.ShowAsync(processError.Message);
+            return LaunchResult.Failed;
+        }
 
-        // QUES: 如果是 _ = XxxAsync() 任务，能够捕捉到吗，是不是还区分方法内部有没有 await 等待。
+        // 确保 process 后，立即订阅退出事件，绑定生命周期到游戏进程
+        process.EnableRaisingEvents = true;
+        process.RxExited().Subscribe(_ => Environment.Exit(0));
+
         _ = Task.Factory.StartNew(async () =>
         {
             try
             {
-                await ManageGameWindowBindingAsync(childWindow, process);
+                await GameWindowBindingAsync(childWindow, process);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
+                Trace.WriteLine(ex);
                 Environment.Exit(1);
             }
         }, TaskCreationOptions.LongRunning);
@@ -109,91 +98,50 @@ public partial class App : Application
         return LaunchResult.Success;
     }
 
-    /// <summary>
-    /// 启动游戏进程
-    /// </summary>
-    private static async Task<Result<Process>> LaunchGameAsync(string path, bool leEnable)
+    private static async Task<Result<Process>> GetOrLaunchGameWithSplashAsync(string path, bool leEnable)
     {
-        // NOTE: NUKITASHI2(steam) 会先启动一个进程闪现黑屏窗口，然后再重新启动游戏进程
+        var process = await GameStartup.GetWindowProcessByPathAsync(path);
+        if (process != null)
+            return process;
 
-        // TODO: 通过 LE 启动，思考检查游戏id好的方法，处理超时和错误情况
-        // 考虑 LE 通过注册表查找还是通过配置文件，还是通过指定路径来启动
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = path,
-            WorkingDirectory = Path.GetDirectoryName(path),
-            EnvironmentVariables = { ["__COMPAT_LAYER"] = "HighDpiAware" }
-        };
-        _ = Process.Start(startInfo);
+        // TODO: Win32 native gdi+ splash
+        // 比较流和文件哪个速度更快，理应流更快，因为没有磁盘IO，但是COM的转化有可能比计算机上的文件IO慢
+        const string fileImage = "assets\\klee.png";
+        var splash = WinUIEx.SimpleSplashScreen.ShowSplashScreenImage(fileImage);
 
-        const int WaitGameStartTimeout = 20000;
-        const int UIMinimumResponseTime = 50;
-
-        var gameProcess = await GetWindowProcessByPathAsync(path);
-
-        if (gameProcess == null)
-            return Result.Failure<Process>("error not implement");
-
-        // leProc.kill()
-        return gameProcess;
-    }
-
-    /// <summary>
-    /// 准备有效的游戏路径
-    /// </summary>
-    private static Result<string> PrepareValidGamePath(string path)
-    {
-        if (!File.Exists(path))
-            return Result.Failure<string>($"Game path \"{path}\" not found, please check if it exist.");
-
-        var isNotLnkFile = !Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase);
-
-        if (isNotLnkFile)
-            return path;
-
-        string? resolvedPath;
+        var launchResult = await GameStartup.LaunchGameAsync(path, leEnable);
         try
         {
-            resolvedPath = WindowsShortcut.Load(path).Path;
+            if (launchResult.IsFailure(out var launchGameError, out process))
+                return Result.Failure<Process>(launchGameError.Message);
+
+            return process;
         }
-        catch (Exception ex)
+        finally
         {
-            Debug.WriteLine(ex);
-            return Result.Failure<string>($"Failed when resolve \"{path}\", please try start from game folder.");
+            splash.Hide();
         }
-
-        if (!File.Exists(resolvedPath))
-            return Result.Failure<string>($"Resolved link path \"{resolvedPath}\" not found, please try start from game folder.");
-
-        return resolvedPath;
     }
 
     /// <summary>
-    /// 尝试通过限定的程序路径获取对应正在运行的，存在 MainWindowHandle 的进程
-    /// </summary>
-    private static Task<Process?> GetWindowProcessByPathAsync(string gamePath)
-    {
-        var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
-        return Task.Run(() => Process.GetProcessesByName(friendlyName)
-            .Where(p => p.MainModule != null &&
-                p.MainModule.FileName.Equals(gamePath, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.StartTime)
-            .FirstOrDefault(p => p.MainWindowHandle != nint.Zero));
-    }
-
-    /// <summary>
-    /// 绑定窗口到游戏进程，跟随整个进程生命周期
+    /// 绑定窗口到游戏进程
     /// </summary>
     /// <param name="childWindow">WinUI 3 子窗口</param>
     /// <param name="process">目标进程</param>
-    private static async Task ManageGameWindowBindingAsync(MainWindow childWindow, Process process)
+    private static async Task GameWindowBindingAsync(MainWindow childWindow, Process process)
     {
-        // 设计一个游戏的CurrentMainWindowHandleService, in process
-        // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的窗口
+        // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的游戏窗口
         var isDpiUnaware = Win32.IsDpiUnaware(process);
-        // use reactive, avoid async Task?
+
+        // QUES: use reactive, avoid async Task?
+
+        // TODO：这个循环只做窗口检查，不做进程检查
         while (process.HasExited is false)
         {
+            // 设计一个游戏的CurrentMainWindowHandleService, in process
+            // TODO: 在查找窗口的过程中，也会检查进程是否已经退出吗？不会
+            // 如果找不到有效窗口，就弹窗提示信息
+
             Debug.WriteLine("im coming in");
             CompositeDisposable disposables = [];
 
@@ -222,12 +170,10 @@ public partial class App : Application
 
             disposables.Dispose();
         }
-
-        Environment.Exit(0);
     }
 
     /// <summary>
-    /// 设置生命周期，启动偏好设置面板。
+    /// 设置单实例应用，启动偏好设置面板。
     /// </summary>
     private static async Task<LaunchResult> LaunchPreferenceAsync()
     {
@@ -246,7 +192,7 @@ public partial class App : Application
         AppInstance.GetCurrent().RxActivated()
             .Subscribe(_ =>
             {
-                // QUES: 即使回到 UI 线程中 preference.Activate() 似乎不启用
+                // WAS Shit 9: preference.Active() 在这里不起用
                 var preferenceHandle = WindowNative.GetWindowHandle(preference);
                 Win32.ActiveWindow(preferenceHandle);
             });

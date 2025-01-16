@@ -71,6 +71,8 @@ namespace TouchChan
     /// </summary>
     public static class NativeMethods
     {
+        public static nint GetConsoleWindow() => PInvoke.GetConsoleWindow();
+
         public static void SetParent(nint child, nint parent) => PInvoke.SetParent(new(child), new(parent));
 
         [SupportedOSPlatform("windows10.0.14393")]

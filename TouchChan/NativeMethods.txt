@@ -16,6 +16,7 @@ WINDOW_EX_STYLE
 ShowWindow
 SetForegroundWindow
 MessageBox
+GetConsoleWindow
 
 GetModuleHandle
 SetWindowsHookEx

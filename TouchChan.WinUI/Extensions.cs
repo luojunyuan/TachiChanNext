@@ -17,13 +17,17 @@ namespace TouchChan.WinUI;
 
 public class Log
 {
-    public static readonly Stopwatch Stopwatch = new();
+    private static bool HasConsole { get; } = NativeMethods.GetConsoleWindow() != nint.Zero;
+
+    private static readonly Stopwatch Stopwatch = new();
 
     public static void Do(string message)
     {
         var elapsedMilliseconds = Stopwatch.ElapsedMilliseconds;
 
-        Console.WriteLine($"{elapsedMilliseconds,-4} ms {message}");
+        var output = $"{elapsedMilliseconds + " ms",-4} {message}";
+        if (HasConsole) Console.WriteLine(output);
+        else Debug.WriteLine(output);
 
         Stopwatch.Restart();
     }

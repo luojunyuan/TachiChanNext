@@ -18,5 +18,6 @@ public sealed partial class PreferenceWindow : Window
 
     private void Button_Click(object sender, RoutedEventArgs e)
     {
+        throw new System.Exception("Test Exception");
     }
 }
