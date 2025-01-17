@@ -21,7 +21,7 @@ public partial class App : Application
     public App()
     {
         // Benchmark: 预加载 (Warm Up AOT)
-        _ = int.TryParse(string.Empty, out _);
+        //_ = int.TryParse(string.Empty, out _);
 
         this.InitializeComponent();
 
