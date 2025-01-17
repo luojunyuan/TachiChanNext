@@ -15,26 +15,6 @@ using Windows.Foundation;
 
 namespace TouchChan.WinUI;
 
-public class Log
-{
-    private static bool HasConsole { get; } = NativeMethods.GetConsoleWindow() != nint.Zero;
-
-    private static readonly Stopwatch Stopwatch = new();
-
-    public static void Do(string message)
-    {
-        var elapsedMilliseconds = Stopwatch.ElapsedMilliseconds;
-
-        var output = $"{elapsedMilliseconds + " ms",-4} {message}";
-        if (HasConsole) Console.WriteLine(output);
-        else Debug.WriteLine(output);
-
-        Stopwatch.Restart();
-    }
-
-    public static void Do(int message) => Do(message.ToString());
-}
-
 readonly struct PointWarp(Point point)
 {
     public double X { get; } = point.X;

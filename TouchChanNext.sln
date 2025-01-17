@@ -20,6 +20,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TouchChan.ShellMenuHandler"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan.ViewModel", "TouchChan.ViewModel\TouchChan.ViewModel.csproj", "{31C2E759-DFE0-4009-B0DA-15A505379A1F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan.SplashScreenGdiPlus", "TouchChan.SplashScreenGdiPlus\TouchChan.SplashScreenGdiPlus.csproj", "{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -90,6 +92,18 @@ Global
 		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Release|x64.Build.0 = Release|Any CPU
 		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Release|x86.ActiveCfg = Release|Any CPU
 		{31C2E759-DFE0-4009-B0DA-15A505379A1F}.Release|x86.Build.0 = Release|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Debug|x64.Build.0 = Debug|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Debug|x86.Build.0 = Debug|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Release|ARM64.Build.0 = Release|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Release|x64.ActiveCfg = Release|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Release|x64.Build.0 = Release|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Release|x86.ActiveCfg = Release|Any CPU
+		{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -16,4 +16,20 @@
     <PackageReference Include="WindowsShortcutFactory" Version="1.2.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TouchChan.SplashScreenGdiPlus\TouchChan.SplashScreenGdiPlus.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="EmbeddedResource.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>EmbeddedResource.resx</DependentUpon>
+    </Compile>
+    <EmbeddedResource Update="EmbeddedResource.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>EmbeddedResource.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

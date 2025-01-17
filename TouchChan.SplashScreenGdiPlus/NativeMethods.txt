@@ -1,0 +1,26 @@
+﻿// Basic
+DefWindowProc
+RegisterClassEx
+CreateWindowEx
+
+// Position
+SystemParametersInfo
+
+// Dpi
+MonitorFromPoint
+GetDpiForMonitor
+
+// Interop between System.Drawing.Common and GDI+
+GetDC
+ReleaseDC
+
+// Layered to make unwaitable
+WINDOW_EX_STYLE
+SetWindowLong
+GetWindowLong
+
+// Transparency color key
+SetLayeredWindowAttributes
+
+// Messge loop
+DestroyWindow

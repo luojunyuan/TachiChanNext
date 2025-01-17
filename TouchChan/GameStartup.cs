@@ -1,16 +1,63 @@
 ﻿using LightResults;
 using System.ComponentModel;
 using System.Diagnostics;
+using TouchChan.SplashScreenGdiPlus;
 using WindowsShortcutFactory;
 
 namespace TouchChan;
 
+public class Log
+{
+    private static bool HasConsole { get; } = NativeMethods.GetConsoleWindow() != nint.Zero;
+
+    private static readonly Stopwatch Stopwatch = new();
+
+    public static void Do(string message)
+    {
+        var elapsedMilliseconds = Stopwatch.ElapsedMilliseconds;
+
+        var output = $"{elapsedMilliseconds + " ms",-4} {message}";
+        if (HasConsole) Console.WriteLine(output);
+        else Debug.WriteLine(output);
+
+        Stopwatch.Restart();
+    }
+
+    public static void Do(int message) => Do(message.ToString());
+}
+
 public static class GameStartup
 {
+    public static async Task<Result<Process>> GetOrLaunchGameWithSplashAsync(string path, bool leEnable)
+    {
+        var process = await GetWindowProcessByPathAsync(path);
+        if (process != null)
+            return process;
+
+        Log.Do(1);
+        using var fileStream = EmbeddedResource.KleeGreen;
+        Log.Do(2);
+        var splash = SplashScreen.Show(fileStream);
+        Log.Do(3);
+
+        var launchResult = await LaunchGameAsync(path, leEnable);
+        try
+        {
+            if (launchResult.IsFailure(out var launchGameError, out process))
+                return Result.Failure<Process>(launchGameError.Message);
+
+            return process;
+        }
+        finally
+        {
+            splash.Close();
+        }
+    }
+
     /// <summary>
     /// 启动游戏进程
     /// </summary>
-    public static async Task<Result<Process>> LaunchGameAsync(string path, bool leEnable)
+    private static async Task<Result<Process>> LaunchGameAsync(string path, bool leEnable)
     {
         // NOTE: NUKITASHI2(steam) 会先启动一个进程闪现黑屏窗口，然后再重新启动游戏进程
 
@@ -36,12 +83,14 @@ public static class GameStartup
         {
             var gameProcess = await GetWindowProcessByPathAsync(path);
             if (gameProcess != null)
+            {
+                // leProc?.kill()
                 return gameProcess;
+            }
 
             await Task.Delay(UIMinimumResponseTime);
         }
 
-        // leProc.kill()
         return Result.Failure<Process>("Failed to start game within the timeout period.");
     }
 
@@ -78,7 +127,7 @@ public static class GameStartup
     /// <summary>
     /// 尝试通过限定的程序路径获取对应正在运行的，存在 MainWindowHandle 的进程
     /// </summary>
-    public static Task<Process?> GetWindowProcessByPathAsync(string gamePath)
+    private static Task<Process?> GetWindowProcessByPathAsync(string gamePath)
     {
         var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
         return Task.Run(() => Process.GetProcessesByName(friendlyName)

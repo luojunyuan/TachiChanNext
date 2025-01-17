@@ -66,7 +66,7 @@ public partial class App : Application
             return LaunchResult.Failed;
         }
 
-        var processTask = GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
+        var processTask = GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
 
         var childWindow = new MainWindow(); // Ryzen 7 5800H: 33ms
         childWindow.Activate();
@@ -96,31 +96,6 @@ public partial class App : Application
         }, TaskCreationOptions.LongRunning);
 
         return LaunchResult.Success;
-    }
-
-    private static async Task<Result<Process>> GetOrLaunchGameWithSplashAsync(string path, bool leEnable)
-    {
-        var process = await GameStartup.GetWindowProcessByPathAsync(path);
-        if (process != null)
-            return process;
-
-        // TODO: Win32 native gdi+ splash
-        // 比较流和文件哪个速度更快，理应流更快，因为没有磁盘IO，但是COM的转化有可能比计算机上的文件IO慢
-        const string fileImage = "assets\\klee.png";
-        var splash = WinUIEx.SimpleSplashScreen.ShowSplashScreenImage(fileImage);
-
-        var launchResult = await GameStartup.LaunchGameAsync(path, leEnable);
-        try
-        {
-            if (launchResult.IsFailure(out var launchGameError, out process))
-                return Result.Failure<Process>(launchGameError.Message);
-
-            return process;
-        }
-        finally
-        {
-            splash.Hide();
-        }
     }
 
     /// <summary>
