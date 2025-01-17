@@ -34,11 +34,8 @@ public static class GameStartup
         if (process != null)
             return process;
 
-        Log.Do(1);
         using var fileStream = EmbeddedResource.KleeGreen;
-        Log.Do(2);
         var splash = SplashScreen.Show(fileStream);
-        Log.Do(3);
 
         var launchResult = await LaunchGameAsync(path, leEnable);
         try
