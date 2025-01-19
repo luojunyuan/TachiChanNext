@@ -1,6 +1,6 @@
-﻿using LightResults;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
+using LightResults;
 using TouchChan.SplashScreenGdiPlus;
 using WindowsShortcutFactory;
 
@@ -35,20 +35,15 @@ public static class GameStartup
             return process;
 
         using var fileStream = EmbeddedResource.KleeGreen;
-        var splash = SplashScreen.Show(fileStream);
 
-        var launchResult = await LaunchGameAsync(path, leEnable);
-        try
+        return await SplashScreen.WithShowAndExecuteAsync(fileStream, async () =>
         {
+            var launchResult = await LaunchGameAsync(path, leEnable);
             if (launchResult.IsFailure(out var launchGameError, out process))
                 return Result.Failure<Process>(launchGameError.Message);
 
             return process;
-        }
-        finally
-        {
-            splash.Close();
-        }
+        });
     }
 
     /// <summary>
@@ -136,7 +131,7 @@ public static class GameStartup
                 }
                 catch (Win32Exception ex)
                 {
-                    // NOTE: 在获取 proc.MainModule 相关信息过程中，有概率进程已经退出了
+                    // NOTE: 在获取 proc.MainModule 内部相关信息过程中，有概率进程已经退出了
                     Debug.WriteLine(nameof(GetWindowProcessByPathAsync) + ex.Message);
                     return false;
                 }

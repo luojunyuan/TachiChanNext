@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.IO;
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -10,16 +11,19 @@ namespace TouchChan.SplashScreenGdiPlus;
 
 public class SplashScreen
 {
-    public static SplashScreen Show(string imagePath)
+    public static async Task<T> WithShowAndExecuteAsync<T>(Stream resource, Func<Task<T>> action)
     {
-        using var image = Image.FromFile(imagePath);
-        return InternalShow(image);
-    }
-
-    public static SplashScreen Show(Stream stream)
-    {
-        using var image = Image.FromStream(stream);
-        return InternalShow(image);
+        using var image = Image.FromStream(resource);
+        var splash = InternalShow(image);
+        try
+        {
+            return await action();
+        }
+        finally
+        {
+            // NOTE: finally 是重要的，他保证了无论 Action 结果如何 splash 都将被清理
+            splash.CleanUp();
+        }
     }
 
     private static SplashScreen InternalShow(Image image)
@@ -28,8 +32,6 @@ public class SplashScreen
         splash.DisplaySplash(image);
         return splash;
     }
-
-    public void Close() => CleanUp();
 
     private HWND _hWndSplash;
     private HDC _hdc;
