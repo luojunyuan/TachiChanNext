@@ -23,69 +23,24 @@ public class Log
         Stopwatch.Restart();
     }
 
+    private static readonly Stopwatch Stopwatch2 = new();
+
+    public static void Do2(string message)
+    {
+        var elapsedMilliseconds = Stopwatch2.ElapsedMilliseconds;
+
+        var output = $"AsyncTask {elapsedMilliseconds + " ms",-4} {message}";
+        if (HasConsole) Console.WriteLine(output);
+        else Debug.WriteLine(output);
+
+        Stopwatch2.Restart();
+    }
+
     public static void Do(int message) => Do(message.ToString());
 }
 
-public static class GameStartup
+public static partial class GameStartup
 {
-    public static async Task<Result<Process>> GetOrLaunchGameWithSplashAsync(string path, bool leEnable)
-    {
-        var process = await GetWindowProcessByPathAsync(path);
-        if (process != null)
-            return process;
-
-        using var fileStream = EmbeddedResource.KleeGreen;
-
-        return await SplashScreen.WithShowAndExecuteAsync(fileStream, async () =>
-        {
-            var launchResult = await LaunchGameAsync(path, leEnable);
-            if (launchResult.IsFailure(out var launchGameError, out process))
-                return Result.Failure<Process>(launchGameError.Message);
-
-            return process;
-        });
-    }
-
-    /// <summary>
-    /// 启动游戏进程
-    /// </summary>
-    private static async Task<Result<Process>> LaunchGameAsync(string path, bool leEnable)
-    {
-        // NOTE: NUKITASHI2(steam) 会先启动一个进程闪现黑屏窗口，然后再重新启动游戏进程
-
-        // TODO: 通过 LE 启动，思考检查游戏id好的方法，处理超时和错误情况
-        // 考虑 LE 通过注册表查找还是通过配置文件，还是通过指定路径来启动
-
-        // NOTE: 设置 WorkingDirectory 在游戏路径，避免部分游戏无法索引自身资源导致异常
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = path,
-            WorkingDirectory = Path.GetDirectoryName(path),
-            EnvironmentVariables = { ["__COMPAT_LAYER"] = "HighDpiAware" }
-        };
-        _ = Process.Start(startInfo);
-
-        const int WaitMainWindowTimeout = 20000;
-        const int UIMinimumResponseTime = 50;
-
-        using var cts = new CancellationTokenSource(WaitMainWindowTimeout);
-        var timeoutToken = cts.Token;
-
-        while (!timeoutToken.IsCancellationRequested)
-        {
-            var gameProcess = await GetWindowProcessByPathAsync(path);
-            if (gameProcess != null)
-            {
-                // leProc?.kill()
-                return gameProcess;
-            }
-
-            await Task.Delay(UIMinimumResponseTime);
-        }
-
-        return Result.Failure<Process>("Failed to start game within the timeout period.");
-    }
-
     /// <summary>
     /// 准备有效的游戏路径
     /// </summary>
@@ -116,12 +71,84 @@ public static class GameStartup
         return resolvedPath;
     }
 
+    public static async Task<Result<Process>> GetOrLaunchGameWithSplashAsync(string path, bool leEnable)
+    {
+        Log.Do2("GetOrLaunchGameWithSplashAsync GetWindowProcessByPathAsync");
+
+        var process = await GetWindowProcessByPathAsync(path);
+        if (process != null)
+            return process;
+
+        Log.Do2("GetWindowProcessByPathAsync End");
+
+        using var fileStream = EmbeddedResource.KleeGreen;
+
+        Log.Do2("Splash");
+        return await SplashScreen.WithShowAndExecuteAsync(fileStream, async () =>
+        {
+            Log.Do2("Splash Showed");
+            var launchResult = await LaunchGameAsync(path, leEnable);
+            if (launchResult.IsFailure(out var launchGameError, out process))
+                return Result.Failure<Process>(launchGameError.Message);
+
+            return process;
+        });
+    }
+
+    /// <summary>
+    /// 启动游戏进程
+    /// </summary>
+    private static async Task<Result<Process>> LaunchGameAsync(string path, bool leEnable)
+    {
+        Log.Do2("LaunchGameAsync");
+        // NOTE: NUKITASHI2(steam) 会先启动一个进程闪现黑屏窗口，然后再重新启动游戏进程
+
+        // TODO: 通过 LE 启动，思考检查游戏id好的方法，处理超时和错误情况
+        // 考虑 LE 通过注册表查找还是通过配置文件，还是通过指定路径来启动
+
+        // NOTE: 设置 WorkingDirectory 在游戏路径，避免部分游戏无法索引自身资源导致异常
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = path,
+            WorkingDirectory = Path.GetDirectoryName(path),
+            EnvironmentVariables = { ["__COMPAT_LAYER"] = "HighDpiAware" }
+        };
+        _ = Process.Start(startInfo);
+        Log.Do2("Process Started game");
+
+        const int WaitMainWindowTimeout = 20000;
+        const int UIMinimumResponseTime = 50;
+
+        // NOTE: 这是反复-超时任务的最佳实践，基于任务驱动
+        using var cts = new CancellationTokenSource(WaitMainWindowTimeout);
+        var timeoutToken = cts.Token;
+
+        Log.Do2("Start search process");
+        while (!timeoutToken.IsCancellationRequested)
+        {
+            var gameProcess = await GetWindowProcessByPathAsync(path);
+            Log.Do2("search loop");
+
+            if (gameProcess != null)
+            {
+                // leProc?.kill()
+                Log.Do2("LaunchGameAsync End");
+                return gameProcess;
+            }
+
+            await Task.Delay(UIMinimumResponseTime);
+        }
+
+        return Result.Failure<Process>("Failed to start game within the timeout period.");
+    }
+
     /// <summary>
     /// 尝试通过限定的程序路径获取对应正在运行的，存在 MainWindowHandle 的进程
     /// </summary>
     private static Task<Process?> GetWindowProcessByPathAsync(string gamePath)
     {
         var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
+        // FUTURE: .log main.bin situation
         return Task.Run(() => Process.GetProcessesByName(friendlyName)
             .Where(p =>
             {

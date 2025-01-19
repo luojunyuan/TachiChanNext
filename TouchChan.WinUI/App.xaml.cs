@@ -1,13 +1,13 @@
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppLifecycle;
-using R3;
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
+using R3;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
@@ -20,10 +20,14 @@ public partial class App : Application
 
     public App()
     {
-        // Benchmark: 预加载 (Warm Up AOT)
-        //_ = int.TryParse(string.Empty, out _);
+        Log.Do("App Start");
+        // Benchmark: 预加载 (Warm Up AOT) 可能是因为需要读入程序集，考验IO能力
+        _ = int.TryParse(string.Empty, out _);
 
+        Log.Do("Warm Up AOT End");
+        Log.Do("App InitializeComponent");
         this.InitializeComponent();
+        Log.Do("App InitializeComponent End");
 
 #if !DEBUG
         // WAS Shit 8: 异常发生时默认不会结束程序
@@ -37,6 +41,8 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        Log.Do("App OnLaunched");
+
         // WAS Shit 4: 在 desktop 下 LaunchActivatedEventArgs 接收不到命令行参数 #3368
         var arguments = Environment.GetCommandLineArgs()[1..];
 
@@ -57,6 +63,7 @@ public partial class App : Application
     /// </summary>
     private static async Task<LaunchResult> StartMainWindowAsync(string[] arguments)
     {
+        Log.Do("StartMainWindowAsync");
         var path = arguments[0];
 
         var gamePathResult = GameStartup.PrepareValidGamePath(path);
@@ -65,22 +72,22 @@ public partial class App : Application
             await MessageBox.ShowAsync(pathError.Message);
             return LaunchResult.Failed;
         }
+        Log.Do("PrepareValidGamePath End");
 
         var processTask = GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
 
+        Log.Do("MainWindow");
         var childWindow = new MainWindow(); // Ryzen 7 5800H: 33ms
         childWindow.Activate();
+        Log.Do("MainWindow Activated");
 
         var processResult = await processTask;
+        Log.Do("processResult got");
         if (processResult.IsFailure(out var processError, out var process))
         {
             await MessageBox.ShowAsync(processError.Message);
             return LaunchResult.Failed;
         }
-
-        // 确保 process 后，立即订阅退出事件，绑定生命周期到游戏进程
-        process.EnableRaisingEvents = true;
-        process.RxExited().Subscribe(_ => Environment.Exit(0));
 
         _ = Task.Factory.StartNew(async () =>
         {
@@ -95,56 +102,65 @@ public partial class App : Application
             }
         }, TaskCreationOptions.LongRunning);
 
+        Log.Do("StartMainWindowAsync End");
+
         return LaunchResult.Success;
     }
 
     /// <summary>
-    /// 绑定窗口到游戏进程
+    /// 绑定窗口到游戏进程，也是启动后的 WinUI 窗口生命周期
     /// </summary>
-    /// <param name="childWindow">WinUI 3 子窗口</param>
+    /// <param name="childWindow">WinUI 子窗口</param>
     /// <param name="process">目标进程</param>
     private static async Task GameWindowBindingAsync(MainWindow childWindow, Process process)
     {
+        Log.Do2("GameWindowBindingAsync");
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的游戏窗口
         var isDpiUnaware = Win32.IsDpiUnaware(process);
 
-        // QUES: use reactive, avoid async Task?
-
-        // TODO：这个循环只做窗口检查，不做进程检查
         while (process.HasExited is false)
         {
-            // 设计一个游戏的CurrentMainWindowHandleService, in process
-            // TODO: 在查找窗口的过程中，也会检查进程是否已经退出吗？不会
-            // 如果找不到有效窗口，就弹窗提示信息
+            Log.Do2("Start FindRealWindowHandleAsync");
+            var handleResult = await GameStartup.FindRealWindowHandleAsync(process);
+            if (handleResult.IsFailure(out var error, out var windowHandle)
+                && error is WindowHandleNotFoundError)
+            {
+                await MessageBox.ShowAsync("Timeout! Failed to find game window");
+                break;
+            }
+            else if (error is ProcessExitedError)
+            {
+                break;
+            }
+            Log.Do2("End FindRealWindowHandleAsync");
 
-            Debug.WriteLine("im coming in");
-            CompositeDisposable disposables = [];
-
-            ServiceLocator.InitializeWindowHandle(process.MainWindowHandle, isDpiUnaware);
-
-            var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
-            ServiceLocator.GameWindowService.WindowDestroyed()
-                .SubscribeOn(UISyncContext)
-                .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
-                .DisposeWith(disposables);
+            using CompositeDisposable disposables = [];
 
             if (isDpiUnaware)
             {
-                childWindow.UnawareGameWindowShowHideHack(ServiceLocator.GameWindowService)
+                // HACK: Pending test
+                childWindow.UnawareGameWindowShowHideHack(windowHandle)
                     .DisposeWith(disposables);
             }
 
-            NativeMethods.SetParent(childWindow.Hwnd, ServiceLocator.GameWindowService.WindowHandle);
+            NativeMethods.SetParent(childWindow.Hwnd, windowHandle);
 
-            ServiceLocator.GameWindowService.ClientSizeChanged()
+            GameWindowService.ClientSizeChanged(windowHandle)
                 .SubscribeOn(UISyncContext)
                 .Subscribe(size => childWindow.Hwnd.ResizeClient(size))
                 .DisposeWith(disposables);
 
+            var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
+            GameWindowService.WindowDestroyed(windowHandle)
+                .SubscribeOn(UISyncContext)
+                .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
+                .DisposeWith(disposables);
+            Log.Do2("await");
             await childWindowClosedChannel.Reader.WaitToReadAsync();
-
-            disposables.Dispose();
         }
+
+        // WAS Shit x: 疑似窗口显示后，在窗口显示前的线程上调用 Current.Exit() 会引发错误
+        Environment.Exit(0);
     }
 
     /// <summary>
@@ -152,6 +168,8 @@ public partial class App : Application
     /// </summary>
     private static async Task<LaunchResult> LaunchPreferenceAsync()
     {
+        Log.Do("App LaunchPreferenceAsync");
+
         const string InstanceID = "13615F35-469B-4341-B3CE-121C694C042C";
         var mainInstance = AppInstance.FindOrRegisterForKey(InstanceID);
         if (!mainInstance.IsCurrent)
@@ -163,6 +181,7 @@ public partial class App : Application
 
         var preference = new PreferenceWindow();
         preference.Activate();
+        Log.Do("Activated PreferenceWindow");
 
         AppInstance.GetCurrent().RxActivated()
             .Subscribe(_ =>

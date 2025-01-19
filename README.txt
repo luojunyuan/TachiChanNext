@@ -43,3 +43,39 @@ Error 级别：意料之外的异常，需要打印出 Exception 本身，包括
 Info 级别：意料之中的异常处理，仅仅是为了在 Output 窗口中，指引解释 “引发的异常...” 的原因。如果没有 Output 窗口，甚至不需要。
 
 反馈到用户的错误信息一定是需要 i18n 的。
+
+### 效率
+
+根据 branch aot messure，需要注意的点有
+AOT预热 10ms
+从启动到 App-OnLaunched 37-58ms
+MainWindow 自身的激活 100ms 
+（因为和搜索进程并行进行所以可能对实际开销有所影响，并且在游戏未启动前提下后者时间远远大于前者所以基本可以忽略）
+[ Async
+搜索是否已经存在进程 108ms
+splash 23-45ms
+Process.Start game 20ms
+GetWindowProcessByPathAsync 循环搜索进程，消费1404ms 
+（这一段启动是没办法控制的，因为要等待进程以及MainWindowHandle的启动）
+（可以内部再打详情）
+] 1452ms
+FindRealWindowHandleAsync 直接命中默认MainWindowHandle 3ms
+Preference 窗口激活 168ms
+
+---
+
+i7-8650U
+Warmup 25ms
+App-OnLaunched 31-39ms
+ActivePreference 201-234ms
+ActiveMainWindow 57-63ms
+[ Async
+GetWindowProcessByPathAsync 58-63ms
+Splash 25-34ms
+Process.Start 19ms 
+search loop 1782ms
+] 1833ms
+找到handle后的行为和订阅 21-35ms
+
+首次在某一计算机启动时，超长消耗
+Process.Start 
