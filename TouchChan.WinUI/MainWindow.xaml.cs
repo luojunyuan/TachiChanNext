@@ -36,15 +36,15 @@ public sealed partial class MainWindow : Window
     /// <remarks>
     /// 必须在 SetParent 之前设置，否则似乎不会感知 Unaware 下的游戏窗口大小变化
     /// </remarks>
-    public IDisposable UnawareGameWindowShowHideHack(GameWindowService gameWindowService)
+    public IDisposable UnawareGameWindowShowHideHack(nint windowHandle)
     {
         void SetWindowVisible(bool visible)
         {
             if (visible) WinUIEx.WindowExtensions.Show(this);
             else WinUIEx.WindowExtensions.Hide(this);
         }
-        return gameWindowService.ClientSizeChanged()
-            .Select(_ => Win32.GetDpiForWindowsMonitor(gameWindowService.WindowHandle) / 96d)
+        return GameWindowService.ClientSizeChanged(windowHandle)
+            .Select(_ => Win32.GetDpiForWindowsMonitor(windowHandle) / 96d)
             .DistinctUntilChanged()
             .Subscribe(dpiScale => SetWindowVisible(dpiScale == 1));
     }

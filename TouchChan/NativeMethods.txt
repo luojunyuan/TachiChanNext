@@ -17,6 +17,8 @@ ShowWindow
 SetForegroundWindow
 MessageBox
 GetConsoleWindow
+EnumChildWindows
+
 
 GetModuleHandle
 SetWindowsHookEx

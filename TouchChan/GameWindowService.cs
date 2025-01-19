@@ -6,23 +6,8 @@ using Windows.Win32.UI.Accessibility;
 
 namespace TouchChan;
 
-public static partial class ServiceLocator
+public static class GameWindowService
 {
-    private static GameWindowService? _current;
-
-    public static void InitializeWindowHandle(nint newHandle, bool dpiUnaware) =>
-        _current = new(newHandle, dpiUnaware); // Log
-
-    public static GameWindowService GameWindowService => _current ??
-        throw new ArgumentNullException($"{nameof(GameWindowService)} is not initialized.");
-}
-
-public class GameWindowService(nint handle, bool dpiUnaware)
-{
-    public nint WindowHandle { get; } = handle;
-
-    public bool IsDpiUnaware { get; } = dpiUnaware;
-
     private const uint EventObjectLocationChange = 0x800B;
 
     private const int OBJID_WINDOW = 0;
@@ -37,17 +22,17 @@ public class GameWindowService(nint handle, bool dpiUnaware)
     /// 监听游戏窗口大小变化
     /// </summary>
     /// <remarks>必须在 UI 线程中订阅</remarks>
-    public Observable<Size> ClientSizeChanged() =>
+    public static Observable<Size> ClientSizeChanged(nint windowHandle) =>
         Observable.Create<Size>(observer =>
         {
-            PInvoke.GetClientRect(new(WindowHandle), out var initRect);
+            PInvoke.GetClientRect(new(windowHandle), out var initRect);
             var lastGameWindowSize = initRect.Size;
             observer.OnNext(lastGameWindowSize);
 
             var winEventDelegate = new WINEVENTPROC((hWinEventHook, eventId, hWnd, idObject, idChild, dwEventThread, dwmsEventTime) =>
             {
                 if (eventId == EventObjectLocationChange &&
-                    hWnd.Value == WindowHandle &&
+                    hWnd.Value == windowHandle &&
                     idObject == OBJID_WINDOW &&
                     idChild == SWEH_CHILDID_SELF)
                 {
@@ -60,7 +45,7 @@ public class GameWindowService(nint handle, bool dpiUnaware)
                 }
             });
             var winEventDelegateHandle = GCHandle.Alloc(winEventDelegate);
-            var targetThreadId = PInvoke.GetWindowThreadProcessId(new(WindowHandle), out var processId);
+            var targetThreadId = PInvoke.GetWindowThreadProcessId(new(windowHandle), out var processId);
             var windowsEventHook = PInvoke.SetWinEventHook(
                 EventObjectLocationChange, EventObjectLocationChange,
                 null, winEventDelegate, processId, targetThreadId,
@@ -79,13 +64,13 @@ public class GameWindowService(nint handle, bool dpiUnaware)
     /// 监听游戏窗口销毁消息
     /// </summary>
     /// <remarks>必须在 UI 线程中订阅</remarks>
-    public Observable<Unit> WindowDestroyed() =>
+    public static Observable<Unit> WindowDestroyed(nint windowHandle) =>
         Observable.Create<Unit>(observer =>
         {
             var winEventDelegate = new WINEVENTPROC((hWinEventHook, eventId, hWnd, idObject, idChild, dwEventThread, dwmsEventTime) =>
             {
                 if (eventId == EventObjectDestroy &&
-                    hWnd.Value == WindowHandle &&
+                    hWnd.Value == windowHandle &&
                     idObject == OBJID_WINDOW &&
                     idChild == SWEH_CHILDID_SELF)
                 {
@@ -93,7 +78,7 @@ public class GameWindowService(nint handle, bool dpiUnaware)
                 }
             });
             var winEventDelegateHandle = GCHandle.Alloc(winEventDelegate);
-            var targetThreadId = PInvoke.GetWindowThreadProcessId(new(WindowHandle), out var processId);
+            var targetThreadId = PInvoke.GetWindowThreadProcessId(new(windowHandle), out var processId);
             var windowsEventHook = PInvoke.SetWinEventHook(
                 EventObjectDestroy, EventObjectDestroy,
                 null, winEventDelegate, processId, targetThreadId,

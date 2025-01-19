@@ -6,28 +6,38 @@ using WindowsShortcutFactory;
 
 namespace TouchChan;
 
-public class Log
+public static partial class GameStartup
 {
-    private static bool HasConsole { get; } = NativeMethods.GetConsoleWindow() != nint.Zero;
-
-    private static readonly Stopwatch Stopwatch = new();
-
-    public static void Do(string message)
+    /// <summary>
+    /// 准备有效的游戏路径
+    /// </summary>
+    public static Result<string> PrepareValidGamePath(string path)
     {
-        var elapsedMilliseconds = Stopwatch.ElapsedMilliseconds;
+        if (!File.Exists(path))
+            return Result.Failure<string>($"Game path \"{path}\" not found, please check if it exist.");
 
-        var output = $"{elapsedMilliseconds + " ms",-4} {message}";
-        if (HasConsole) Console.WriteLine(output);
-        else Debug.WriteLine(output);
+        var isNotLnkFile = !Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase);
 
-        Stopwatch.Restart();
+        if (isNotLnkFile)
+            return path;
+
+        string? resolvedPath;
+        try
+        {
+            resolvedPath = WindowsShortcut.Load(path).Path;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine(ex);
+            return Result.Failure<string>($"Failed when resolve \"{path}\", please try start from game folder.");
+        }
+
+        if (!File.Exists(resolvedPath))
+            return Result.Failure<string>($"Resolved link path \"{resolvedPath}\" not found, please try start from game folder.");
+
+        return resolvedPath;
     }
 
-    public static void Do(int message) => Do(message.ToString());
-}
-
-public static class GameStartup
-{
     public static async Task<Result<Process>> GetOrLaunchGameWithSplashAsync(string path, bool leEnable)
     {
         var process = await GetWindowProcessByPathAsync(path);
@@ -68,12 +78,14 @@ public static class GameStartup
         const int WaitMainWindowTimeout = 20000;
         const int UIMinimumResponseTime = 50;
 
+        // NOTE: 这是反复-超时任务的最佳实践，基于任务驱动
         using var cts = new CancellationTokenSource(WaitMainWindowTimeout);
         var timeoutToken = cts.Token;
 
         while (!timeoutToken.IsCancellationRequested)
         {
             var gameProcess = await GetWindowProcessByPathAsync(path);
+
             if (gameProcess != null)
             {
                 // leProc?.kill()
@@ -87,41 +99,12 @@ public static class GameStartup
     }
 
     /// <summary>
-    /// 准备有效的游戏路径
-    /// </summary>
-    public static Result<string> PrepareValidGamePath(string path)
-    {
-        if (!File.Exists(path))
-            return Result.Failure<string>($"Game path \"{path}\" not found, please check if it exist.");
-
-        var isNotLnkFile = !Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase);
-
-        if (isNotLnkFile)
-            return path;
-
-        string? resolvedPath;
-        try
-        {
-            resolvedPath = WindowsShortcut.Load(path).Path;
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine(ex);
-            return Result.Failure<string>($"Failed when resolve \"{path}\", please try start from game folder.");
-        }
-
-        if (!File.Exists(resolvedPath))
-            return Result.Failure<string>($"Resolved link path \"{resolvedPath}\" not found, please try start from game folder.");
-
-        return resolvedPath;
-    }
-
-    /// <summary>
     /// 尝试通过限定的程序路径获取对应正在运行的，存在 MainWindowHandle 的进程
     /// </summary>
     private static Task<Process?> GetWindowProcessByPathAsync(string gamePath)
     {
         var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
+        // FUTURE: .log main.bin situation
         return Task.Run(() => Process.GetProcessesByName(friendlyName)
             .Where(p =>
             {
