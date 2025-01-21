@@ -106,20 +106,13 @@ public static partial class GameStartup
         var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
         // FUTURE: .log main.bin situation
         return Task.Run(() => Process.GetProcessesByName(friendlyName)
-            .Where(p =>
+            .FirstOrDefault(p =>
             {
-                try
-                {
-                    return p.MainModule?.FileName.Equals(gamePath, StringComparison.OrdinalIgnoreCase) ?? false;
-                }
-                catch (Win32Exception ex)
-                {
-                    // NOTE: 在获取 proc.MainModule 内部相关信息过程中，有概率进程已经退出了
-                    Debug.WriteLine(nameof(GetWindowProcessByPathAsync) + ex.Message);
+                if (p.MainWindowHandle == nint.Zero)
                     return false;
-                }
-            })
-            .OrderBy(p => p.StartTime)
-            .FirstOrDefault(p => p.MainWindowHandle != nint.Zero));
+
+                var mainModule = p.HasExited ? null : p.MainModule;
+                return mainModule?.FileName.Equals(gamePath, StringComparison.OrdinalIgnoreCase) ?? false;
+            }));
     }
 }
