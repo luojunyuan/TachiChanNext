@@ -1,6 +1,6 @@
-﻿using System.ComponentModel;
+﻿using LightResults;
+using System.ComponentModel;
 using System.Diagnostics;
-using LightResults;
 using TouchChan.SplashScreenGdiPlus;
 using WindowsShortcutFactory;
 
@@ -28,7 +28,7 @@ public static partial class GameStartup
         }
         catch (Exception ex)
         {
-            Trace.WriteLine(ex);
+            Debug.WriteLine(ex);
             return Result.Failure<string>($"Failed when resolve \"{path}\", please try start from game folder.");
         }
 
