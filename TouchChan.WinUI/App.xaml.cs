@@ -33,7 +33,7 @@ public partial class App : Application
         // WAS Shit 8: 异常发生时默认不会结束程序
         UnhandledException += (sender, e) =>
         {
-            Trace.WriteLine(e.Exception);
+            Debug.WriteLine(e.Exception);
             Environment.Exit(1);
         };
 #endif
@@ -77,7 +77,7 @@ public partial class App : Application
         var processTask = GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
 
         Log.Do("MainWindow");
-        var childWindow = new MainWindow(); // Ryzen 7 5800H: 33ms
+        var childWindow = new MainWindow();
         childWindow.Activate();
         Log.Do("MainWindow Activated");
 
@@ -89,6 +89,7 @@ public partial class App : Application
             return LaunchResult.Failed;
         }
 
+        // 启动后台绑定窗口任务
         _ = Task.Factory.StartNew(async () =>
         {
             try
@@ -97,7 +98,7 @@ public partial class App : Application
             }
             catch (Exception ex)
             {
-                Trace.WriteLine(ex);
+                Debug.WriteLine(ex);
                 Environment.Exit(1);
             }
         }, TaskCreationOptions.LongRunning);
@@ -121,11 +122,11 @@ public partial class App : Application
         while (process.HasExited is false)
         {
             Log.Do2("Start FindRealWindowHandleAsync");
-            var handleResult = await GameStartup.FindRealWindowHandleAsync(process);
+            var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
             if (handleResult.IsFailure(out var error, out var windowHandle)
                 && error is WindowHandleNotFoundError)
             {
-                await MessageBox.ShowAsync("Timeout! Failed to find game window");
+                await MessageBox.ShowAsync("Timeout! Failed to find a valid window of game");
                 break;
             }
             else if (error is ProcessExitedError)
@@ -157,6 +158,8 @@ public partial class App : Application
                 .DisposeWith(disposables);
             Log.Do2("await");
             await childWindowClosedChannel.Reader.WaitToReadAsync();
+
+            process.Refresh();
         }
 
         // WAS Shit x: 疑似窗口显示后，在窗口显示前的线程上调用 Current.Exit() 会引发错误

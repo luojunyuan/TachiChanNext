@@ -10,7 +10,7 @@
 
 ### 下一阶段
 
-- [ ] Touch 大小需跟随窗口大小变化，可以成段式变化
+- [ ] Touch 大小需跟随窗口大小变化，可以考虑区分为俩个或多个大小
 - [ ] 重写 ShellHandlerMenu，i18n。
 - [ ] ViewModel 结构，Config 文件配置存储。
 
