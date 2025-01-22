@@ -1,5 +1,4 @@
 ﻿using System.Drawing;
-using System.IO;
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -13,6 +12,7 @@ public class SplashScreen
 {
     public static async Task<T> WithShowAndExecuteAsync<T>(Stream resource, Func<Task<T>> action)
     {
+
         using var image = Image.FromStream(resource);
         var splash = InternalShow(image);
         try

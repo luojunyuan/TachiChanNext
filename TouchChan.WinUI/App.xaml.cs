@@ -73,7 +73,7 @@ public partial class App : Application
         }
         Log.Do("PrepareValidGamePath");
 
-        var findProcessTask = Task.Run(async () =>
+        var processTask = Task.Run(async () =>
             await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le")));
 
         Log.Do("MainWindow");
@@ -122,7 +122,8 @@ public partial class App : Application
         while (process.HasExited is false)
         {
             Log.Do2("Start FindRealWindowHandleAsync");
-            var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
+            //var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
+            var handleResult = GameStartup.FindGoodWindowHandle(process);
             if (handleResult.IsFailure(out var error, out var windowHandle)
                 && error is WindowHandleNotFoundError)
             {

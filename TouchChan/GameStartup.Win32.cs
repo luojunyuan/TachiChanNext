@@ -52,6 +52,58 @@ public static partial class GameStartup
         return Result.Failure<nint>(new WindowHandleNotFoundError());
     }
 
+    public static Result<nint> FindGoodWindowHandle(Process proc)
+    {
+        const int SearchWindowTimeout = 20000;
+
+        var goodHandle = proc.MainWindowHandle;
+        PInvoke.GetClientRect(new(goodHandle), out var clientRect);
+
+        if (IsGoodWindow(clientRect))
+        {
+            return goodHandle;
+        }
+
+        var cts = new CancellationTokenSource(SearchWindowTimeout);
+        var timeoutToken = cts.Token;
+        while (!timeoutToken.IsCancellationRequested)
+        {
+            if (proc.HasExited)
+                return Result.Failure<nint>(new ProcessExitedError());
+
+            var allWindows = GetAllChildWindowHandles();
+            foreach (var handle in allWindows)
+            {
+                _ = PInvoke.GetWindowThreadProcessId(handle, out var relativeProcessId);
+                if (relativeProcessId != proc.Id)
+                    continue;
+
+                PInvoke.GetClientRect(handle, out var rect);
+                if (IsGoodWindow(rect))
+                {
+                    return handle.Value;
+                }
+            }
+        }
+
+        return Result.Failure<nint>(new WindowHandleNotFoundError());
+    }
+
+    private static List<HWND> GetAllChildWindowHandles()
+    {
+        var list = new List<HWND>();
+
+        BOOL ChildProc(HWND handle, LPARAM pointer)
+        {
+            list.Add(handle);
+
+            return true;
+        }
+        PInvoke.EnumChildWindows(HWND.Null, ChildProc, default);
+
+        return list;
+    }
+
     private static async IAsyncEnumerable<HWND> GetWindowsOfProcessAsync(Process proc, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var hWnd in GetAllChildWindowHandlesAsync(cancellationToken))
@@ -101,22 +153,8 @@ public static partial class GameStartup
         }
     }
 
-    public static List<nint> GetAllChildWindowHandles()
-    {
-        var list = new List<HWND>();
 
-        BOOL ChildProc(HWND handle, LPARAM pointer)
-        {
-            list.Add(handle);
-
-            return true;
-        }
-        PInvoke.EnumChildWindows(HWND.Null, ChildProc, default);
-
-        return list.Select(hWnd => hWnd.Value).ToList();
-    }
-
-    private static IEnumerable<HWND> GetAllChildWindowsEnumerable()
+    private static List<HWND> GetAllChildWindows()
     {
         List<HWND> result = new();
         var listHandle = GCHandle.Alloc(result);

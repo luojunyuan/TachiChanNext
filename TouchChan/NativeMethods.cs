@@ -43,6 +43,26 @@ namespace TouchChan
         }
 
         /// <summary>
+        /// 激活窗口
+        /// </summary>
+        public static void ActiveWindow(nint hwnd)
+        {
+            PInvoke.ShowWindow(new(hwnd), SHOW_WINDOW_CMD.SW_RESTORE);
+            PInvoke.SetForegroundWindow(new(hwnd));
+        }
+
+        /// <summary>
+        /// 尝试恢复最小化的窗口
+        /// </summary>
+        public static void TryRestoreWindow(nint windowHandle)
+        {
+            if (PInvoke.IsIconic(new(windowHandle)))
+            {
+                PInvoke.ShowWindow(new(windowHandle), SHOW_WINDOW_CMD.SW_RESTORE);
+            }
+        }
+
+        /// <summary>
         /// 判断进程对象是否对 DPI 不感知
         /// </summary>
         [SupportedOSPlatform("windows8.1")]
