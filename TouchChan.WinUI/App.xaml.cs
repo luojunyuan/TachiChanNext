@@ -106,17 +106,20 @@ public partial class App : Application
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的游戏窗口
         var isDpiUnaware = Win32.IsDpiUnaware(process);
 
+        var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
+        process.EnableRaisingEvents = true;
+        process.RxExited().Subscribe(_ => childWindowClosedChannel.Writer.Complete());
+
         while (process.HasExited is false)
         {
-            //var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
-            var handleResult = GameStartup.FindGoodWindowHandle(process);
+            var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
             if (handleResult.IsFailure(out var error, out var windowHandle)
                 && error is WindowHandleNotFoundError)
             {
                 await MessageBox.ShowAsync("Timeout! Failed to find a valid window of game");
                 break;
             }
-            else if (error is ProcessExitedError)
+            else if (error is ProcessExitedError or ProcessPendingExitedError)
             {
                 break;
             }
@@ -137,12 +140,11 @@ public partial class App : Application
                 .Subscribe(size => childWindow.Hwnd.ResizeClient(size))
                 .DisposeWith(disposables);
 
-            var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
             GameWindowService.WindowDestroyed(windowHandle)
                 .SubscribeOn(UISyncContext)
                 .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
                 .DisposeWith(disposables);
-            await childWindowClosedChannel.Reader.WaitToReadAsync();
+            await childWindowClosedChannel.Reader.ReadAsync();
 
             process.Refresh();
         }

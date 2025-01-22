@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Runtime.InteropServices;
+using Nito.AsyncEx;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
@@ -12,18 +13,29 @@ public class SplashScreen
 {
     public static async Task<T> WithShowAndExecuteAsync<T>(Stream resource, Func<Task<T>> action)
     {
+        var taskCompletionSource = new TaskCompletionSource<T>();
 
-        using var image = Image.FromStream(resource);
-        var splash = InternalShow(image);
-        try
+        AsyncContext.Run(async () =>
         {
-            return await action();
-        }
-        finally
-        {
-            // NOTE: finally 是重要的，他保证了无论 Action 结果如何 splash 都将被清理
-            splash.CleanUp();
-        }
+            using var image = Image.FromStream(resource);
+            var splash = InternalShow(image);
+            try
+            {
+                var result = await action();
+                taskCompletionSource.SetResult(result);
+            }
+            catch (Exception ex)
+            {
+                taskCompletionSource.SetException(ex);
+            }
+            finally
+            {
+                // NOTE: finally 是重要的，他保证了无论 Action 结果如何 splash 都将被清理
+                splash.CleanUp();
+            }
+        });
+
+        return await taskCompletionSource.Task;
     }
 
     private static SplashScreen InternalShow(Image image)
