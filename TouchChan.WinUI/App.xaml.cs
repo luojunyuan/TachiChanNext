@@ -108,7 +108,8 @@ public partial class App : Application
 
         while (process.HasExited is false)
         {
-            var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
+            //var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
+            var handleResult = GameStartup.FindGoodWindowHandle(process);
             if (handleResult.IsFailure(out var error, out var windowHandle)
                 && error is WindowHandleNotFoundError)
             {
