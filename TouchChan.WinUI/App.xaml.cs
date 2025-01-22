@@ -20,6 +20,7 @@ public partial class App : Application
 
     public App()
     {
+
         Log.Do("App Start");
         // Benchmark: 预加载 (Warm Up AOT) 可能是因为需要读入程序集，考验IO能力
         _ = int.TryParse(string.Empty, out _);
@@ -81,7 +82,7 @@ public partial class App : Application
         childWindow.Activate();
         Log.Do("MainWindow Activated");
 
-        var processResult = await findProcessTask;
+        var processResult = await processTask;
         Log.Do("processResult got", true);
         if (processResult.IsFailure(out var processError, out var process))
         {
@@ -119,18 +120,23 @@ public partial class App : Application
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的游戏窗口
         var isDpiUnaware = Win32.IsDpiUnaware(process);
 
+        var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
+        process.EnableRaisingEvents = true;
+        process.RxExited()
+            .Subscribe(_ => childWindowClosedChannel.Writer.Complete());
+
         while (process.HasExited is false)
         {
             Log.Do2("Start FindRealWindowHandleAsync");
             //var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
-            var handleResult = GameStartup.FindGoodWindowHandle(process);
+            var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
             if (handleResult.IsFailure(out var error, out var windowHandle)
                 && error is WindowHandleNotFoundError)
             {
                 await MessageBox.ShowAsync("Timeout! Failed to find a valid window of game");
                 break;
             }
-            else if (error is ProcessExitedError)
+            else if (error is ProcessExitedError or ProcessPendingExitedError)
             {
                 break;
             }
@@ -152,18 +158,16 @@ public partial class App : Application
                 .Subscribe(size => childWindow.Hwnd.ResizeClient(size))
                 .DisposeWith(disposables);
 
-            var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
             GameWindowService.WindowDestroyed(windowHandle)
                 .SubscribeOn(UISyncContext)
                 .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
                 .DisposeWith(disposables);
 
             Log.Do2("Subscribe");
-            await childWindowClosedChannel.Reader.WaitToReadAsync();
+            await childWindowClosedChannel.Reader.ReadAsync();
             Log.Do2("Window Destoyred", true);
 
             process.Refresh();
-            Log.Do2("process.Refresh");
         }
 
         // WAS Shit x: 疑似窗口显示后，在窗口显示前的线程上调用 Current.Exit() 会引发错误

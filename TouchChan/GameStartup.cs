@@ -47,11 +47,14 @@ public class Log
 
     private static readonly Stopwatch Stopwatch3 = new();
 
-    public static void Do3(string message)
+    public static void Do3(string message, bool recount = false)
     {
+        if (recount)
+            Stopwatch2.Restart();
+
         var elapsedMilliseconds = Stopwatch3.ElapsedMilliseconds;
 
-        var output = $"san {elapsedMilliseconds + " ms",-5} {message}";
+        var output = $"Back {elapsedMilliseconds + " ms",-5} {message}";
         if (HasConsole) Console.WriteLine(output);
         else Debug.WriteLine(output);
 

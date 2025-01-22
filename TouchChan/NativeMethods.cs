@@ -28,20 +28,6 @@ namespace TouchChan
     /// </summary>
     public static class Win32
     {
-        public static void ActiveWindow(nint hwnd)
-        {
-            PInvoke.ShowWindow(new(hwnd), SHOW_WINDOW_CMD.SW_RESTORE);
-            PInvoke.SetForegroundWindow(new(hwnd));
-        }
-
-        public static void TryRestoreWindow(nint windowHandle)
-        {
-            if (PInvoke.IsIconic(new(windowHandle)))
-            {
-                PInvoke.ShowWindow(new(windowHandle), SHOW_WINDOW_CMD.SW_RESTORE);
-            }
-        }
-
         /// <summary>
         /// 激活窗口
         /// </summary>
