@@ -13,6 +13,7 @@ GetWindowLong
 SetWindowLong
 WINDOW_STYLE
 WINDOW_EX_STYLE
+IsIconic
 ShowWindow
 SetForegroundWindow
 MessageBox

@@ -28,6 +28,20 @@ namespace TouchChan
     /// </summary>
     public static class Win32
     {
+        public static void ActiveWindow(nint hwnd)
+        {
+            PInvoke.ShowWindow(new(hwnd), SHOW_WINDOW_CMD.SW_RESTORE);
+            PInvoke.SetForegroundWindow(new(hwnd));
+        }
+
+        public static void TryRestoreWindow(nint windowHandle)
+        {
+            if (PInvoke.IsIconic(new(windowHandle)))
+            {
+                PInvoke.ShowWindow(new(windowHandle), SHOW_WINDOW_CMD.SW_RESTORE);
+            }
+        }
+
         /// <summary>
         /// 判断进程对象是否对 DPI 不感知
         /// </summary>
@@ -57,12 +71,6 @@ namespace TouchChan
         {
             PInvoke.GetClientRect(new(hwnd), out var initRect);
             return initRect.Size;
-        }
-
-        public static void ActiveWindow(nint hwnd)
-        {
-            PInvoke.ShowWindow(new(hwnd), SHOW_WINDOW_CMD.SW_RESTORE);
-            PInvoke.SetForegroundWindow(new(hwnd));
         }
     }
 

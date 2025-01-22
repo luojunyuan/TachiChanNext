@@ -17,7 +17,7 @@ public class SplashScreen
         var splash = InternalShow(image);
         try
         {
-            return await action();
+            return await Task.Run(() => action()).ConfigureAwait(false);
         }
         finally
         {

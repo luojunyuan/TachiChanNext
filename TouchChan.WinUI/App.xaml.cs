@@ -23,11 +23,10 @@ public partial class App : Application
         Log.Do("App Start");
         // Benchmark: 预加载 (Warm Up AOT) 可能是因为需要读入程序集，考验IO能力
         _ = int.TryParse(string.Empty, out _);
+        Log.Do("Warm Up AOT");
 
-        Log.Do("Warm Up AOT End");
-        Log.Do("App InitializeComponent");
         this.InitializeComponent();
-        Log.Do("App InitializeComponent End");
+        Log.Do("InitializeComponent");
 
 #if !DEBUG
         // WAS Shit 8: 异常发生时默认不会结束程序
@@ -41,7 +40,7 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-        Log.Do("App OnLaunched");
+        Log.Do("App OnLaunched Start");
 
         // WAS Shit 4: 在 desktop 下 LaunchActivatedEventArgs 接收不到命令行参数 #3368
         var arguments = Environment.GetCommandLineArgs()[1..];
@@ -63,7 +62,7 @@ public partial class App : Application
     /// </summary>
     private static async Task<LaunchResult> StartMainWindowAsync(string[] arguments)
     {
-        Log.Do("StartMainWindowAsync");
+        Log.Do("StartMainWindowAsync Start");
         var path = arguments[0];
 
         var gamePathResult = GameStartup.PrepareValidGamePath(path);
@@ -72,17 +71,18 @@ public partial class App : Application
             await MessageBox.ShowAsync(pathError.Message);
             return LaunchResult.Failed;
         }
-        Log.Do("PrepareValidGamePath End");
+        Log.Do("PrepareValidGamePath");
 
-        var processTask = GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
+        var findProcessTask = Task.Run(async () =>
+            await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le")));
 
         Log.Do("MainWindow");
         var childWindow = new MainWindow();
         childWindow.Activate();
         Log.Do("MainWindow Activated");
 
-        var processResult = await processTask;
-        Log.Do("processResult got");
+        var processResult = await findProcessTask;
+        Log.Do("processResult got", true);
         if (processResult.IsFailure(out var processError, out var process))
         {
             await MessageBox.ShowAsync(processError.Message);
@@ -115,7 +115,7 @@ public partial class App : Application
     /// <param name="process">目标进程</param>
     private static async Task GameWindowBindingAsync(MainWindow childWindow, Process process)
     {
-        Log.Do2("GameWindowBindingAsync");
+        Log.Do2("GameWindowBindingAsync Start", false, true);
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的游戏窗口
         var isDpiUnaware = Win32.IsDpiUnaware(process);
 
@@ -133,7 +133,7 @@ public partial class App : Application
             {
                 break;
             }
-            Log.Do2("End FindRealWindowHandleAsync");
+            Log.Do2("FindGoodWindowHandleAsync");
 
             using CompositeDisposable disposables = [];
 
@@ -156,10 +156,13 @@ public partial class App : Application
                 .SubscribeOn(UISyncContext)
                 .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
                 .DisposeWith(disposables);
-            Log.Do2("await");
+
+            Log.Do2("Subscribe");
             await childWindowClosedChannel.Reader.WaitToReadAsync();
+            Log.Do2("Window Destoyred", true);
 
             process.Refresh();
+            Log.Do2("process.Refresh");
         }
 
         // WAS Shit x: 疑似窗口显示后，在窗口显示前的线程上调用 Current.Exit() 会引发错误
@@ -171,7 +174,7 @@ public partial class App : Application
     /// </summary>
     private static async Task<LaunchResult> LaunchPreferenceAsync()
     {
-        Log.Do("App LaunchPreferenceAsync");
+        Log.Do("App-LaunchPreferenceAsync Start");
 
         const string InstanceID = "13615F35-469B-4341-B3CE-121C694C042C";
         var mainInstance = AppInstance.FindOrRegisterForKey(InstanceID);
