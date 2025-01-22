@@ -66,7 +66,8 @@ public partial class App : Application
             return LaunchResult.Failed;
         }
 
-        var processTask = GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
+        var processTask = Task.Run(async () =>
+            await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le")));
 
         var childWindow = new MainWindow();
         childWindow.Activate();

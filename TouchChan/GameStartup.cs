@@ -42,7 +42,10 @@ public static partial class GameStartup
     {
         var process = await GetWindowProcessByPathAsync(path);
         if (process != null)
+        {
+            Win32.TryRestoreWindow(process.MainWindowHandle);
             return process;
+        }
 
         using var fileStream = EmbeddedResource.KleeGreen;
 

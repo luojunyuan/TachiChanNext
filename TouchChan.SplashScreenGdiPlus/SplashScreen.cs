@@ -17,7 +17,8 @@ public class SplashScreen
         var splash = InternalShow(image);
         try
         {
-            return await action();
+            // ConfigureAwait(false) 不捕获上下文，让CleanUp在当前线程正确执行
+            return await Task.Run(() => action()).ConfigureAwait(false);
         }
         finally
         {
