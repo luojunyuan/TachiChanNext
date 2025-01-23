@@ -185,6 +185,7 @@ public partial class App : Application
         {
             var appArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
             await mainInstance.RedirectActivationToAsync(appArgs);
+            Log.Do("RedirectActivationToAsync");
             return LaunchResult.Redirected;
         }
 
@@ -196,8 +197,10 @@ public partial class App : Application
             .Subscribe(_ =>
             {
                 // WAS Shit 9: preference.Active() 在这里不起用
+                Log.Do2("RedirectActivationToAsync", false, true);
                 var preferenceHandle = WindowNative.GetWindowHandle(preference);
                 Win32.ActiveWindow(preferenceHandle);
+                Log.Do2("ActiveWindow");
             });
 
         return LaunchResult.Success;
