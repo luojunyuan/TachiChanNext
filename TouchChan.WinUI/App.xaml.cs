@@ -122,13 +122,11 @@ public partial class App : Application
 
         var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
         process.EnableRaisingEvents = true;
-        process.RxExited()
-            .Subscribe(_ => childWindowClosedChannel.Writer.Complete());
+        process.RxExited().Subscribe(_ => childWindowClosedChannel.Writer.Complete());
 
         while (process.HasExited is false)
         {
             Log.Do2("Start FindRealWindowHandleAsync");
-            //var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
             var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
             if (handleResult.IsFailure(out var error, out var windowHandle)
                 && error is WindowHandleNotFoundError)

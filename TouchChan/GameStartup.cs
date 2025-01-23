@@ -104,7 +104,7 @@ public static partial class GameStartup
         if (process != null)
         {
             Log.Do2("GetWindowProcessByPathAsync");
-            Win32.TryRestoreWindow(process.MainWindowHandle);
+            _ = Win32.TryRestoreWindowAsync(process.MainWindowHandle);
             Log.Do2("TryRestoreWindow");
             return process;
         }
@@ -143,7 +143,7 @@ public static partial class GameStartup
             WorkingDirectory = Path.GetDirectoryName(path),
             EnvironmentVariables = { ["__COMPAT_LAYER"] = "HighDpiAware" }
         };
-        _ = Process.Start(startInfo);
+        _ = await StartProcessAsync(startInfo);
         Log.Do2("Process.Start");
 
         const int WaitMainWindowTimeout = 20000;
@@ -173,6 +173,8 @@ public static partial class GameStartup
         return Result.Failure<Process>("Failed to start game within the timeout period.");
     }
 
+    private static Task<Process?> StartProcessAsync(ProcessStartInfo startInfo) => Task.FromResult(Process.Start(startInfo));
+
     /// <summary>
     /// 尝试通过限定的程序路径获取对应正在运行的，存在 MainWindowHandle 的进程
     /// </summary>
@@ -180,14 +182,15 @@ public static partial class GameStartup
     {
         var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
         // FUTURE: .log main.bin situation
-        return Task.Run(() => Process.GetProcessesByName(friendlyName)
-            .FirstOrDefault(p =>
-            {
-                if (p.MainWindowHandle == nint.Zero)
-                    return false;
+        return Task.FromResult(
+            Process.GetProcessesByName(friendlyName)
+                .FirstOrDefault(p =>
+                {
+                    if (p.MainWindowHandle == nint.Zero)
+                        return false;
 
-                var mainModule = p.HasExited ? null : p.MainModule;
-                return mainModule?.FileName.Equals(gamePath, StringComparison.OrdinalIgnoreCase) ?? false;
-            }));
+                    var mainModule = p.HasExited ? null : p.MainModule;
+                    return mainModule?.FileName.Equals(gamePath, StringComparison.OrdinalIgnoreCase) ?? false;
+                }));
     }
 }

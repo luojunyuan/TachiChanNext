@@ -22,21 +22,17 @@ public static partial class GameStartup
     public static async Task<Result<nint>> FindGoodWindowHandleAsync(Process proc)
     {
         const int SearchWindowTimeout = 20000;
-        const int CheckRespounce = 16;
+        const int CheckResponse = 16;
 
         var goodHandle = proc.MainWindowHandle;
 
         if (goodHandle == nint.Zero)
-        {
             return Result.Failure<nint>(new ProcessPendingExitedError());
-        }
 
         PInvoke.GetClientRect(new(goodHandle), out var clientRect);
 
         if (IsGoodWindow(clientRect))
-        {
             return goodHandle;
-        }
 
         var cts = new CancellationTokenSource(SearchWindowTimeout);
         var timeoutToken = cts.Token;
@@ -47,18 +43,13 @@ public static partial class GameStartup
             count++;
             if (proc.HasExited)
             {
-                Log.Do3($"loop Exit {count}");
+                Log.Do3($"loop exit {count}");
                 return Result.Failure<nint>(new ProcessExitedError());
             }
 
-            // 完全的同步方法
-            var allWindows = GetAllChildWindowHandles();
-            foreach (var handle in allWindows)
+            var windows = GetWindowsOfProcess(proc);
+            foreach (var handle in windows)
             {
-                _ = PInvoke.GetWindowThreadProcessId(handle, out var relativeProcessId);
-                if (relativeProcessId != proc.Id)
-                    continue;
-
                 PInvoke.GetClientRect(handle, out var rect);
                 if (IsGoodWindow(rect))
                 {
@@ -67,20 +58,23 @@ public static partial class GameStartup
                 }
             }
 
-            await Task.Delay(CheckRespounce);
+            await Task.Delay(CheckResponse);
         }
 
         return Result.Failure<nint>(new WindowHandleNotFoundError());
     }
 
-    private static List<HWND> GetAllChildWindowHandles()
+    private static List<HWND> GetWindowsOfProcess(Process proc)
     {
         var list = new List<HWND>();
 
         BOOL ChildProc(HWND handle, LPARAM pointer)
         {
-            list.Add(handle);
+            _ = PInvoke.GetWindowThreadProcessId(handle, out var relativeProcessId);
+            if (relativeProcessId != proc.Id)
+                return true;
 
+            list.Add(handle);
             return true;
         }
         PInvoke.EnumChildWindows(HWND.Null, ChildProc, default);
