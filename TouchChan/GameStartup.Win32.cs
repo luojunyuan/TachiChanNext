@@ -22,7 +22,7 @@ public static partial class GameStartup
     public static async Task<Result<nint>> FindGoodWindowHandleAsync(Process proc)
     {
         const int SearchWindowTimeout = 20000;
-        const int CheckRespounce = 16;
+        const int CheckResponse = 16;
 
         var goodHandle = proc.MainWindowHandle;
 
@@ -41,33 +41,31 @@ public static partial class GameStartup
             if (proc.HasExited)
                 return Result.Failure<nint>(new ProcessExitedError());
 
-            // 完全的同步方法
-            var allWindows = GetAllChildWindowHandles();
-            foreach (var handle in allWindows)
+            var windows = GetWindowsOfProcess(proc);
+            foreach (var handle in windows)
             {
-                _ = PInvoke.GetWindowThreadProcessId(handle, out var relativeProcessId);
-                if (relativeProcessId != proc.Id)
-                    continue;
-
                 PInvoke.GetClientRect(handle, out var rect);
                 if (IsGoodWindow(rect))
                     return handle.Value;
             }
 
-            await Task.Delay(CheckRespounce);
+            await Task.Delay(CheckResponse);
         }
 
         return Result.Failure<nint>(new WindowHandleNotFoundError());
     }
 
-    private static List<HWND> GetAllChildWindowHandles()
+    private static List<HWND> GetWindowsOfProcess(Process proc)
     {
         var list = new List<HWND>();
 
         BOOL ChildProc(HWND handle, LPARAM pointer)
         {
-            list.Add(handle);
+            _ = PInvoke.GetWindowThreadProcessId(handle, out var relativeProcessId);
+            if (relativeProcessId != proc.Id)
+                return true;
 
+            list.Add(handle);
             return true;
         }
         PInvoke.EnumChildWindows(HWND.Null, ChildProc, default);

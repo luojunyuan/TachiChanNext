@@ -1,5 +1,4 @@
-﻿using Microsoft.Win32.SafeHandles;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.Versioning;
 using Windows.Win32;
@@ -40,12 +39,15 @@ namespace TouchChan
         /// <summary>
         /// 尝试恢复最小化的窗口
         /// </summary>
-        public static void TryRestoreWindow(nint windowHandle)
+        public static Task TryRestoreWindowAsync(nint windowHandle)
         {
             if (PInvoke.IsIconic(new(windowHandle)))
             {
+                // Time Consuming
                 PInvoke.ShowWindow(new(windowHandle), SHOW_WINDOW_CMD.SW_RESTORE);
             }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -98,6 +100,6 @@ namespace TouchChan
         public static void Show(string text, string caption) => PInvoke.MessageBox(HWND.Null, text, caption, MESSAGEBOX_STYLE.MB_OK);
 
         public static Task ShowAsync(string text, string caption = Constants.DisplayName) =>
-            Task.Run(() => PInvoke.MessageBox(HWND.Null, text, caption, MESSAGEBOX_STYLE.MB_OK));
+            Task.FromResult(() => PInvoke.MessageBox(HWND.Null, text, caption, MESSAGEBOX_STYLE.MB_OK));
     }
 }

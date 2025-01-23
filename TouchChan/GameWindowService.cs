@@ -1,6 +1,6 @@
-﻿using R3;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.InteropServices;
+using R3;
 using Windows.Win32;
 using Windows.Win32.UI.Accessibility;
 
@@ -60,6 +60,7 @@ public static class GameWindowService
 
     private const uint EventObjectDestroy = 0x8001;
 
+    // NOTE: 要注意重复订阅相同 windowHandle （已经销毁）是不符合预期的
     /// <summary>
     /// 监听游戏窗口销毁消息
     /// </summary>
