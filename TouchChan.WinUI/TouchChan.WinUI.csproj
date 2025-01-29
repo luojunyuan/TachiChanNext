@@ -14,7 +14,6 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>WinUI</DefineConstants>
-    <!--<SatelliteResourceLanguages>en-US;zh-CN;ja</SatelliteResourceLanguages>-->
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +24,7 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2957.106" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
+    <PackageReference Include="R3Extensions.WinUI3" Version="1.2.9" />
     <PackageReference Include="WinUIEx" Version="2.5.1" />
   </ItemGroup>
 

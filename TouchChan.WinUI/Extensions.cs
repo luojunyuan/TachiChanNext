@@ -46,12 +46,6 @@ static class DisposableExtensions
 
 static partial class ObservableEventsExtensions
 {
-    public static Observable<WinUIEx.Messaging.WindowMessageEventArgs> RxWindowMessageReceived(this WinUIEx.Messaging.WindowMessageMonitor data) =>
-        Observable.FromEvent<EventHandler<WinUIEx.Messaging.WindowMessageEventArgs>, WinUIEx.Messaging.WindowMessageEventArgs>(
-            h => (sender, e) => h(e),
-            e => data.WindowMessageReceived += e,
-            e => data.WindowMessageReceived -= e);
-
     public static Observable<AppActivationArguments> RxActivated(this AppInstance data) =>
         Observable.FromEvent<EventHandler<AppActivationArguments>, AppActivationArguments>(
             h => (sender, e) => h(e),
@@ -93,6 +87,12 @@ static partial class ObservableEventsExtensions
             h => (sender, e) => h(e),
             e => data.Loaded += e,
             e => data.Loaded -= e);
+
+    public static Observable<SizeChangedEventArgs> RxSizeChanged(this Panel data) =>
+        Observable.FromEvent<SizeChangedEventHandler, SizeChangedEventArgs>(
+            h => (sender, e) => h(e),
+            e => data.SizeChanged += e,
+            e => data.SizeChanged -= e);
 }
 
 static class EventsExtensions

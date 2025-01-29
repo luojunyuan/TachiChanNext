@@ -1,10 +1,9 @@
+using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
-using System;
 using Windows.Foundation;
 
 namespace TouchChan.WinUI;
@@ -21,6 +20,9 @@ public sealed partial class TouchControl : UserControl
 
     public Action<Rect>? SetWindowObservable { get; set; }
 
+    // WAS Shit 6: DPI 改变后，XamlRoot.RasterizationScale 永远是启动时候的值
+    private double DpiScale => this.XamlRoot.RasterizationScale;
+
     public TouchControl()
     {
         this.InitializeComponent();
@@ -28,9 +30,6 @@ public sealed partial class TouchControl : UserControl
         this.RxLoaded()
             .Select(_ => this.FindParent<Panel>() ?? throw new InvalidOperationException())
             .Subscribe(InitializeTouchControl);
-
-        TouchTransform.X = 2;
-        TouchTransform.Y = 2;
 
         TranslateXAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
         TranslateYAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
@@ -40,6 +39,8 @@ public sealed partial class TouchControl : UserControl
 
     private void InitializeTouchControl(Panel container)
     {
+        TouchDockSubscribe(container);
+
         var moveAnimationEndedStream = TranslationStoryboard.RxCompleted();
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
@@ -146,24 +147,58 @@ public sealed partial class TouchControl : UserControl
             });
 
         // 回调设置容器窗口的可观察区域
-        // WAS Shit 6: DPI 改变后，XamlRoot.RasterizationScale 永远是启动时候的值
-        var scale = container.XamlRoot.RasterizationScale;
         dragStartedStream
-            .Select(_ => container.ActualSizeXDpi(scale))
+            .Select(_ => container.ActualSizeXDpi(DpiScale))
             .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
 
         moveAnimationEndedStream
             .Do(_ => Touch.IsHitTestVisible = true)
-            .Select(_ => GetTouchRect().XDpi(scale))
-            .Prepend(GetTouchRect().XDpi(scale))
+            .Select(_ => GetTouchRect().XDpi(DpiScale))
             .Subscribe(rect => SetWindowObservable?.Invoke(rect));
     }
 
+    private void TouchDockSubscribe(Panel container)
+    {
+        var touchRectangleShape = false;
+        Observable.EveryValueChanged(this, x => x.Touch.Width)
+            .Skip(1)
+            .Subscribe(touchSize => Touch.CornerRadius = new(touchSize / (touchRectangleShape ? 4 : 2)));
+
+        var defaultDock = new TouchDockAnchor(TouchCorner.Left, 0.5);
+
+        static double TouchWidth(double windowWidth) => windowWidth < 600 ? 60 : 80;
+
+        container.RxSizeChanged()
+            .Select(windowSize =>
+            {
+                var window = windowSize.NewSize;
+                var touchDock = PositionCalculator.GetLastTouchDockAnchor(windowSize.PreviousSize, GetTouchRect());
+                var touchWidth = TouchWidth(window.Width);
+                return new { WindowSize = window, TouchDock = touchDock, TouchSize = touchWidth };
+            })
+            .Prepend(new
+            {
+                WindowSize = container.ActualSize.ToSize(),
+                TouchDock = defaultDock,
+                TouchSize = TouchWidth(container.ActualWidth),
+            })
+            .Select(pair => PositionCalculator.CaculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
+            .Subscribe(SetTouchDockRect);
+    }
+
     private Rect GetTouchRect() =>
-        new(((TranslateTransform)Touch.RenderTransform).X,
-            ((TranslateTransform)Touch.RenderTransform).Y,
+        new(TouchTransform.X,
+            TouchTransform.Y,
             Touch.Width,
             Touch.Height);
+
+    private void SetTouchDockRect(Rect rect)
+    {
+        (TouchTransform.X, TouchTransform.Y) = (rect.X, rect.Y);
+        Touch.Width = rect.Width;
+
+        SetWindowObservable?.Invoke(rect.XDpi(DpiScale));
+    }
 }
 
 class AnimationTool

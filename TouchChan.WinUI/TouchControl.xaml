@@ -16,33 +16,34 @@
         <SolidColorBrush x:Key="AssistiveTouchLayerThreeLine" Color="#686868" />
         <SolidColorBrush x:Key="AssistiveTouchLayerThreeBackground" Color="#FFFFFF" />
         <x:Double x:Key="AssistiveTouchCircleThickness">1</x:Double>
+        <local:TouchLayerMarginConverter x:Key="TouchLayerMarginConverter" />
     </UserControl.Resources>
 
     <Border x:Name="Touch"
-        Width="100"
-        Height="100" Background="{StaticResource AssistiveTouchBackground}" CornerRadius="50"
+        Height="{Binding Width, RelativeSource={RelativeSource Self}}"
         HorizontalAlignment="Left"
-        VerticalAlignment="Top">
+        VerticalAlignment="Top"
+        Background="{StaticResource AssistiveTouchBackground}">
         <Grid>
+            <Ellipse
+                Margin="{Binding Width, ElementName=Touch, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/8}"
+                Fill="{StaticResource AssistiveTouchLayerOneBackground}"
+                Stroke="{StaticResource AssistiveTouchLayerOneLine}"
+                StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
 
             <Ellipse
-                    Margin="12.5"
-                    Fill="{StaticResource AssistiveTouchLayerOneBackground}"
-                    Stroke="{StaticResource AssistiveTouchLayerOneLine}"
-                    StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+                Margin="{Binding Width, ElementName=Touch, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=3/16}"
+                Fill="{StaticResource AssistiveTouchLayerTwoBackground}"
+                Stroke="{StaticResource AssistiveTouchLayerTwoLine}"
+                StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
 
             <Ellipse
-                    Margin="18.75"
-                    Fill="{StaticResource AssistiveTouchLayerTwoBackground}"
-                    Stroke="{StaticResource AssistiveTouchLayerTwoLine}"
-                    StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
-            
-            <Ellipse Margin="25"
-                     Fill="{StaticResource AssistiveTouchLayerThreeBackground}" 
-                     Stroke="{StaticResource AssistiveTouchLayerThreeLine}"
-                     StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+                Margin="{Binding Width, ElementName=Touch, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/4}"
+                Fill="{StaticResource AssistiveTouchLayerThreeBackground}"
+                Stroke="{StaticResource AssistiveTouchLayerThreeLine}"
+                StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
         </Grid>
-        
+
         <Border.RenderTransform>
             <TranslateTransform x:Name="TouchTransform" />
         </Border.RenderTransform>
