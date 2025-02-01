@@ -174,7 +174,7 @@ public sealed partial class TouchControl : UserControl
             .Select(_ =>
                 Observable.Timer(FadeOutDuration)
                 .TakeUntil(pointerPressedStream))
-            .Switch() 
+            .Switch()
             .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
     }
 
