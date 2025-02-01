@@ -14,6 +14,9 @@ public sealed partial class TouchControl : UserControl
     private readonly Storyboard TranslationStoryboard = new();
     private readonly DoubleAnimation TranslateXAnimation;
     private readonly DoubleAnimation TranslateYAnimation;
+    private readonly TimeSpan FadeOutDuration = TimeSpan.FromMilliseconds(4000);
+    private readonly Storyboard FadeInOpacityStoryboard = new();
+    private readonly Storyboard FadeOutOpacityStoryboard = new();
 
     // WAS Shit 5: Xaml Code-Behind 中 require 或 prop init 会生成错误的代码 #8723
     public Action<Size>? ResetWindowObservable { get; set; }
@@ -35,27 +38,31 @@ public sealed partial class TouchControl : UserControl
         TranslateYAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
         AnimationTool.BindingAnimation(TranslationStoryboard, TranslateXAnimation, TouchTransform, AnimationTool.XProperty);
         AnimationTool.BindingAnimation(TranslationStoryboard, TranslateYAnimation, TouchTransform, AnimationTool.YProperty);
+        AnimationTool.BindingAnimation(FadeInOpacityStoryboard, AnimationTool.CreateFadeInOpacityAnimation, Touch, nameof(Opacity));
+        AnimationTool.BindingAnimation(FadeOutOpacityStoryboard, AnimationTool.CreateFadeOutOpacityAnimation, Touch, nameof(Opacity));
     }
 
     private void InitializeTouchControl(Panel container)
     {
         TouchDockSubscribe(container);
 
-        var moveAnimationEndedStream = TranslationStoryboard.RxCompleted();
+        var moveAnimationEndedStream = TranslationStoryboard.RxCompleted().Share();
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
-        var pointerPressedStream = Touch.RxPointerPressed().Do(e => Touch.CapturePointer(e.Pointer));
-        var pointerMovedStream = Touch.RxPointerMoved();
+        var pointerPressedStream = Touch.RxPointerPressed().Do(e => Touch.CapturePointer(e.Pointer)).Share();
+        var pointerMovedStream = Touch.RxPointerMoved().Share();
         var pointerReleasedStream =
             Touch.RxPointerReleased()
             .Merge(raisePointerReleasedSubject)
-            .Do(e => Touch.ReleasePointerCapture(e.Pointer));
+            .Do(e => Touch.ReleasePointerCapture(e.Pointer))
+            .Share();
 
         var dragStartedStream =
             pointerPressedStream
             .SelectMany(_ =>
                 pointerMovedStream
+                .Skip(1)
                 .Take(1)
                 .TakeUntil(pointerReleasedStream));
 
@@ -155,6 +162,20 @@ public sealed partial class TouchControl : UserControl
             .Do(_ => Touch.IsHitTestVisible = true)
             .Select(_ => GetTouchRect().XDpi(DpiScale))
             .Subscribe(rect => SetWindowObservable?.Invoke(rect));
+
+        // 调整按钮透明度
+        pointerPressedStream
+            .Where(_ => Touch.Opacity != 1)
+            .Subscribe(_ => FadeInOpacityStoryboard.Begin());
+
+        moveAnimationEndedStream.Select(_ => Unit.Default)
+            .Merge(pointerReleasedStream.Select(_ => Unit.Default))
+            .Prepend(Unit.Default)
+            .Select(_ =>
+                Observable.Timer(FadeOutDuration)
+                .TakeUntil(pointerPressedStream))
+            .Switch() 
+            .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
     }
 
     private void TouchDockSubscribe(Panel container)
@@ -220,4 +241,23 @@ class AnimationTool
         Storyboard.SetTargetProperty(animation, path);
         storyboard.Children.Add(animation);
     }
+
+    private static readonly TimeSpan OpacityFadeInDuration = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan OpacityFadeOutDuration = TimeSpan.FromMilliseconds(400);
+    private const double OpacityHalf = 0.4;
+    private const double OpacityFull = 1;
+
+    public static DoubleAnimation CreateFadeInOpacityAnimation => new()
+    {
+        From = OpacityHalf,
+        To = OpacityFull,
+        Duration = OpacityFadeInDuration,
+    };
+
+    public static DoubleAnimation CreateFadeOutOpacityAnimation => new()
+    {
+        From = OpacityFull,
+        To = OpacityHalf,
+        Duration = OpacityFadeOutDuration,
+    };
 }
