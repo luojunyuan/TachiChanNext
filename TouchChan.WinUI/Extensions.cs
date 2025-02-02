@@ -88,7 +88,7 @@ static partial class ObservableEventsExtensions
             e => data.Loaded += e,
             e => data.Loaded -= e);
 
-    public static Observable<SizeChangedEventArgs> RxSizeChanged(this Panel data) =>
+    public static Observable<SizeChangedEventArgs> RxSizeChanged(this FrameworkElement data) =>
         Observable.FromEvent<SizeChangedEventHandler, SizeChangedEventArgs>(
             h => (sender, e) => h(e),
             e => data.SizeChanged += e,

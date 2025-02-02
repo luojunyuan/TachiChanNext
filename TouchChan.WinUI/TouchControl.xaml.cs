@@ -175,14 +175,15 @@ public sealed partial class TouchControl : UserControl
                 Observable.Timer(FadeOutDuration)
                 .TakeUntil(pointerPressedStream))
             .Switch()
+            .ObserveOn(App.UISyncContext)
             .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
     }
 
     private void TouchDockSubscribe(Panel container)
     {
         var touchRectangleShape = false;
-        Observable.EveryValueChanged(this, x => x.Touch.Width)
-            .Skip(1)
+        Touch.RxSizeChanged()
+            .Select(x => x.NewSize.Width)
             .Subscribe(touchSize => Touch.CornerRadius = new(touchSize / (touchRectangleShape ? 4 : 2)));
 
         var defaultDock = new TouchDockAnchor(TouchCorner.Left, 0.5);

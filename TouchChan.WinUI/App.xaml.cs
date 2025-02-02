@@ -25,8 +25,6 @@ public partial class App : Application
 
         this.InitializeComponent();
 
-        // for Observable.EveryValueChanged
-        WinUI3ProviderInitializer.SetDefaultObservableSystem(ex => Debug.WriteLine(ex));
 #if !DEBUG
         // WAS Shit 8: 异常发生时默认不会结束程序
         UnhandledException += (sender, e) =>

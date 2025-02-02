@@ -1,5 +1,8 @@
 using System;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using R3;
 using Windows.Foundation;
 using WinRT.Interop;
@@ -28,6 +31,18 @@ public sealed partial class MainWindow : Window
 
         Touch.ResetWindowObservable = size => Hwnd.ResetWindowOriginalObservableRegion(size.ToGdiSize());
         Touch.SetWindowObservable = rect => Hwnd.SetWindowObservableRegion(rect.ToGdiRect());
+
+#if DEBUG
+        if (this.Content is Grid panel)
+        {
+            panel.Children.Add(new Border()
+            {
+                CornerRadius = new(12),
+                BorderBrush = new SolidColorBrush(Colors.Red),
+                BorderThickness = new(1),
+            });
+        }
+#endif
     }
 
     /// <summary>
