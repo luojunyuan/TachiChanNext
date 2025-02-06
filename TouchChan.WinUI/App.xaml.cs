@@ -1,13 +1,13 @@
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
+using R3;
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppLifecycle;
-using R3;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
@@ -173,7 +173,7 @@ public partial class App : Application
         AppInstance.GetCurrent().RxActivated()
             .Subscribe(_ =>
             {
-                // WAS Shit 9: preference.Active() 在这里不起用
+                // WAS Shit 9: preference.Active() 在这里不起用 #7595
                 var preferenceHandle = WindowNative.GetWindowHandle(preference);
                 Win32.ActiveWindow(preferenceHandle);
             });

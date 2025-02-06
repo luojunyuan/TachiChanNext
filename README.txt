@@ -1,9 +1,32 @@
-待解决
-2 按钮处于四边时更改窗口大小可能超出边界
-框架问题
-1 Winui3 窗口显示前的线程切换主线关闭导致错误
-2. aot tryparse 为何首次耗时
-3. 空窗口 cpu 占用？ 
+### 性能优化 Performance
+- [ ] 搞明白 TouchControl.InitializeTouchControl() 中，订阅流产生流程以及源流重复触发的原因
+
+### 行为调整 Improvement
+- [ ] 保证 Touch 小圆点单一实例，多游戏不启动或附加
+- [ ] Touch 监控配置文件变化响应通知
+
+### 已知问题 Bug
+- [ ] 按钮处于四边时更改窗口大小可能超出边界
+
+### 框架相关问题
+- [ ] 验证 WAS Shit x，退出 winui3 程序究竟是否是在窗口显示前的线程上调用 Exit() 导致的
+
+### 疑惑
+- [ ] Aot int.TryParse 为何首次执行耗时
+- [ ] R3.WinUI 设置 Observable 导致 cpu 占用，是否需要检查原因或报告问题 
+
+---
+
+## Massive Work
+
+### 重构 Refactor
+- [ ] 使用源生成替代手写事件转 Observable *1
+
+### 新功能 Feature
+- [ ] 为系统安装虚拟鼠标设备
+- [ ] Suspend 游戏进程 *2
+- [ ] 买断支持者或捐赠者提供个性化配置及联网恢复 *3
+
 
 ### 第一阶段
 
@@ -29,18 +52,18 @@ AOT发布，把程序先运行起来再尝试删除文件夹。我得到了约 4
 
 商店页展览用 掌机斜侧面拍照渲染。
 
-### 其他可选项
+### 详情
 
-1. 为 R3 提供 ReactiveMarbles.ObservableEvents.SourceGenerator，this.Events() 为前端框架事件生成事件流。
-2. 使用 System.Drawing.Common + CSWin32 实现 Splash 窗口。
-	* 比起纯原生 win32 实现可能性能相对差，考虑完全分离。（使用 benchmark 验证）
-	* 分离发布包，SplashScreenGdiPlus.Drawing, SplashScreenGdiPlus.Win32。两个仓库两个包。
-3. Suspend 游戏进程，Resume 游戏进程。在上面覆盖一个半透明窗口，放置功能按钮，如【恢复】【其他功能】(需要一个建议窗口，详细吸收用户意见)
+*1 为 R3 提供 R3.ObservableEvents.SourceGenerator，以 this.Events() 的形式为前端框架事件生成事件流。
 
-### 错误处理
+*2 Suspend 游戏进程，Resume 游戏进程。在上面覆盖一个半透明窗口，放置功能按钮，如【恢复】【其他功能】(需要一个建议窗口，详细吸收用户意见)
 
-任何意料之外的退出目前是 Environment.Exit(1)
-正常退出是 Environment.Exit(0)
+*3 比如小圆点的旧样式可以作为会员提供，验证邮箱或手机号后，根据计算机相关值计算一个新值存储到配置文件
+
+### 信息反馈与错误处理
+
+任何意料之外的退出使用 Environment.Exit(1)
+正常退出使用 Environment.Exit(0)
 
 try-catch
 Error 级别：意料之外的异常，需要打印出 Exception 本身，包括调用堆栈结构。

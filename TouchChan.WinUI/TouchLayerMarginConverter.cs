@@ -1,11 +1,15 @@
-﻿using System;
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
+using System;
 
 namespace TouchChan.WinUI;
 
+/// <summary>
+/// 自动计算 Touch 每层圆点所占据宽度
+/// </summary>
 partial class TouchLayerMarginConverter : IValueConverter
 {
+    /// <param name="parameter">指示该层应缩放宽度的倍率因子</param>
     public object Convert(object value, Type targetType, object parameter, string language)
     {
         if (value is double number && parameter is string factorString && TryParseFraction(factorString, out double factor))

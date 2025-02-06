@@ -1,9 +1,9 @@
-using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
+using System;
 using Windows.Foundation;
 
 namespace TouchChan.WinUI;
@@ -160,7 +160,7 @@ public sealed partial class TouchControl : UserControl
 
         moveAnimationEndedStream
             .Do(_ => Touch.IsHitTestVisible = true)
-            .Select(_ => GetTouchRect().XDpi(DpiScale))
+            .Select(_ => GetTouchDockRect().XDpi(DpiScale))
             .Subscribe(rect => SetWindowObservable?.Invoke(rect));
 
         // 调整按钮透明度
@@ -194,7 +194,7 @@ public sealed partial class TouchControl : UserControl
             .Select(windowSize =>
             {
                 var window = windowSize.NewSize;
-                var touchDock = PositionCalculator.GetLastTouchDockAnchor(windowSize.PreviousSize, GetTouchRect());
+                var touchDock = PositionCalculator.GetLastTouchDockAnchor(windowSize.PreviousSize, GetTouchDockRect());
                 var touchWidth = TouchWidth(window.Width);
                 return new { WindowSize = window, TouchDock = touchDock, TouchSize = touchWidth };
             })
@@ -204,16 +204,22 @@ public sealed partial class TouchControl : UserControl
                 TouchDock = defaultDock,
                 TouchSize = TouchWidth(container.ActualWidth),
             })
-            .Select(pair => PositionCalculator.CaculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
+            .Select(pair => PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
             .Subscribe(SetTouchDockRect);
     }
 
-    private Rect GetTouchRect() =>
+    /// <summary>
+    /// 获得触摸按钮停留时应处于的位置
+    /// </summary>
+    private Rect GetTouchDockRect() =>
         new(TouchTransform.X,
             TouchTransform.Y,
             Touch.Width,
             Touch.Height);
 
+    /// <summary>
+    /// 设置触摸按钮停留时应处于的位置
+    /// </summary>
     private void SetTouchDockRect(Rect rect)
     {
         (TouchTransform.X, TouchTransform.Y) = (rect.X, rect.Y);
@@ -225,12 +231,12 @@ public sealed partial class TouchControl : UserControl
 
 class AnimationTool
 {
-    // 在设置 storyboard 时使用并且确保绑定对象没有在 TransformGroup 里面
+    // 在设置 storyboard 时使用并且确保绑定对象没有在 TransformGroup 里面 （需作为 RenderTransform 的单独元素使用）
     public const string XProperty = "X";
     public const string YProperty = "Y";
 
     /// <summary>
-    /// Binding animations in storyboard
+    /// 绑定动画到对象的属性
     /// </summary>
     public static void BindingAnimation(
         Storyboard storyboard,

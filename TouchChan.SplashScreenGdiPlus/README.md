@@ -1,0 +1,24 @@
+﻿# TouchChan.SplashScreenGdiPlus
+
+## 项目简介
+
+项目基于 System.Drawing.Common (GDI+) 以极少的代码实现了一个展现透明图片的高性能 Splash 窗口。
+
+核心代码只有 `DisplaySplash()` 50 行左右。
+
+在 i7-8650U 的平台上 Aot 编译后，调用 `WithShowAndExecuteAsync` 开始到出现 Splash 的耗时约为 30ms 左右。
+
+## 项目依赖于
+
+* System.Drawing.Common (GDI+ 的封装)
+* CSWin32 (与 win32 api 交互，包括创建窗口等)
+* AsyncEx.Context (用于异步操作，保证 Splash 窗口的创建和销毁在同一上下文上)
+
+## 项目实现了
+
+* 透明图片在 Primary Screen 上居中显示
+* 高 dpi 下自动缩放图片，请使用以 96px 为倍数的图片，不低于 192*192 像素的图片
+
+## 可能存在的问题
+
+使用先创建窗口，再设置 WS_EX_LAYERED，指定 #FF00800(Green) 颜色为透明通道的方式建立的透明窗口。实践中发现有出现透明效果有失效的情景的可能性。

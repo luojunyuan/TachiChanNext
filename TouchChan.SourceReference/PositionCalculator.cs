@@ -52,7 +52,7 @@ public static class PositionCalculator
     }
 
     [Pure]
-    public static Rect CaculateTouchDockRect(Size window, TouchDockAnchor touchDock, double touchSize)
+    public static Rect CalculateTouchDockRect(Size window, TouchDockAnchor touchDock, double touchSize)
     {
         const int TouchSpace = 2;
         var newRight = window.Width - TouchSpace - touchSize;
