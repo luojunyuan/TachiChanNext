@@ -1,19 +1,20 @@
 ### 性能优化 Performance
 - [ ] 搞明白 TouchControl.InitializeTouchControl() 中，订阅流产生流程以及源流重复触发的原因
 
-### 行为调整 Improvement
-- [ ] 保证 Touch 小圆点单一实例，多游戏不启动或附加
-- [ ] Touch 监控配置文件变化响应通知
-
 ### 已知问题 Bug
 - [ ] 按钮处于四边时更改窗口大小可能超出边界
 
 ### 框架相关问题
-- [ ] 验证 WAS Shit x，退出 winui3 程序究竟是否是在窗口显示前的线程上调用 Exit() 导致的
+- [ ] 验证 WAS Shit x，退出 WinUI3 程序究竟是否是在窗口显示前的线程上调用 Exit() 导致的
+- [ ] ~~调整为单一 MainWindow 与 PreferenceView，按需加载 Content （可选）~~
 
 ### 疑惑
 - [ ] Aot int.TryParse 为何首次执行耗时
 - [ ] R3.WinUI 设置 Observable 导致 cpu 占用，是否需要检查原因或报告问题 
+
+### 行为调整 Improvement
+- [ ] 保证 Touch 小圆点单一实例，多游戏不启动或附加
+- [ ] Touch 监控配置文件变化响应通知
 
 ---
 
@@ -32,7 +33,7 @@
 
 - [x] 验证启动游戏到绑定游戏的整个生命周期流程，确保错误处理的正确方式。
 - [x] 窗口确保，保证游戏的有效窗口查找逻辑。
-- [x] Xaml 样式资源，按钮样式还原。
+- [x] XAML 样式资源，按钮样式还原。
 
 ### 下一阶段
 
