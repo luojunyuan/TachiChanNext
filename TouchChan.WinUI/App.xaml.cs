@@ -20,9 +20,6 @@ public partial class App : Application
 
     public App()
     {
-        // Benchmark: 预加载 (Warm Up AOT) 可能是因为需要读入程序集，考验IO能力
-        _ = int.TryParse(string.Empty, out _);
-
         this.InitializeComponent();
 
 #if !DEBUG
@@ -133,7 +130,7 @@ public partial class App : Application
                     .DisposeWith(disposables);
             }
 
-            NativeMethods.SetParent(childWindow.Hwnd, windowHandle);
+            await NativeMethods.SetParentAsync(childWindow.Hwnd, windowHandle);
 
             GameWindowService.ClientSizeChanged(windowHandle)
                 .SubscribeOn(UISyncContext)

@@ -89,7 +89,8 @@ namespace TouchChan
     {
         public static nint GetConsoleWindow() => PInvoke.GetConsoleWindow();
 
-        public static void SetParent(nint child, nint parent) => PInvoke.SetParent(new(child), new(parent));
+        public static Task SetParentAsync(nint child, nint parent) =>
+            Task.FromResult(PInvoke.SetParent(new(child), new(parent)));
 
         [SupportedOSPlatform("windows10.0.14393")]
         public static uint GetDpiForWindow(nint hwnd) => PInvoke.GetDpiForWindow(new(hwnd));
@@ -97,9 +98,7 @@ namespace TouchChan
 
     public static class MessageBox
     {
-        public static void Show(string text, string caption) => PInvoke.MessageBox(HWND.Null, text, caption, MESSAGEBOX_STYLE.MB_OK);
-
         public static Task ShowAsync(string text, string caption = Constants.DisplayName) =>
-            Task.FromResult(() => PInvoke.MessageBox(HWND.Null, text, caption, MESSAGEBOX_STYLE.MB_OK));
+            Task.FromResult(PInvoke.MessageBox(HWND.Null, text, caption, MESSAGEBOX_STYLE.MB_OK));
     }
 }

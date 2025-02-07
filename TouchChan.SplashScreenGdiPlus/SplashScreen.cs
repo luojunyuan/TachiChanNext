@@ -1,6 +1,6 @@
-﻿using System.Drawing;
+﻿using Nito.AsyncEx;
+using System.Drawing;
 using System.Runtime.InteropServices;
-using Nito.AsyncEx;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;

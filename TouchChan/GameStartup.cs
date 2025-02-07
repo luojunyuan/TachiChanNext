@@ -1,5 +1,5 @@
-﻿using System.Diagnostics;
-using LightResults;
+﻿using LightResults;
+using System.Diagnostics;
 using TouchChan.SplashScreenGdiPlus;
 using WindowsShortcutFactory;
 
@@ -42,7 +42,7 @@ public static partial class GameStartup
         var process = await GetWindowProcessByPathAsync(path);
         if (process != null)
         {
-            _ = Win32.TryRestoreWindowAsync(process.MainWindowHandle);
+            await Win32.TryRestoreWindowAsync(process.MainWindowHandle);
             return process;
         }
 
