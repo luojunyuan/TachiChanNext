@@ -1,13 +1,13 @@
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
+using R3;
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppLifecycle;
-using R3;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
@@ -20,11 +20,7 @@ public partial class App : Application
 
     public App()
     {
-
         Log.Do("App Start");
-        // Benchmark: 预加载 (Warm Up AOT) 可能是因为需要读入程序集，考验IO能力
-        _ = int.TryParse(string.Empty, out _);
-        Log.Do("Warm Up AOT");
 
         this.InitializeComponent();
         Log.Do("InitializeComponent");
@@ -41,7 +37,7 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-        Log.Do("App OnLaunched Start");
+        Log.Do("（框架初始化完成）App OnLaunched Start");
 
         // WAS Shit 4: 在 desktop 下 LaunchActivatedEventArgs 接收不到命令行参数 #3368
         var arguments = Environment.GetCommandLineArgs()[1..];
@@ -80,7 +76,7 @@ public partial class App : Application
         Log.Do("MainWindow");
         var childWindow = new MainWindow();
         childWindow.Activate();
-        Log.Do("MainWindow Activated");
+        Log.Do("（主窗口激活出现）MainWindow Activated");
 
         var processResult = await processTask;
         Log.Do("processResult got", true);
@@ -149,7 +145,8 @@ public partial class App : Application
                     .DisposeWith(disposables);
             }
 
-            NativeMethods.SetParent(childWindow.Hwnd, windowHandle);
+            await NativeMethods.SetParentAsync(childWindow.Hwnd, windowHandle);
+            Log.Do2("（win32api 调整窗口层级）SetParent");
 
             GameWindowService.ClientSizeChanged(windowHandle)
                 .SubscribeOn(UISyncContext)
@@ -161,9 +158,10 @@ public partial class App : Application
                 .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
                 .DisposeWith(disposables);
 
-            Log.Do2("Subscribe");
+            Log.Do2("Subscribe done");
+
             await childWindowClosedChannel.Reader.ReadAsync();
-            Log.Do2("Window Destoyred", true);
+            Log.Do2("Window Destroyed", true);
 
             process.Refresh();
         }
@@ -188,10 +186,11 @@ public partial class App : Application
             Log.Do("RedirectActivationToAsync");
             return LaunchResult.Redirected;
         }
+        Log.Do("Register AppInstance");
 
         var preference = new PreferenceWindow();
         preference.Activate();
-        Log.Do("Activated PreferenceWindow");
+        Log.Do("（偏好设置窗口激活出现）Activated PreferenceWindow");
 
         AppInstance.GetCurrent().RxActivated()
             .Subscribe(_ =>

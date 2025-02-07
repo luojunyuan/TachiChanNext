@@ -1,6 +1,6 @@
-﻿using System.Drawing;
+﻿using R3;
+using System.Drawing;
 using System.Runtime.InteropServices;
-using R3;
 using Windows.Win32;
 using Windows.Win32.UI.Accessibility;
 
@@ -21,7 +21,10 @@ public static class GameWindowService
     /// <summary>
     /// 监听游戏窗口大小变化
     /// </summary>
-    /// <remarks>必须在 UI 线程中订阅</remarks>
+    /// <remarks>
+    /// 必须在 UI 线程中订阅<br />
+    /// 订阅时会立即推送当前窗口大小，是一个冷 Observable
+    /// </remarks>
     public static Observable<Size> ClientSizeChanged(nint windowHandle) =>
         Observable.Create<Size>(observer =>
         {

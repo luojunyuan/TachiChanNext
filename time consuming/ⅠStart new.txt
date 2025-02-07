@@ -1,0 +1,22 @@
+Main 0 ms  App Start
+Main 1 ms  InitializeComponent
+Main 26 ms （框架初始化完成）App OnLaunched Start
+Main 0 ms  StartMainWindowAsync Start
+Main 0 ms  PrepareValidGamePath
+Main 0 ms  MainWindow
+Async 0 ms  GetOrLaunchGameWithSplashAsync Start
+Async 8 ms  （搜索进程完成）GetWindowProcessByPathAsync
+Async 0 ms  Splash
+Async 26 ms （Splash 出现）Splash Showed
+Async 0 ms  LaunchGameAsync Start
+Main 46 ms （主窗口激活出现）MainWindow Activated
+Async 7 ms  （执行游戏进程）Process.Start
+Async 0 ms  Start search process
+Async LaunchGameAsync End 43, active waiting time 2100ms (2680ms)
+Main processResult got (2690ms)
+Main 0 ms  StartMainWindowAsync End
+Async 0 ms  GameWindowBindingAsync Start
+Async 0 ms  Start FindRealWindowHandleAsync
+Async 0 ms  FindGoodWindowHandleAsync
+Async 7 ms  （win32api 调整窗口层级）SetParent
+Async 0 ms  Subscribe done

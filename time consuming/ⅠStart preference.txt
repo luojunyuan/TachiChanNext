@@ -1,0 +1,6 @@
+Main 0 ms  App Start
+Main 0 ms  InitializeComponent
+Main 13 ms （框架初始化完成）App OnLaunched Start
+Main 0 ms  App-LaunchPreferenceAsync Start
+Main 0 ms  Register AppInstance
+Main 98 ms （偏好设置窗口激活出现）Activated PreferenceWindow

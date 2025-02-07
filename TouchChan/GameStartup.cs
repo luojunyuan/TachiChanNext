@@ -1,5 +1,5 @@
-﻿using System.Diagnostics;
-using LightResults;
+﻿using LightResults;
+using System.Diagnostics;
 using TouchChan.SplashScreenGdiPlus;
 using WindowsShortcutFactory;
 
@@ -28,14 +28,14 @@ public class Log
 
     private static readonly Stopwatch Stopwatch2 = new();
 
-    public static void Do2(string message, bool longWait = false,  bool recount = false)
+    public static void Do2(string message, bool longWait = false, bool recount = false)
     {
         if (recount)
             Stopwatch2.Restart();
 
         var elapsedMilliseconds = Stopwatch2.ElapsedMilliseconds;
 
-        var output = longWait 
+        var output = longWait
             ? $"Async {message} ({elapsedMilliseconds + "ms"})"
             : $"Async {elapsedMilliseconds + " ms",-5} {message}";
 
@@ -103,20 +103,20 @@ public static partial class GameStartup
         var process = await GetWindowProcessByPathAsync(path);
         if (process != null)
         {
-            Log.Do2("GetWindowProcessByPathAsync");
-            _ = Win32.TryRestoreWindowAsync(process.MainWindowHandle);
-            Log.Do2("TryRestoreWindow");
+            Log.Do2("（搜索进程完成）GetWindowProcessByPathAsync");
+            await Win32.TryRestoreWindowAsync(process.MainWindowHandle);
+            Log.Do2("（如果命中）TryRestoreWindowAsync");
             return process;
         }
 
-        Log.Do2("GetWindowProcessByPathAsync");
+        Log.Do2("（搜索进程完成）GetWindowProcessByPathAsync");
 
         using var fileStream = EmbeddedResource.KleeGreen;
 
         Log.Do2("Splash");
         return await SplashScreen.WithShowAndExecuteAsync(fileStream, async () =>
         {
-            Log.Do2("Splash Showed");
+            Log.Do2("（Splash 出现）Splash Showed");
             var launchResult = await LaunchGameAsync(path, leEnable);
             if (launchResult.IsFailure(out var launchGameError, out var launchedProcess))
                 return Result.Failure<Process>(launchGameError.Message);
@@ -144,7 +144,7 @@ public static partial class GameStartup
             EnvironmentVariables = { ["__COMPAT_LAYER"] = "HighDpiAware" }
         };
         _ = await StartProcessAsync(startInfo);
-        Log.Do2("Process.Start");
+        Log.Do2("（执行游戏进程）Process.Start");
 
         const int WaitMainWindowTimeout = 20000;
         const int UIMinimumResponseTime = 50;
@@ -163,7 +163,8 @@ public static partial class GameStartup
             if (gameProcess != null)
             {
                 // leProc?.kill()
-                Log.Do2($"LaunchGameAsync End {count}", true);
+                // 主动等待耗时 + Task.Delay 本身状态机耗时 + 进程搜索耗时
+                Log.Do2($"LaunchGameAsync End {count}, active waiting time {(count-1)*UIMinimumResponseTime}ms", true);
                 return gameProcess;
             }
 
