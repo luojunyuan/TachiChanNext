@@ -14,7 +14,6 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>WinUI</DefineConstants>
-    <!--<SatelliteResourceLanguages>en-US;zh-CN;ja</SatelliteResourceLanguages>-->
   </PropertyGroup>
 
   <ItemGroup>

@@ -9,8 +9,6 @@
     mc:Ignorable="d">
 
     <Grid>
-        <Border BorderBrush="red" BorderThickness="1" CornerRadius="12" />
-
         <local:TouchControl x:Name="Touch" />
     </Grid>
 
