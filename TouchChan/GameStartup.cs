@@ -163,8 +163,8 @@ public static partial class GameStartup
             if (gameProcess != null)
             {
                 // leProc?.kill()
-                // 主动等待耗时 + Task.Delay 本身状态机耗时 + 进程搜索耗时
-                Log.Do2($"LaunchGameAsync End {count}, active waiting time {(count-1)*UIMinimumResponseTime}ms", true);
+                // 主动等待耗时 + Task.Delay 本身会有一个 Clock resolution 的耗时 + 进程搜索耗时
+                Log.Do2($"LaunchGameAsync End {count}", true);
                 return gameProcess;
             }
 
