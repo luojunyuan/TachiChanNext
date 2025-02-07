@@ -46,17 +46,16 @@ public sealed partial class TouchControl : UserControl
     {
         TouchDockSubscribe(container);
 
-        var moveAnimationEndedStream = TranslationStoryboard.RxCompleted().Share();
+        var moveAnimationEndedStream = TranslationStoryboard.RxCompleted();
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
-        var pointerPressedStream = Touch.RxPointerPressed().Do(e => Touch.CapturePointer(e.Pointer)).Share();
-        var pointerMovedStream = Touch.RxPointerMoved().Share();
+        var pointerPressedStream = Touch.RxPointerPressed().Do(e => Touch.CapturePointer(e.Pointer));
+        var pointerMovedStream = Touch.RxPointerMoved();
         var pointerReleasedStream =
             Touch.RxPointerReleased()
             .Merge(raisePointerReleasedSubject)
-            .Do(e => Touch.ReleasePointerCapture(e.Pointer))
-            .Share();
+            .Do(e => Touch.ReleasePointerCapture(e.Pointer));
 
         var dragStartedStream =
             pointerPressedStream
