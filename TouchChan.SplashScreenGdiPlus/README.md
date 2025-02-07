@@ -1,6 +1,6 @@
 ﻿# TouchChan.SplashScreenGdiPlus
 
-## 项目简介
+## 简介
 
 基于 System.Drawing.Common (GDI+) 以极少的代码实现了一个展现透明图片的高性能 Splash 窗口。
 
@@ -8,7 +8,7 @@
 
 在 i7-8650U 的平台上 Aot 编译后，调用 `WithShowAndExecuteAsync` 开始到出现 Splash 的耗时约为 30ms 左右。
 
-## 项目依赖于
+## 依赖
 
 * System.Drawing.Common (GDI+ 的封装)
 * CSWin32 (与 win32 api 交互，包括创建窗口等)
