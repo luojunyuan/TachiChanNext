@@ -67,15 +67,13 @@ public class SplashScreen
         // Hires image scaling
         const double scaleFactor = 2.0;
         const double scaleFactorMid = 1.5;
-        const int dpiFactor = 200;
-        const int dpiFactorMid = 150;
         var dpi = (int)(GetDpiScale() * 100);
 
         var (width, height) = dpi switch
         {
-            < dpiFactorMid => ((int)(image.Width / scaleFactor), (int)(image.Height / scaleFactor)),
-            < dpiFactor => ((int)(image.Width / scaleFactorMid), (int)(image.Height / scaleFactorMid)),
-            >= dpiFactor => (image.Width, image.Height),
+            < 150 => ((int)(image.Width / scaleFactor), (int)(image.Height / scaleFactor)),
+            >= 150 and < 200 => ((int)(image.Width / scaleFactorMid), (int)(image.Height / scaleFactorMid)),
+            _ => (image.Width, image.Height),
         };
 
         var (x, y) = CenterToPrimaryScreen(width, height);
