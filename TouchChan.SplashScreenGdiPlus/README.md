@@ -2,7 +2,7 @@
 
 ## 项目简介
 
-项目基于 System.Drawing.Common (GDI+) 以极少的代码实现了一个展现透明图片的高性能 Splash 窗口。
+基于 System.Drawing.Common (GDI+) 以极少的代码实现了一个展现透明图片的高性能 Splash 窗口。
 
 核心代码只有 `DisplaySplash()` 50 行左右。
 
