@@ -1,6 +1,5 @@
 ﻿using LightResults;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
@@ -57,32 +56,22 @@ public static partial class GameStartup
         return Result.Failure<nint>(new WindowHandleNotFoundError());
     }
 
-    private unsafe static List<HWND> GetWindowsOfProcess(Process proc)
+    private static List<HWND> GetWindowsOfProcess(Process proc)
     {
         var list = new List<HWND>();
 
-        var pair = Tuple.Create(list, proc.Id);
-        var pairGCHandle = GCHandle.Alloc(pair, GCHandleType.Pinned);
-
-        PInvoke.EnumChildWindows(HWND.Null, ChildProc, (LPARAM)GCHandle.ToIntPtr(pairGCHandle));
-
-        pairGCHandle.Free();
-        return list;
-
-        //[UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
-        static BOOL ChildProc(HWND handle, LPARAM pointer)
+        BOOL ChildProc(HWND handle, LPARAM pointer)
         {
-            if (GCHandle.FromIntPtr(pointer).Target is not
-                Tuple<List<HWND>, int>(List<HWND> container, int pid))
-                return false;
-
             _ = PInvoke.GetWindowThreadProcessId(handle, out var relativeProcessId);
-            if (relativeProcessId != pid)
+            if (relativeProcessId != proc.Id)
                 return true;
 
-            container.Add(handle);
+            list.Add(handle);
             return true;
         }
+        PInvoke.EnumChildWindows(HWND.Null, ChildProc, default);
+
+        return list;
     }
 
     private static bool IsGoodWindow(RECT rect) =>
