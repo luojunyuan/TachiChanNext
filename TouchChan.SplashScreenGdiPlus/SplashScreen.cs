@@ -64,7 +64,7 @@ public class SplashScreen
             PInvoke.RegisterClassEx(in wndClass);
         }
 
-        // Hires image scaling
+        // 高分辨率图像缩放
         const double scaleFactor = 2.0;
         const double scaleFactorMid = 1.5;
         var dpi = (int)(GetDpiScale() * 100);
@@ -102,9 +102,9 @@ public class SplashScreen
     }
 
     /// <summary>
-    /// Clean up resources
+    /// 清理资源
     /// </summary>
-    /// <remarks>Must be executed on the same thread that called CreateWindowEx to be effective</remarks>
+    /// <remarks>必须在调用 CreateWindowEx 的相同线程上执行，才会生效</remarks>
     private void CleanUp()
     {
         _ = PInvoke.ReleaseDC(_hWndSplash, _hdc);
