@@ -94,8 +94,9 @@ public class SplashScreen
         using var g = Graphics.FromHdc(_hdc);
         g.DrawImage(image, 0, 0, width, height);
 
-        PInvoke.SetWindowLong(_hWndSplash, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE,
-            PInvoke.GetWindowLong(_hWndSplash, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE) | (int)WINDOW_EX_STYLE.WS_EX_LAYERED);
+        var originalStyle = PInvoke.GetWindowLong(_hWndSplash, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
+        _ = PInvoke.SetWindowLong(_hWndSplash, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE,
+            originalStyle | (int)WINDOW_EX_STYLE.WS_EX_LAYERED);
 
         PInvoke.SetLayeredWindowAttributes(_hWndSplash, new COLORREF((uint)Color.Green.ToArgb()), 0, LAYERED_WINDOW_ATTRIBUTES_FLAGS.LWA_COLORKEY);
     }
@@ -106,7 +107,7 @@ public class SplashScreen
     /// <remarks>Must be executed on the same thread that called CreateWindowEx to be effective</remarks>
     private void CleanUp()
     {
-        PInvoke.ReleaseDC(_hWndSplash, _hdc);
+        _ = PInvoke.ReleaseDC(_hWndSplash, _hdc);
         PInvoke.DestroyWindow(_hWndSplash);
     }
 
