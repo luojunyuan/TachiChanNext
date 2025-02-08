@@ -16,6 +16,8 @@ public partial class App : Application
 {
     public static readonly SynchronizationContext UISyncContext;
 
+    public static Subject<Unit> OnTouchShowed { get; private set; } = new();
+
     static App() => UISyncContext = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
 
     public App()
@@ -141,6 +143,8 @@ public partial class App : Application
                 .SubscribeOn(UISyncContext)
                 .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
                 .DisposeWith(disposables);
+
+            OnTouchShowed.OnNext(Unit.Default);
             await childWindowClosedChannel.Reader.ReadAsync();
 
             process.Refresh();

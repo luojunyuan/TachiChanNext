@@ -1,9 +1,6 @@
-using System;
-using Microsoft.UI;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using R3;
+using System;
 using Windows.Foundation;
 using WinRT.Interop;
 

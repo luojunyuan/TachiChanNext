@@ -169,7 +169,7 @@ public sealed partial class TouchControl : UserControl
 
         moveAnimationEndedStream.Select(_ => Unit.Default)
             .Merge(pointerReleasedStream.Select(_ => Unit.Default))
-            .Prepend(Unit.Default)
+            .Merge(App.OnTouchShowed)
             .Select(_ =>
                 Observable.Timer(FadeOutDuration)
                 .TakeUntil(pointerPressedStream))
