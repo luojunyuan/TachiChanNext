@@ -1,5 +1,6 @@
 ﻿using Nito.AsyncEx;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -57,7 +58,7 @@ public class SplashScreen
             var wndClass = new WNDCLASSEXW
             {
                 cbSize = (uint)Marshal.SizeOf<WNDCLASSEXW>(),
-                lpfnWndProc = WndProc,
+                lpfnWndProc = &WndProc,
                 lpszClassName = new(lpClassName),
                 hInstance = default,
             };
@@ -134,6 +135,7 @@ public class SplashScreen
         return 1;
     }
 
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
     private static LRESULT WndProc(HWND hwnd, uint uMsg, WPARAM wParam, LPARAM lParam)
         => PInvoke.DefWindowProc(hwnd, uMsg, wParam, lParam);
 }

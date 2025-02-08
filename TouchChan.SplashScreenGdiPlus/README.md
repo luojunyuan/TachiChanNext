@@ -18,6 +18,7 @@
 
 * 透明图片在 Primary Screen 上居中显示
 * 高 dpi 下自动缩放图片，请使用以 96px 为倍数的图片，不低于 192*192 像素的图片
+* 由 CSWin32 提供的 no marshaling P/Invoke 生成
 
 ## 可能存在的问题
 
@@ -25,7 +26,7 @@
 
 ## 大小占用
 
-* 38kb .dll release build (包含 CSWin32)
+* 39kb .dll release build (包含 CSWin32)
 * 475kb System.Drawing.Common
 * 22kb Nito.Disposables.dll 
 * 14kb Nito.AsyncEx.Context.dll 
