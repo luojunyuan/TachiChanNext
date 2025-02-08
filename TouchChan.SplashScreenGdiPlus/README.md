@@ -22,3 +22,11 @@
 ## 可能存在的问题
 
 使用先创建窗口，再设置 WS_EX_LAYERED，指定 #FF00800(Green) 颜色为透明通道的方式建立的透明窗口。实践中发现有出现透明效果有失效的情景的可能性。
+
+## 大小占用
+
+* 38kb .dll release build (包含 CSWin32)
+* 475kb System.Drawing.Common
+* 22kb Nito.Disposables.dll 
+* 14kb Nito.AsyncEx.Context.dll 
+* 35kb Nito.AsyncEx.Tasks.dll

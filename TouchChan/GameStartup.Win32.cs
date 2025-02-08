@@ -1,5 +1,5 @@
-﻿using System.Diagnostics;
-using LightResults;
+﻿using LightResults;
+using System.Diagnostics;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
@@ -45,8 +45,9 @@ public static partial class GameStartup
             foreach (var handle in windows)
             {
                 PInvoke.GetClientRect(handle, out var rect);
+
                 if (IsGoodWindow(rect))
-                    return handle.Value;
+                    return (nint)handle;
             }
 
             await Task.Delay(CheckResponse);
