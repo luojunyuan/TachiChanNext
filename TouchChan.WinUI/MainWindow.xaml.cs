@@ -30,12 +30,13 @@ public sealed partial class MainWindow : Window
         Touch.SetWindowObservable = rect => Hwnd.SetWindowObservableRegion(rect.ToGdiRect());
 
 #if DEBUG
-        if (this.Content is Grid panel)
+        if (this.Content is Microsoft.UI.Xaml.Controls.Grid panel)
         {
-            panel.Children.Add(new Border()
+            panel.Children.Add(new Microsoft.UI.Xaml.Controls.Border()
             {
                 CornerRadius = new(12),
-                BorderBrush = new SolidColorBrush(Colors.Red),
+                BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                    Microsoft.UI.Colors.Red),
                 BorderThickness = new(1),
             });
         }
