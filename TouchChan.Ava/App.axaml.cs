@@ -1,10 +1,9 @@
 ﻿using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
-using Nito.AsyncEx;
 using R3;
-using System;
 using System.Diagnostics;
 using System.Threading.Channels;
 
@@ -12,8 +11,6 @@ namespace TouchChan.Ava;
 
 public partial class App : Application
 {
-    public static Subject<Unit> OnTouchShowed { get; private set; } = new();
-
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -21,80 +18,71 @@ public partial class App : Application
 
     public override async void OnFrameworkInitializationCompleted()
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime
+            { Args: var arguments } desktop || arguments is null)
+            return;
+
+        var isDefaultLaunch = arguments.Length == 0;
+
+        var result = isDefaultLaunch switch
         {
-            var arguments = desktop.Args ?? [];
+            //true => await LaunchPreferenceAsync(),
+            _ => await StartMainWindowSimulateAsync(desktop, arguments),
+        };
 
-            var path = arguments[0];
-
-            var gamePathResult = GameStartup.PrepareValidGamePath(path);
-            if (gamePathResult.IsFailure(out var pathError, out var gamePath))
-            {
-                await MessageBox.ShowAsync(pathError.Message);
-                return;
-            }
-
-            var processTask = Task.Run(async () =>
-                await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le")));
-
-            var childWindow = new MainWindow
-            {
-            };
-            desktop.MainWindow = childWindow;
-
-            var processResult = await processTask;
-            if (processResult.IsFailure(out var processError, out var process))
-            {
-                await MessageBox.ShowAsync(processError.Message);
-                return;
-            }
-
-            // 启动后台绑定窗口任务
-            _ = Task.Factory.StartNew(async () =>
-            {
-                try
-                {
-                    await GameWindowBindingAsync(childWindow, process);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine(ex);
-                    Environment.Exit(1);
-                }
-            }, TaskCreationOptions.LongRunning);
-
-
-            // 程序“[32900] TouchChan.Ava.exe”已退出，返回值为 3221226525 (0xc000041d)。
-            // 没有输出
-            // 第二屏幕 125% 窗口上，关闭未知 dpi debugview
-            //Closed
-            //程序“[9576] TouchChan.Ava.exe”已退出，返回值为 3221225480(0xc0000008) 'An invalid handle was specified'。
-            //desktop.MainWindow.Closed += (s, e) => Debug.WriteLine("Closed");
-            //process.EnableRaisingEvents = true;
-            //process.Exited += (_, _) => Dispatcher.UIThread.Invoke(() => desktop.Shutdown());
-        }
-
-        base.OnFrameworkInitializationCompleted();
+        if (result is LaunchResult.Redirected or LaunchResult.Failed)
+            Environment.Exit(0);
     }
 
-    /// <summary>
-    /// 绑定窗口到游戏进程，也是启动后的 WinUI 窗口生命周期
-    /// </summary>
-    /// <param name="childWindow">WinUI 子窗口</param>
-    /// <param name="process">目标进程</param>
-    private static async Task GameWindowBindingAsync(MainWindow childWindow, Process process)
+    private static async Task<LaunchResult> StartMainWindowSimulateAsync(IClassicDesktopStyleApplicationLifetime desktop, string[] arguments)
     {
+        var path = arguments[0];
+
+        var gamePathResult = GameStartup.PrepareValidGamePath(path);
+        if (gamePathResult.IsFailure(out var pathError, out var gamePath))
+        {
+            await MessageBox.ShowAsync(pathError.Message);
+            return LaunchResult.Failed;
+        }
+
+        var processResult = await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
+        if (processResult.IsFailure(out var processError, out var process))
+        {
+            await MessageBox.ShowAsync(processError.Message);
+            return LaunchResult.Failed;
+        }
+
+        _ = Task.Factory.StartNew(async () =>
+        {
+            try
+            {
+                await GameWindowBindingAsync(desktop, process);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                Environment.Exit(1);
+            }
+        }, TaskCreationOptions.LongRunning);
+
+        return LaunchResult.Success;
+    }
+
+    private static async Task GameWindowBindingAsync(IClassicDesktopStyleApplicationLifetime desktop, Process process)
+    {
+        desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        process.EnableRaisingEvents = true;
+        process.RxExited().Subscribe(_ => Dispatcher.UIThread.Invoke(() => desktop.Shutdown()));
+
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的游戏窗口
-        var isDpiUnaware = Win32.IsDpiUnaware(process);
+        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) &&Win32.IsDpiUnaware(process);
 
         var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
-        process.EnableRaisingEvents = true;
-        process.Exited += (_, _) => childWindowClosedChannel.Writer.Complete();
 
         while (process.HasExited is false)
         {
             var handleResult = await GameStartup.FindGoodWindowHandleAsync(process);
-            if (handleResult.IsFailure(out var error, out var windowHandle)
+            if (handleResult.IsFailure(out var error, out var gameWindowHandle)
                 && error is WindowHandleNotFoundError)
             {
                 await MessageBox.ShowAsync("Timeout! Failed to find a valid window of game");
@@ -105,30 +93,55 @@ public partial class App : Application
                 break;
             }
 
-            using CompositeDisposable disposables = [];
-
-            if (isDpiUnaware)
+            await Dispatcher.UIThread.InvokeAsync(async () =>
             {
-                // HACK: Pending test
-                //childWindow.UnawareGameWindowShowHideHack(windowHandle)
-                //    .DisposeWith(disposables);
-            }
+                var childWindow = new MainWindow();
+                childWindow.RxClosed().Subscribe(_ => childWindowClosedChannel.Writer.TryWrite(Unit.Default));
+                childWindow.Show();
 
-            await NativeMethods.SetParentAsync(childWindow.Hwnd, windowHandle);
+                desktop.MainWindow = childWindow;
 
-            GameWindowService.ClientSizeChanged(windowHandle)
-                .Subscribe(size => childWindow.Hwnd.ResizeClient(size));
+                await NativeMethods.SetParentAsync(childWindow.Hwnd, gameWindowHandle);
 
-            GameWindowService.WindowDestroyed(windowHandle)
-                .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x));
+                GameWindowService.ClientSizeChanged(gameWindowHandle)
+                    .Subscribe(size => childWindow.Hwnd.ResizeClient(size))
+                    .DisposeWith(childWindow);
+                childWindow.TouchShowed.OnNext(Unit.Default);
+            });
 
-            OnTouchShowed.OnNext(Unit.Default);
             await childWindowClosedChannel.Reader.ReadAsync();
 
             process.Refresh();
         }
-
-        // WAS Shit x: 疑似窗口显示后，在窗口显示前的线程上调用 Current.Exit() 会引发错误
-        Environment.Exit(0);
     }
+
+    enum LaunchResult
+    {
+        Success,
+        Redirected,
+        Failed,
+    }
+}
+
+static partial class ObservableEventsExtensions
+{
+    public static void DisposeWith(this IDisposable disposable, CompositeDisposable compositeDisposable) =>
+        compositeDisposable.Add(disposable);
+
+    public static void DisposeWith(this IDisposable disposable, MainWindow mainWindow) =>
+        mainWindow.RxClosed()
+            .Do(_ => disposable.Dispose())
+            .Subscribe();
+
+    public static Observable<EventArgs> RxExited(this Process data) =>
+        Observable.FromEvent<EventHandler, EventArgs>(
+            h => (sender, e) => h(e),
+            e => data.Exited += e,
+            e => data.Exited -= e);
+
+    public static Observable<EventArgs> RxClosed(this MainWindow data) =>
+        Observable.FromEvent<EventHandler, EventArgs>(
+            h => (sender, e) => h(e),
+            e => data.Closed += e,
+            e => data.Closed -= e);
 }

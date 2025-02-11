@@ -100,7 +100,7 @@ public static partial class GameStartup
         return Result.Failure<Process>("Failed to start game within the timeout period.");
     }
 
-    private static Task<Process?> StartProcessAsync(ProcessStartInfo startInfo) => Task.FromResult(Process.Start(startInfo));
+    private static Task<Process?> StartProcessAsync(ProcessStartInfo startInfo) => Task.Run(() => Process.Start(startInfo));
 
     /// <summary>
     /// 尝试通过限定的程序路径获取对应正在运行的，存在 MainWindowHandle 的进程
@@ -109,7 +109,7 @@ public static partial class GameStartup
     {
         var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
         // FUTURE: .log main.bin situation
-        return Task.FromResult(
+        return Task.Run(() =>
             Process.GetProcessesByName(friendlyName)
                 .FirstOrDefault(p =>
                 {

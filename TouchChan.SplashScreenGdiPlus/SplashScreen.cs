@@ -12,32 +12,18 @@ namespace TouchChan.SplashScreenGdiPlus;
 
 public class SplashScreen
 {
-    public static async Task<T> WithShowAndExecuteAsync<T>(Stream resource, Func<Task<T>> action)
-    {
-        var taskCompletionSource = new TaskCompletionSource<T>();
-
-        AsyncContext.Run(async () =>
+    public static Task<T> WithShowAndExecuteAsync<T>(Stream resource, Func<Task<T>> action) =>
+        Task.FromResult(AsyncContext.Run(async () =>
         {
             using var image = Image.FromStream(resource);
             var splash = InternalShow(image);
-            try
-            {
-                var result = await action();
-                taskCompletionSource.SetResult(result);
-            }
-            catch (Exception ex)
-            {
-                taskCompletionSource.SetException(ex);
-            }
-            finally
-            {
-                // NOTE: finally 是重要的，他保证了无论 Action 结果如何 splash 都将被清理
-                splash.CleanUp();
-            }
-        });
 
-        return await taskCompletionSource.Task;
-    }
+            var result = await action.Invoke();
+
+            splash.CleanUp();
+
+            return result;
+        }));
 
     private static SplashScreen InternalShow(Image image)
     {

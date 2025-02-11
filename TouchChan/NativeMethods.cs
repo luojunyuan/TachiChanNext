@@ -43,8 +43,7 @@ namespace TouchChan
         {
             if (PInvoke.IsIconic(new(windowHandle)))
             {
-                // Time Consuming
-                PInvoke.ShowWindow(new(windowHandle), SHOW_WINDOW_CMD.SW_RESTORE);
+                return Task.Run(() => PInvoke.ShowWindow(new(windowHandle), SHOW_WINDOW_CMD.SW_RESTORE));
             }
 
             return Task.CompletedTask;
@@ -89,8 +88,8 @@ namespace TouchChan
     {
         public static nint GetConsoleWindow() => PInvoke.GetConsoleWindow();
 
-        public static Task SetParentAsync(nint child, nint parent) =>
-            Task.FromResult(PInvoke.SetParent(new(child), new(parent)));
+        public static Task<bool> SetParentAsync(nint child, nint parent) =>
+            Task.Run(() => PInvoke.SetParent(new(child), new(parent)) != HWND.Null);
 
         [SupportedOSPlatform("windows10.0.14393")]
         public static uint GetDpiForWindow(nint hwnd) => PInvoke.GetDpiForWindow(new(hwnd));
