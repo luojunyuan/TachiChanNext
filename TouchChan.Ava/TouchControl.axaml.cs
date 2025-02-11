@@ -13,9 +13,7 @@ namespace TouchChan.Ava;
 public partial class TouchControl : UserControl
 {
     private readonly TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
-
     private readonly Animation SmoothMoveStoryboard;
-
     private readonly TranslateTransform TouchTransform = new();
 
     public Action<Size>? ResetWindowObservable { get; set; }

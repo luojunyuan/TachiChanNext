@@ -52,6 +52,10 @@ public partial class App : Application
             return LaunchResult.Failed;
         }
 
+        desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        process.EnableRaisingEvents = true;
+        process.RxExited().Subscribe(_ => Dispatcher.UIThread.Invoke(() => desktop.Shutdown()));
+
         _ = Task.Factory.StartNew(async () =>
         {
             try
@@ -70,10 +74,6 @@ public partial class App : Application
 
     private static async Task GameWindowBindingAsync(IClassicDesktopStyleApplicationLifetime desktop, Process process)
     {
-        desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        process.EnableRaisingEvents = true;
-        process.RxExited().Subscribe(_ => Dispatcher.UIThread.Invoke(() => desktop.Shutdown()));
-
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的游戏窗口
         var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) &&Win32.IsDpiUnaware(process);
 

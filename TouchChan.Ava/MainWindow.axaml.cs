@@ -15,17 +15,22 @@ public partial class MainWindow : Window
         Hwnd = GetTopLevel(this)?.TryGetPlatformHandle()?.Handle ?? throw new InvalidOperationException();
 
         InitializeComponent();
+        Position = new(-32000, -32000);
 
+        // Child 样式需要 this.Loaded 触发后才能正确被设置
         this.RxLoaded()
             .Subscribe(_ =>
             {
-                HwndExtensions.ToggleWindowStyle(Hwnd, false, WindowStyle.Popup);
-                HwndExtensions.ToggleWindowStyle(Hwnd, true, WindowStyle.Child);
-                HwndExtensions.ToggleWindowExStyle(Hwnd, true, ExtendedWindowStyle.Layered);
+                Hwnd.ToggleWindowStyle(false, WindowStyle.ClipChildren);
+                Hwnd.ToggleWindowStyle(false, WindowStyle.TiledWindow);
+                Hwnd.ToggleWindowStyle(false, WindowStyle.Popup);
+                Hwnd.ToggleWindowStyle(true, WindowStyle.Child);
+                Hwnd.ToggleWindowExStyle(false, ExtendedWindowStyle.AppWindow);
+                Hwnd.ToggleWindowExStyle(true, ExtendedWindowStyle.Layered);
             });
 
-        Touch.ResetWindowObservable = size => HwndExtensions.ResetWindowOriginalObservableRegion(Hwnd, size.ToGdiSize());
-        Touch.SetWindowObservable = rect => HwndExtensions.SetWindowObservableRegion(Hwnd, rect.ToGdiRect());
+        Touch.ResetWindowObservable = size => HwndExtensions.ResetWindowOriginalObservableRegion(Hwnd, (size * DesktopScaling).ToGdiSize());
+        Touch.SetWindowObservable = rect => HwndExtensions.SetWindowObservableRegion(Hwnd, (rect * DesktopScaling).ToGdiRect());
     }
 }
 
