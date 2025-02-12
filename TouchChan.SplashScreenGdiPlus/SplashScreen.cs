@@ -1,5 +1,4 @@
-﻿using Nito.AsyncEx;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Windows.Win32;
@@ -10,30 +9,31 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace TouchChan.SplashScreenGdiPlus;
 
-public class SplashScreen
+public class SplashScreen(Stream resource) : IDisposable
 {
-    public static Task<T> WithShowAndExecuteAsync<T>(Stream resource, Func<Task<T>> action) =>
-        Task.FromResult(AsyncContext.Run(async () =>
-        {
-            using var image = Image.FromStream(resource);
-            var splash = InternalShow(image);
-
-            var result = await action.Invoke();
-
-            splash.CleanUp();
-
-            return result;
-        }));
-
-    private static SplashScreen InternalShow(Image image)
-    {
-        var splash = new SplashScreen();
-        splash.DisplaySplash(image);
-        return splash;
-    }
-
+    private readonly Image _image = Image.FromStream(resource);
+    private readonly SemaphoreSlim _semaphore = new(0, 1);
     private HWND _hWndSplash;
     private HDC _hdc;
+
+    public void Show() =>
+        new Thread(() =>
+        {
+            DisplaySplash(_image);
+
+            _semaphore.Wait();
+
+            _ = PInvoke.ReleaseDC(_hWndSplash, _hdc);
+            PInvoke.DestroyWindow(_hWndSplash);
+
+        }).Start();
+
+    public void Dispose()
+    {
+        _semaphore.Release();
+        _image.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     private unsafe void DisplaySplash(Image image)
     {
@@ -86,16 +86,6 @@ public class SplashScreen
             originalStyle | (int)WINDOW_EX_STYLE.WS_EX_LAYERED);
 
         PInvoke.SetLayeredWindowAttributes(_hWndSplash, new COLORREF((uint)Color.Green.ToArgb()), 0, LAYERED_WINDOW_ATTRIBUTES_FLAGS.LWA_COLORKEY);
-    }
-
-    /// <summary>
-    /// 清理资源
-    /// </summary>
-    /// <remarks>必须在调用 CreateWindowEx 的相同线程上执行，才会生效</remarks>
-    private void CleanUp()
-    {
-        _ = PInvoke.ReleaseDC(_hWndSplash, _hdc);
-        PInvoke.DestroyWindow(_hWndSplash);
     }
 
     private static unsafe (int X, int Y) CenterToPrimaryScreen(int width, int height)

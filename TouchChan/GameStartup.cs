@@ -48,14 +48,14 @@ public static partial class GameStartup
 
         using var fileStream = EmbeddedResource.KleeGreen;
 
-        return await SplashScreen.WithShowAndExecuteAsync(fileStream, async () =>
-        {
-            var launchResult = await LaunchGameAsync(path, leEnable);
-            if (launchResult.IsFailure(out var launchGameError, out process))
-                return Result.Failure<Process>(launchGameError.Message);
+        using var splash = new SplashScreen(fileStream);
+        splash.Show();
 
-            return process;
-        });
+        var launchResult = await LaunchGameAsync(path, leEnable);
+        if (launchResult.IsFailure(out var launchGameError, out process))
+            return Result.Failure<Process>(launchGameError.Message);
+
+        return process;
     }
 
     /// <summary>

@@ -12,7 +12,6 @@
 
 * System.Drawing.Common (GDI+ 的封装)
 * CSWin32 (与 win32 api 交互，包括创建窗口等)
-* AsyncEx.Context (用于异步操作，保证 Splash 窗口的创建和销毁在同一上下文上)
 
 ## 项目实现了
 
@@ -28,6 +27,3 @@
 
 * 39kb .dll release build (包含 CSWin32)
 * 475kb System.Drawing.Common
-* 22kb Nito.Disposables.dll 
-* 14kb Nito.AsyncEx.Context.dll 
-* 35kb Nito.AsyncEx.Tasks.dll
