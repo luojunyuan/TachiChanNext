@@ -1,4 +1,4 @@
-仅因为同样的实现下 WinUI 触摸拖动 Touch 延迟感强烈，而转用 Avalonia 作为主要的开发框架。
+~~仅因为同样的实现下 WinUI 触摸拖动 Touch 延迟感强烈，而转用 Avalonia 作为主要的开发框架。~~
 
 ### 已知问题 Bug
 
