@@ -324,7 +324,8 @@ partial class TouchLayerMarginConverter : IValueConverter
             return true;
         }
 
-        throw new InvalidCastException();
+        factor = default;
+        return false;
     }
 }
 
