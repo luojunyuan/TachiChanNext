@@ -11,7 +11,7 @@ using Windows.Foundation;
 
 namespace TouchChan.WinUI;
 
-// 依赖 AnimationTool, TouchLayerMarginConverter(Xaml), PositionCalculator
+// TouchControl 依赖 AnimationTool, TouchLayerMarginConverter(Xaml), PositionCalculator
 
 public sealed partial class TouchControl : UserControl
 {
