@@ -6,7 +6,7 @@
 
 核心代码只有 `DisplaySplash()` 50 行左右。
 
-在 i7-8650U 的平台上 Aot 编译后，调用 `WithShowAndExecuteAsync` 开始到出现 Splash 的耗时约为 30ms 左右。
+在 i7-8650U 的平台上 Aot 编译后，调用 `splash.Show()` 开始到出现 Splash 的耗时约为 30ms 左右。
 
 ## 依赖
 
@@ -18,6 +18,7 @@
 * 透明图片在 Primary Screen 上居中显示
 * 高 dpi 下自动缩放图片，请使用以 96px 为倍数的图片，不低于 192*192 像素的图片
 * 由 CSWin32 提供的 no marshaling P/Invoke 生成
+* 构造函数传入流
 
 ## 可能存在的问题
 
@@ -25,5 +26,5 @@
 
 ## 大小占用
 
-* 39kb .dll release build (包含 CSWin32)
+* 39kb .dll release build (包含 CSWin32 生成的方法)
 * 475kb System.Drawing.Common

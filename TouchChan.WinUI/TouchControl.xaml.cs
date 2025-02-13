@@ -1,12 +1,17 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
 using System;
+using System.Numerics;
 using Windows.Foundation;
 
 namespace TouchChan.WinUI;
+
+// 依赖 AnimationTool, TouchLayerMarginConverter(Xaml), PositionCalculator
 
 public sealed partial class TouchControl : UserControl
 {
@@ -190,7 +195,7 @@ public sealed partial class TouchControl : UserControl
 
         moveAnimationEndedStream.Select(_ => Unit.Default)
             .Merge(pointerReleasedStream.Select(_ => Unit.Default))
-            .Merge(App.OnTouchShowed)
+            .Merge(MainWindow.OnTouchShowed)
             .Select(_ =>
                 Observable.Timer(FadeOutDuration)
                 .TakeUntil(pointerPressedStream))
@@ -287,4 +292,90 @@ class AnimationTool
         To = OpacityHalf,
         Duration = OpacityFadeOutDuration,
     };
+}
+
+/// <summary>
+/// 自动计算 Touch 每层圆点所占据宽度
+/// </summary>
+partial class TouchLayerMarginConverter : IValueConverter
+{
+    /// <param name="parameter">指示该层应缩放宽度的倍率因子</param>
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is double number && parameter is string factorString && TryParseFraction(factorString, out double factor))
+        {
+            return new Thickness(number * factor);
+        }
+
+        throw new InvalidOperationException();
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new InvalidOperationException();
+
+    private static bool TryParseFraction(string fraction, out double factor)
+    {
+        string[] parts = fraction.Split('/');
+        if (parts.Length == 2 &&
+            double.TryParse(parts[0], out double numerator) &&
+            double.TryParse(parts[1], out double denominator))
+        {
+            factor = numerator / denominator;
+            return true;
+        }
+
+        throw new InvalidCastException();
+    }
+}
+
+readonly struct PointWarp(Point point)
+{
+    public double X { get; } = point.X;
+    public double Y { get; } = point.Y;
+
+    public static Point operator -(PointWarp point1, Point point2)
+    {
+        return new Point((int)(point1.X - point2.X), (int)(point1.Y - point2.Y));
+    }
+}
+
+static partial class Extensions
+{
+    // VisualTree 帮助方法
+    public static T? FindParent<T>(this DependencyObject child) where T : DependencyObject
+    {
+        DependencyObject parentObject = VisualTreeHelper.GetParent(child);
+        if (parentObject == null)
+            return null;
+
+        return parentObject is T parent ? parent : FindParent<T>(parentObject);
+    }
+
+    // 简化 pointerEvent.GetCurrentPoint(visual).Position -> pointerEvent.GetPosition(visual)
+    public static Point GetPosition(this PointerRoutedEventArgs pointerEvent, UIElement visual) =>
+        pointerEvent.GetCurrentPoint(visual).Position;
+
+    // 用于扩展 Windows.Foundation.Point 之间的减法运算操作符
+    public static PointWarp Warp(this Point point) => new(point);
+
+    // 几何类型转换的扩展方法
+    public static Size ToSize(this Vector2 size) => new((int)size.X, (int)size.Y);
+
+    // XDpi 意味着将框架内部任何元素产生的点或面的值还原回真实的物理像素大小
+    public static Size ActualSizeXDpi(this FrameworkElement element, double factor)
+    {
+        var size = element.ActualSize.ToSize();
+        size.Width *= factor;
+        size.Height *= factor;
+        return size;
+    }
+
+    public static Rect XDpi(this Rect rect, double factor)
+    {
+        rect.X *= factor;
+        rect.Y *= factor;
+        rect.Width *= factor;
+        rect.Height *= factor;
+        return rect;
+    }
 }

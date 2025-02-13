@@ -5,7 +5,8 @@ VisualStudioVersion = 17.12.35506.116
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{0AE677C0-EFDB-40A2-BFEF-976FC39B4A30}"
 	ProjectSection(SolutionItems) = preProject
-		REAMDE.md = REAMDE.md
+		README.md = README.md
+		Settings.XamlStyler = Settings.XamlStyler
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan", "TouchChan\TouchChan.csproj", "{5AEAE161-6248-49BB-AD0F-4C04A55F7D29}"

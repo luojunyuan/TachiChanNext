@@ -16,8 +16,6 @@ public partial class App : Application
 {
     public static readonly SynchronizationContext UISyncContext;
 
-    public static Subject<Unit> OnTouchShowed { get; private set; } = new();
-
     static App() => UISyncContext = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
 
     public App()
@@ -84,6 +82,10 @@ public partial class App : Application
             try
             {
                 await GameWindowBindingAsync(childWindow, process);
+
+                // 唯一出口点：在后台任务完全结束后退出程序
+                // WAS Shit x: 疑似窗口显示后，在窗口显示前的 UI 线程上调用 Current.Exit() 会引发 0xc000027b 错误
+                Environment.Exit(0);
             }
             catch (Exception ex)
             {
@@ -106,7 +108,7 @@ public partial class App : Application
         var isDpiUnaware = Win32.IsDpiUnaware(process);
 
         var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
-        process.EnableRaisingEvents = true;
+
         process.RxExited().Subscribe(_ => childWindowClosedChannel.Writer.Complete());
 
         while (process.HasExited is false)
@@ -127,7 +129,7 @@ public partial class App : Application
 
             if (isDpiUnaware)
             {
-                // HACK: Pending test
+                // HACK: Pending test 并且一定要显式提示用户
                 childWindow.UnawareGameWindowShowHideHack(windowHandle)
                     .DisposeWith(disposables);
             }
@@ -144,14 +146,11 @@ public partial class App : Application
                 .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
                 .DisposeWith(disposables);
 
-            OnTouchShowed.OnNext(Unit.Default);
+            MainWindow.OnTouchShowed.OnNext(Unit.Default);
             await childWindowClosedChannel.Reader.ReadAsync();
 
             process.Refresh();
         }
-
-        // WAS Shit x: 疑似窗口显示后，在窗口显示前的线程上调用 Current.Exit() 会引发错误
-        Environment.Exit(0);
     }
 
     /// <summary>
@@ -188,4 +187,10 @@ public partial class App : Application
         Redirected,
         Failed,
     }
+}
+
+static partial class Extensions
+{
+    public static void DisposeWith(this IDisposable disposable, CompositeDisposable compositeDisposable) =>
+        compositeDisposable.Add(disposable);
 }

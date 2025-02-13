@@ -8,6 +8,8 @@ namespace TouchChan.WinUI;
 
 public sealed partial class MainWindow : Window
 {
+    public static Subject<Unit> OnTouchShowed { get; private set; } = new();
+
     public nint Hwnd { get; }
 
     public MainWindow()
@@ -63,28 +65,9 @@ public sealed partial class MainWindow : Window
     }
 }
 
-static class ControllerSizeCoverDpiExtensions
+static partial class Extensions
 {
     public static System.Drawing.Size ToGdiSize(this Size size) => new((int)size.Width, (int)size.Height);
 
     public static System.Drawing.Rectangle ToGdiRect(this Rect size) => new((int)size.X, (int)size.Y, (int)size.Width, (int)size.Height);
-
-    // XDpi 意味着将框架内部任何元素产生的点或面的值还原回真实的物理像素大小
-
-    public static Size ActualSizeXDpi(this FrameworkElement element, double factor)
-    {
-        var size = element.ActualSize.ToSize();
-        size.Width *= factor;
-        size.Height *= factor;
-        return size;
-    }
-
-    public static Rect XDpi(this Rect rect, double factor)
-    {
-        rect.X *= factor;
-        rect.Y *= factor;
-        rect.Width *= factor;
-        rect.Height *= factor;
-        return rect;
-    }
 }
