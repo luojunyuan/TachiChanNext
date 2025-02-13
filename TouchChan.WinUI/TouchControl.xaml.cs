@@ -119,31 +119,10 @@ public sealed partial class TouchControl : UserControl
                     });
             });
 
-        System.Diagnostics.Stopwatch stopwatch = new();
-        int frameCount = 0;
-
         draggingStream
             .Select(item => item.Delta)
             .Subscribe(newPos =>
             {
-                if (!stopwatch.IsRunning)
-                {
-                    stopwatch.Start();
-                }
-
-                frameCount++;
-
-                // 每秒钟计算一次帧率
-                if (stopwatch.ElapsedMilliseconds >= 1000)
-                {
-                    float fps = frameCount / (stopwatch.ElapsedMilliseconds / 1000f);
-                    System.Diagnostics.Debug.WriteLine($"FPS: {fps}");
-
-                    // 重置计数器和计时器
-                    frameCount = 0;
-                    stopwatch.Restart();
-                }
-
                 TouchTransform.X = newPos.X;
                 TouchTransform.Y = newPos.Y;
             });
