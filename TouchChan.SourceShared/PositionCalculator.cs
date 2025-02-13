@@ -13,11 +13,11 @@ namespace TouchChan;
 
 public static class PositionCalculator
 {
+    private const int TouchSpace = Constants.TouchSpace;
+
     [Pure]
     public static TouchDockAnchor GetLastTouchDockAnchor(Size oldWindowSize, Rect touch)
     {
-        const int TouchSpace = 2;
-
         var touchSize = touch.Width;
         var touchPos = (touch.X, touch.Y);
 
@@ -40,7 +40,6 @@ public static class PositionCalculator
     [Pure]
     public static Rect CalculateTouchDockRect(Size window, TouchDockAnchor touchDock, double touchSize)
     {
-        const int TouchSpace = 2;
         var newRight = window.Width - TouchSpace - touchSize;
         var newBottom = window.Height - TouchSpace - touchSize;
         Point pos = touchDock switch
@@ -78,8 +77,6 @@ public static class PositionCalculator
     [Pure]
     public static Point CalculateTouchFinalPosition(Size container, Point initPos, int touchSize)
     {
-        const int TouchSpace = 2;
-
         var xMidline = container.Width / 2;
         var right = container.Width - initPos.X - touchSize;
         var bottom = container.Height - initPos.Y - touchSize;
