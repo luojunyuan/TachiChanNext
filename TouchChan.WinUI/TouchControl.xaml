@@ -2,8 +2,8 @@
 <UserControl x:Class="TouchChan.WinUI.TouchControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converter="using:TouchChan.WinUI.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="using:TouchChan.WinUI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
@@ -16,7 +16,7 @@
         <SolidColorBrush x:Key="AssistiveTouchLayerThreeLine" Color="#686868" />
         <SolidColorBrush x:Key="AssistiveTouchLayerThreeBackground" Color="#FFFFFF" />
         <x:Double x:Key="AssistiveTouchCircleThickness">1</x:Double>
-        <local:TouchLayerMarginConverter x:Key="TouchLayerMarginConverter" />
+        <converter:TouchLayerMarginConverter x:Key="TouchLayerMarginConverter" />
     </UserControl.Resources>
 
     <Border x:Name="Touch"

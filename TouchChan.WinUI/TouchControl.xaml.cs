@@ -1,12 +1,10 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
-using R3;
 using System;
 using System.Numerics;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media.Animation;
+using R3;
 using Windows.Foundation;
 
 namespace TouchChan.WinUI;
@@ -35,9 +33,7 @@ public sealed partial class TouchControl : UserControl
     {
         this.InitializeComponent();
 
-        this.RxLoaded()
-            .Select(_ => this.FindParent<Panel>() ?? throw new InvalidOperationException())
-            .Subscribe(InitializeTouchControl);
+        this.RxLoaded().Subscribe(_ => InitializeTouchControl(this));
 
         TranslateXAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
         TranslateYAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
@@ -47,7 +43,7 @@ public sealed partial class TouchControl : UserControl
         AnimationTool.BindingAnimation(FadeOutOpacityStoryboard, AnimationTool.CreateFadeOutOpacityAnimation, Touch, nameof(Opacity));
     }
 
-    private void InitializeTouchControl(Panel container)
+    private void InitializeTouchControl(FrameworkElement container)
     {
         TouchDockSubscribe(container);
 
@@ -183,7 +179,7 @@ public sealed partial class TouchControl : UserControl
             .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
     }
 
-    private void TouchDockSubscribe(Panel container)
+    private void TouchDockSubscribe(FrameworkElement container)
     {
         var touchRectangleShape = false;
         Touch.RxSizeChanged()
@@ -273,64 +269,17 @@ class AnimationTool
     };
 }
 
-/// <summary>
-/// 自动计算 Touch 每层圆点所占据宽度
-/// </summary>
-partial class TouchLayerMarginConverter : IValueConverter
-{
-    /// <param name="parameter">指示该层应缩放宽度的倍率因子</param>
-    public object Convert(object value, Type targetType, object parameter, string language)
-    {
-        if (value is double number && parameter is string factorString && TryParseFraction(factorString, out double factor))
-        {
-            return new Thickness(number * factor);
-        }
-
-        throw new InvalidOperationException();
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
-        throw new InvalidOperationException();
-
-    private static bool TryParseFraction(string fraction, out double factor)
-    {
-        string[] parts = fraction.Split('/');
-        if (parts.Length == 2 &&
-            double.TryParse(parts[0], out double numerator) &&
-            double.TryParse(parts[1], out double denominator))
-        {
-            factor = numerator / denominator;
-            return true;
-        }
-
-        factor = default;
-        return false;
-    }
-}
-
 readonly struct PointWarp(Point point)
 {
     public double X { get; } = point.X;
     public double Y { get; } = point.Y;
 
-    public static Point operator -(PointWarp point1, Point point2)
-    {
-        return new Point((int)(point1.X - point2.X), (int)(point1.Y - point2.Y));
-    }
+    public static Point operator -(PointWarp point1, Point point2) =>
+        new((int)(point1.X - point2.X), (int)(point1.Y - point2.Y));
 }
 
 static partial class Extensions
 {
-    // VisualTree 帮助方法
-    public static T? FindParent<T>(this DependencyObject child) where T : DependencyObject
-    {
-        DependencyObject parentObject = VisualTreeHelper.GetParent(child);
-        if (parentObject == null)
-            return null;
-
-        return parentObject is T parent ? parent : FindParent<T>(parentObject);
-    }
-
     // 简化 pointerEvent.GetCurrentPoint(visual).Position -> pointerEvent.GetPosition(visual)
     public static Point GetPosition(this PointerRoutedEventArgs pointerEvent, UIElement visual) =>
         pointerEvent.GetCurrentPoint(visual).Position;
