@@ -15,13 +15,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan.Ava", "TouchChan.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan.WinUI", "TouchChan.WinUI\TouchChan.WinUI.csproj", "{C36AAFE9-8C14-4BB6-8365-B6B84DDD4EF7}"
 EndProject
-Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "TouchChan.SourceReference", "TouchChan.SourceReference\TouchChan.SourceReference.shproj", "{C35B72F8-FC69-4406-929A-BDD402FEEB72}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TouchChan.ShellMenuHandler", "TouchChan.ShellMenuHandler\TouchChan.ShellMenuHandler.vcxproj", "{9CBDBB82-75D3-4491-9528-2BE3CB32DC44}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan.ViewModel", "TouchChan.ViewModel\TouchChan.ViewModel.csproj", "{31C2E759-DFE0-4009-B0DA-15A505379A1F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchChan.SplashScreenGdiPlus", "TouchChan.SplashScreenGdiPlus\TouchChan.SplashScreenGdiPlus.csproj", "{F8AA0B7C-3A4D-42C2-862F-66C4CDF51103}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "TouchChan.SourceShared", "TouchChan.SourceShared\TouchChan.SourceShared.shproj", "{C35B72F8-FC69-4406-929A-BDD402FEEB72}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -84,8 +84,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		TouchChan.SourceReference\TouchChan.SourceReference.projitems*{be78a160-8506-4683-a23a-ba24c41fe775}*SharedItemsImports = 5
-		TouchChan.SourceReference\TouchChan.SourceReference.projitems*{c35b72f8-fc69-4406-929a-bdd402feeb72}*SharedItemsImports = 13
-		TouchChan.SourceReference\TouchChan.SourceReference.projitems*{c36aafe9-8c14-4bb6-8365-b6b84ddd4ef7}*SharedItemsImports = 5
+		TouchChan.SourceShared\TouchChan.SourceShared.projitems*{be78a160-8506-4683-a23a-ba24c41fe775}*SharedItemsImports = 5
+		TouchChan.SourceShared\TouchChan.SourceShared.projitems*{c35b72f8-fc69-4406-929a-bdd402feeb72}*SharedItemsImports = 13
+		TouchChan.SourceShared\TouchChan.SourceShared.projitems*{c36aafe9-8c14-4bb6-8365-b6b84ddd4ef7}*SharedItemsImports = 5
 	EndGlobalSection
 EndGlobal

@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using R3;
 using System.Diagnostics;
 using System.Threading.Channels;
+using TouchChan.Interop;
 
 namespace TouchChan.Ava;
 
@@ -75,7 +76,7 @@ public partial class App : Application
     private static async Task GameWindowBindingAsync(IClassicDesktopStyleApplicationLifetime desktop, Process process)
     {
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的游戏窗口
-        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) &&Win32.IsDpiUnaware(process);
+        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) &&NativeMethods.IsDpiUnaware(process);
 
         var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
 

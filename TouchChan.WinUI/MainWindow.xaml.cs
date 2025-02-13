@@ -1,8 +1,7 @@
+using System;
 using Microsoft.UI.Xaml;
 using R3;
-using System;
-using Windows.Foundation;
-using WinRT.Interop;
+using TouchChan.Interop;
 
 namespace TouchChan.WinUI;
 
@@ -14,7 +13,7 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
-        Hwnd = WindowNative.GetWindowHandle(this);
+        Hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
 
         this.AppWindow.MoveAndResize(new(-32000, -320000, 0, 0));
         this.AppWindow.IsShownInSwitchers = false;
@@ -63,11 +62,4 @@ public sealed partial class MainWindow : Window
             .DistinctUntilChanged()
             .Subscribe(dpiScale => SetWindowVisible(dpiScale == 1));
     }
-}
-
-static partial class Extensions
-{
-    public static System.Drawing.Size ToGdiSize(this Size size) => new((int)size.Width, (int)size.Height);
-
-    public static System.Drawing.Rectangle ToGdiRect(this Rect size) => new((int)size.X, (int)size.Y, (int)size.Width, (int)size.Height);
 }

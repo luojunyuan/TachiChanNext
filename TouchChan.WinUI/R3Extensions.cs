@@ -11,6 +11,9 @@ namespace TouchChan.WinUI;
 
 static class R3Extensions
 {
+    public static void DisposeWith(this IDisposable disposable, CompositeDisposable compositeDisposable) =>
+        compositeDisposable.Add(disposable);
+
     public static Observable<AppActivationArguments> RxActivated(this AppInstance data) =>
         Observable.FromEvent<EventHandler<AppActivationArguments>, AppActivationArguments>(
             h => (sender, e) => h(e),

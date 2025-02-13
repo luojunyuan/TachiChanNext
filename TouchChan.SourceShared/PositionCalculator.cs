@@ -11,20 +11,6 @@ using Rect = Avalonia.Rect;
 
 namespace TouchChan;
 
-public enum TouchCorner
-{
-    Left,
-    Top,
-    Right,
-    Bottom,
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight
-}
-
-public record struct TouchDockAnchor(TouchCorner Corner, double Scale = default);
-
 public static class PositionCalculator
 {
     [Pure]

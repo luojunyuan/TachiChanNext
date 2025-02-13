@@ -1,5 +1,6 @@
 ﻿using LightResults;
 using System.Diagnostics;
+using TouchChan.Interop;
 using TouchChan.SplashScreenGdiPlus;
 using WindowsShortcutFactory;
 

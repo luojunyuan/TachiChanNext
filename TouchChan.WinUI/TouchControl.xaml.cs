@@ -11,7 +11,7 @@ using Windows.Foundation;
 
 namespace TouchChan.WinUI;
 
-// TouchControl 依赖 AnimationTool, TouchLayerMarginConverter(Xaml), PositionCalculator
+// TouchControl 依赖 TouchDockAnchor, AnimationTool, TouchLayerMarginConverter(Xaml), PositionCalculator
 
 public sealed partial class TouchControl : UserControl
 {
@@ -213,7 +213,7 @@ public sealed partial class TouchControl : UserControl
     }
 
     /// <summary>
-    /// 获得触摸按钮停留时应处于的位置
+    /// 获得触摸按钮停留时处于的位置
     /// </summary>
     private Rect GetTouchDockRect() =>
         new(TouchTransform.X,

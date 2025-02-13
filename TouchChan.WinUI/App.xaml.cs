@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using TouchChan.Interop;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
@@ -180,17 +181,4 @@ public partial class App : Application
 
         return LaunchResult.Success;
     }
-
-    enum LaunchResult
-    {
-        Success,
-        Redirected,
-        Failed,
-    }
-}
-
-static partial class Extensions
-{
-    public static void DisposeWith(this IDisposable disposable, CompositeDisposable compositeDisposable) =>
-        compositeDisposable.Add(disposable);
 }

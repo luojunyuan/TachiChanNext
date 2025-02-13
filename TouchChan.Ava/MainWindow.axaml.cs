@@ -1,6 +1,7 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Interactivity;
 using R3;
+using TouchChan.Interop;
 
 namespace TouchChan.Ava;
 
