@@ -10,7 +10,7 @@
 
 ### 疑惑
 - [ ] Aot int.TryParse 为何首次执行耗时
-- [ ] R3.WinUI 设置 Observable 导致 cpu 占用，是否需要检查原因或报告问题 
+- [ ] ~~R3.WinUI 设置 Observable 导致 cpu 占用，是否需要检查原因或报告问题~~
 
 ### 行为调整 Improvement
 - [ ] 保证 Touch 小圆点单一实例，多游戏不启动或附加
@@ -24,7 +24,7 @@
 ## Massive Work
 
 ### 重构 Refactor
-- [ ] 使用源生成替代手写事件转 Observable *1
+- [x] 使用源生成替代手写事件转 Observable
 
 ### 新功能 Feature
 - [ ] 为系统安装虚拟鼠标设备
@@ -40,7 +40,7 @@
 
 ### 下一阶段
 
-- [ ] Touch 大小需跟随窗口大小变化，可以考虑区分为俩个或多个大小
+- [x] Touch 大小需跟随窗口大小变化，可以考虑区分为俩个或多个大小
 - [ ] 重写 ShellHandlerMenu，i18n。
 - [ ] ViewModel 结构，Config 文件配置存储。
 
