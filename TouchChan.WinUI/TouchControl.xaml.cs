@@ -1,10 +1,11 @@
-using System;
-using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
+using System;
+using System.Numerics;
 using Windows.Foundation;
 
 namespace TouchChan.WinUI;
@@ -147,6 +148,8 @@ public sealed partial class TouchControl : UserControl
                 return PositionCalculator.CalculateTouchFinalPosition(
                     container.ActualSize.ToSize(), touchPos, (int)Touch.Width);
             })
+            .Do(stopPos => _currentDock = PositionCalculator.GetLastTouchDockAnchor(
+                container.ActualSize.ToSize(), new(stopPos, Touch.ActualSize.ToSize())))
             .Subscribe(stopPos =>
             {
                 (TranslateXAnimation.To, TranslateYAnimation.To) = (stopPos.X, stopPos.Y);
@@ -187,6 +190,7 @@ public sealed partial class TouchControl : UserControl
             .Subscribe(touchSize => Touch.CornerRadius = new(touchSize / (touchRectangleShape ? 4 : 2)));
 
         var defaultDock = new TouchDockAnchor(TouchCorner.Left, 0.5);
+        _currentDock = defaultDock;
 
         static double TouchWidth(double windowWidth) => windowWidth < 600 ? 60 : 80;
 
@@ -194,19 +198,21 @@ public sealed partial class TouchControl : UserControl
             .Select(windowSize =>
             {
                 var window = windowSize.NewSize;
-                var touchDock = PositionCalculator.GetLastTouchDockAnchor(windowSize.PreviousSize, GetTouchDockRect());
+                var touchDock = _currentDock;
                 var touchWidth = TouchWidth(window.Width);
                 return new { WindowSize = window, TouchDock = touchDock, TouchSize = touchWidth };
             })
             .Prepend(new
             {
                 WindowSize = container.ActualSize.ToSize(),
-                TouchDock = defaultDock,
+                TouchDock = _currentDock,
                 TouchSize = TouchWidth(container.ActualWidth),
             })
             .Select(pair => PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
             .Subscribe(SetTouchDockRect);
     }
+
+    private TouchDockAnchor _currentDock = new(TouchCorner.Left, 0.5);
 
     /// <summary>
     /// 获得触摸按钮停留时处于的位置
@@ -215,7 +221,7 @@ public sealed partial class TouchControl : UserControl
         new(TouchTransform.X,
             TouchTransform.Y,
             Touch.Width,
-            Touch.Height);
+            Touch.Width);
 
     /// <summary>
     /// 设置触摸按钮停留时应处于的位置

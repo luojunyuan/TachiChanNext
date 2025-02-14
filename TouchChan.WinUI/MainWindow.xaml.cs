@@ -1,18 +1,21 @@
-using System;
 using Microsoft.UI.Xaml;
 using R3;
+using System;
 using TouchChan.Interop;
 
 namespace TouchChan.WinUI;
 
 public sealed partial class MainWindow : Window
 {
+    public static MainWindow Instance { get; private set; }
+
     public static Subject<Unit> OnTouchShowed { get; private set; } = new();
 
     public nint Hwnd { get; }
 
     public MainWindow()
     {
+        Instance = this;
         Hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
 
         this.AppWindow.MoveAndResize(new(-32000, -320000, 0, 0));
