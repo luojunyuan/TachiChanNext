@@ -118,10 +118,7 @@ public sealed partial class TouchControl : UserControl
         draggingStream
             .Select(item => item.Delta)
             .Subscribe(newPos =>
-            {
-                TouchTransform.X = newPos.X;
-                TouchTransform.Y = newPos.Y;
-            });
+                (TouchTransform.X, TouchTransform.Y) = (newPos.X, newPos.Y));
 
         // Touch 拖动边界检测
         var boundaryExceededStream =
@@ -193,14 +190,12 @@ public sealed partial class TouchControl : UserControl
         var defaultDock = new TouchDockAnchor(TouchCorner.Left, 0.5);
         _currentDock = defaultDock;
 
-        static double TouchWidth(double windowWidth) => windowWidth < 600 ? 60 : 80;
-
         container.RxSizeChanged()
             .Select(windowSize =>
             {
                 var window = windowSize.NewSize;
                 var touchDock = _currentDock;
-                var touchWidth = TouchWidth(window.Width);
+                var touchWidth = window.Width < 600 ? 60 : 80;
                 return new { WindowSize = window, TouchDock = touchDock, TouchSize = touchWidth };
             })
             .Select(pair =>
