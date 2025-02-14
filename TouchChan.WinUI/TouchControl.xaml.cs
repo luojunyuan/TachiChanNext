@@ -108,8 +108,8 @@ public sealed partial class TouchControl : UserControl
                     .TakeUntil(pointerReleasedStream)
                     .Select(movedEvent =>
                     {
-                        var distanceToOrigin = movedEvent.GetPosition(container).Warp();
-                        var delta = distanceToOrigin - distanceToElement;
+                        var distanceToOrigin = movedEvent.GetPosition(container);
+                        var delta = distanceToOrigin.Subtract(distanceToElement);
 
                         return new { Delta = delta, MovedEvent = movedEvent };
                     });
@@ -137,9 +137,9 @@ public sealed partial class TouchControl : UserControl
             .Do(_ => Touch.IsHitTestVisible = false)
             .Select(pointer =>
             {
-                var distanceToOrigin = pointer.GetPosition(container).Warp();
+                var distanceToOrigin = pointer.GetPosition(container);
                 var distanceToElement = pointer.GetPosition(Touch);
-                var touchPos = distanceToOrigin - distanceToElement;
+                var touchPos = distanceToOrigin.Subtract(distanceToElement);
 
                 return PositionCalculator.CalculateTouchFinalPosition(
                     container.ActualSize.ToSize(), touchPos, (int)Touch.Width);
@@ -152,7 +152,7 @@ public sealed partial class TouchControl : UserControl
 
         // 回调设置容器窗口的可观察区域
         dragStartedStream
-            .Select(_ => container.ActualSizeXDpi(DpiScale))
+            .Select(_ => container.ActualSize.XDpi(DpiScale))
             .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
 
         moveAnimationEndedStream
@@ -270,15 +270,6 @@ class AnimationTool
     };
 }
 
-readonly struct PointWarp(Point point)
-{
-    public double X { get; } = point.X;
-    public double Y { get; } = point.Y;
-
-    public static Point operator -(PointWarp point1, Point point2) =>
-        new((int)(point1.X - point2.X), (int)(point1.Y - point2.Y));
-}
-
 static partial class Extensions
 {
     // 简化 pointerEvent.GetCurrentPoint(visual).Position -> pointerEvent.GetPosition(visual)
@@ -286,19 +277,12 @@ static partial class Extensions
         pointerEvent.GetCurrentPoint(visual).Position;
 
     // 用于扩展 Windows.Foundation.Point 之间的减法运算操作符
-    public static PointWarp Warp(this Point point) => new(point);
+    public static Point Subtract(this Point point, Point subPoint) => new(point.X - subPoint.X, point.Y - subPoint.Y);
 
     // 几何类型转换的扩展方法
     public static Size ToSize(this Vector2 size) => new((int)size.X, (int)size.Y);
 
     // XDpi 意味着将框架内部任何元素产生的点或面的值还原回真实的物理像素大小
-    public static Size ActualSizeXDpi(this FrameworkElement element, double factor)
-    {
-        var size = element.ActualSize.ToSize();
-        size.Width *= factor;
-        size.Height *= factor;
-        return size;
-    }
 
     public static Rect XDpi(this Rect rect, double factor)
     {
@@ -307,5 +291,13 @@ static partial class Extensions
         rect.Width *= factor;
         rect.Height *= factor;
         return rect;
+    }
+
+    public static Size XDpi(this Vector2 vector, double factor)
+    {
+        var size = vector.ToSize();
+        size.Width *= factor;
+        size.Height *= factor;
+        return size;
     }
 }
