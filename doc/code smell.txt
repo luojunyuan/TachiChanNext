@@ -1,0 +1,5 @@
+【✔】TouchControl _currentDock 状态令人不适。可以理解对于 touch 这个空间 位置坐标很便利也容易理解。
+假设这个状态原本就存在于这个控件，那么它应该根据 TouchRect Container 的大小和坐标，自适应变化。
+一，动画释放结束时，是一个更新时机
+二，窗口大小改变时，是一个更新时机
+我需要以更新时机为源，去取 TouchRect 和 Container 俩个状态，来计算新的 _currentDock。

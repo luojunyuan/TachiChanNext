@@ -144,8 +144,6 @@ public sealed partial class TouchControl : UserControl
                 return PositionCalculator.CalculateTouchFinalPosition(
                     container.ActualSize.ToSize(), touchPos, (int)Touch.Width);
             })
-            .Do(stopPos => _currentDock = PositionCalculator.GetLastTouchDockAnchor(
-                container.ActualSize.ToSize(), new(stopPos, Touch.ActualSize.ToSize())))
             .Subscribe(stopPos =>
             {
                 (TranslateXAnimation.To, TranslateYAnimation.To) = (stopPos.X, stopPos.Y);
@@ -176,9 +174,21 @@ public sealed partial class TouchControl : UserControl
             .Switch()
             .ObserveOn(App.UISyncContext)
             .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
+
+        // 小白点停留时的位置状态
+        moveAnimationEndedStream.Select(_ => Unit.Default)
+            .Merge(container.RxSizeChanged().Select(_ => Unit.Default))
+            .Subscribe(_ =>
+            {
+                var lastDock = CurrentDock;
+                var parentSize = container.ActualSize.ToSize();
+                var rawDock = PositionCalculator.GetLastTouchDockAnchor(parentSize, GetTouchDockRect());
+                _currentDock = PositionCalculator.TouchDockTransform(rawDock, parentSize, Touch.Width);
+            });
     }
 
     private TouchDockAnchor _currentDock = new(TouchCorner.Left, 0.5);
+    public TouchDockAnchor CurrentDock => _currentDock;
 
     private void TouchDockSubscribe(FrameworkElement container)
     {
@@ -187,22 +197,15 @@ public sealed partial class TouchControl : UserControl
             .Select(x => x.NewSize.Width)
             .Subscribe(touchSize => Touch.CornerRadius = new(touchSize / (touchRectangleShape ? 4 : 2)));
 
-        var defaultDock = new TouchDockAnchor(TouchCorner.Left, 0.5);
-        _currentDock = defaultDock;
-
         container.RxSizeChanged()
             .Select(windowSize =>
             {
                 var window = windowSize.NewSize;
-                var touchDock = _currentDock;
+                var touchDock = CurrentDock;
                 var touchWidth = window.Width < 600 ? 60 : 80;
                 return new { WindowSize = window, TouchDock = touchDock, TouchSize = touchWidth };
             })
-            .Select(pair =>
-            {
-                _currentDock = PositionCalculator.TouchDockTransform(pair.TouchDock, pair.WindowSize, pair.TouchSize);
-                return PositionCalculator.CalculateTouchDockRect(pair.WindowSize, _currentDock, pair.TouchSize);
-            })
+            .Select(pair => PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
             .Subscribe(SetTouchDockRect);
     }
 
