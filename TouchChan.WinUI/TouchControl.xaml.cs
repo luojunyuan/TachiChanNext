@@ -1,10 +1,11 @@
+using System;
+using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
-using System;
-using System.Numerics;
+using R3.ObservableEvents;
 using Windows.Foundation;
 
 namespace TouchChan.WinUI;
@@ -33,7 +34,7 @@ public sealed partial class TouchControl : UserControl
     {
         this.InitializeComponent();
 
-        this.RxLoaded().Subscribe(_ => InitializeTouchControl(this));
+        this.Events().Loaded.Subscribe(_ => InitializeTouchControl(this));
 
         TranslateXAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
         TranslateYAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
@@ -47,14 +48,14 @@ public sealed partial class TouchControl : UserControl
     {
         TouchDockSubscribe(container);
 
-        var moveAnimationEndedStream = TranslationStoryboard.RxCompleted();
+        var moveAnimationEndedStream = TranslationStoryboard.Events().Completed;
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
-        var pointerPressedStream = Touch.RxPointerPressed().Do(e => Touch.CapturePointer(e.Pointer));
-        var pointerMovedStream = Touch.RxPointerMoved();
+        var pointerPressedStream = Touch.Events().PointerPressed.Do(e => Touch.CapturePointer(e.Pointer));
+        var pointerMovedStream = Touch.Events().PointerMoved;
         var pointerReleasedStream =
-            Touch.RxPointerReleased()
+            Touch.Events().PointerReleased
             .Merge(raisePointerReleasedSubject)
             .Do(e => Touch.ReleasePointerCapture(e.Pointer));
 
@@ -176,10 +177,10 @@ public sealed partial class TouchControl : UserControl
             .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
 
         // 小白点停留时的位置状态
-        moveAnimationEndedStream.Select(_ => 
+        moveAnimationEndedStream.Select(_ =>
                 PositionCalculator.GetLastTouchDockAnchor(container.ActualSize.ToSize(), GetTouchDockRect()))
-            .Merge(container.RxSizeChanged().Select(_ => CurrentDock))
-            .Subscribe(dock => 
+            .Merge(container.Events().SizeChanged.Select(_ => CurrentDock))
+            .Subscribe(dock =>
                 _currentDock = PositionCalculator.TouchDockTransform(dock, container.ActualSize.ToSize(), Touch.Width));
     }
 
@@ -189,11 +190,11 @@ public sealed partial class TouchControl : UserControl
     private void TouchDockSubscribe(FrameworkElement container)
     {
         var touchRectangleShape = false;
-        Touch.RxSizeChanged()
+        Touch.Events().SizeChanged
             .Select(x => x.NewSize.Width)
             .Subscribe(touchSize => Touch.CornerRadius = new(touchSize / (touchRectangleShape ? 4 : 2)));
 
-        container.RxSizeChanged()
+        container.Events().SizeChanged
             .Select(windowSize =>
             {
                 var window = windowSize.NewSize;

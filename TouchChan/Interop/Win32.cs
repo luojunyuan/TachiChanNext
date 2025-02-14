@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.Versioning;
 using Windows.Win32;
 using Windows.Win32.Graphics.Gdi;

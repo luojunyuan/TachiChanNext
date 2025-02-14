@@ -1,13 +1,14 @@
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppLifecycle;
-using R3;
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
+using R3;
+using R3.ObservableEvents;
 using TouchChan.Interop;
 using WinRT.Interop;
 
@@ -110,7 +111,7 @@ public partial class App : Application
 
         var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
 
-        process.RxExited().Subscribe(_ => childWindowClosedChannel.Writer.Complete());
+        process.Events().Exited.Subscribe(_ => childWindowClosedChannel.Writer.Complete());
 
         while (process.HasExited is false)
         {
@@ -171,7 +172,7 @@ public partial class App : Application
         var preference = new PreferenceWindow();
         preference.Activate();
 
-        AppInstance.GetCurrent().RxActivated()
+        AppInstance.GetCurrent().Events().Activated
             .Subscribe(_ =>
             {
                 // WAS Shit 9: preference.Active() 在这里不起用 #7595

@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Include="System.Diagnostics" />
+  </ItemGroup>
+	
+  <ItemGroup>
     <PackageReference Include="LightResults" Version="9.0.0" />
     <PackageReference Include="R3" Version="1.2.9" />
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.183">

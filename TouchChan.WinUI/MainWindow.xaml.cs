@@ -1,6 +1,6 @@
+using System;
 using Microsoft.UI.Xaml;
 using R3;
-using System;
 using TouchChan.Interop;
 
 namespace TouchChan.WinUI;

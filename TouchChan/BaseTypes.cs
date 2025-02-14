@@ -1,4 +1,6 @@
-﻿namespace TouchChan;
+﻿using R3;
+
+namespace TouchChan;
 
 public enum LaunchResult
 {
@@ -21,3 +23,8 @@ public enum TouchCorner
 
 public record struct TouchDockAnchor(TouchCorner Corner, double Scale = default);
 
+public static partial class Extensions
+{
+    public static void DisposeWith(this IDisposable disposable, CompositeDisposable compositeDisposable) =>
+        compositeDisposable.Add(disposable);
+}
