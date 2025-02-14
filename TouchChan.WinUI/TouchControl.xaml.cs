@@ -181,6 +181,8 @@ public sealed partial class TouchControl : UserControl
             .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
     }
 
+    private TouchDockAnchor _currentDock = new(TouchCorner.Left, 0.5);
+
     private void TouchDockSubscribe(FrameworkElement container)
     {
         var touchRectangleShape = false;
@@ -208,8 +210,6 @@ public sealed partial class TouchControl : UserControl
             })
             .Subscribe(SetTouchDockRect);
     }
-
-    private TouchDockAnchor _currentDock = new(TouchCorner.Left, 0.5);
 
     /// <summary>
     /// 获得触摸按钮停留时处于的位置
