@@ -310,6 +310,4 @@ static partial class Extensions
         rect.Height *= factor;
         return rect;
     }
-
-    public static Size ToWinUISize(this System.Drawing.Size size) => new((int)size.Width, (int)size.Height);
 }
