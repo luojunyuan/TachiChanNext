@@ -176,15 +176,11 @@ public sealed partial class TouchControl : UserControl
             .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
 
         // 小白点停留时的位置状态
-        moveAnimationEndedStream.Select(_ => Unit.Default)
-            .Merge(container.RxSizeChanged().Select(_ => Unit.Default))
-            .Subscribe(_ =>
-            {
-                var lastDock = CurrentDock;
-                var parentSize = container.ActualSize.ToSize();
-                var rawDock = PositionCalculator.GetLastTouchDockAnchor(parentSize, GetTouchDockRect());
-                _currentDock = PositionCalculator.TouchDockTransform(rawDock, parentSize, Touch.Width);
-            });
+        moveAnimationEndedStream.Select(_ => 
+                PositionCalculator.GetLastTouchDockAnchor(container.ActualSize.ToSize(), GetTouchDockRect()))
+            .Merge(container.RxSizeChanged().Select(_ => CurrentDock))
+            .Subscribe(dock => 
+                _currentDock = PositionCalculator.TouchDockTransform(dock, container.ActualSize.ToSize(), Touch.Width));
     }
 
     private TouchDockAnchor _currentDock = new(TouchCorner.Left, 0.5);
@@ -202,7 +198,7 @@ public sealed partial class TouchControl : UserControl
             {
                 var window = windowSize.NewSize;
                 var touchDock = CurrentDock;
-                var touchWidth = window.Width < 600 ? 60 : 80;
+                var touchWidth = window.Width < 600 ? 60 : 100;
                 return new { WindowSize = window, TouchDock = touchDock, TouchSize = touchWidth };
             })
             .Select(pair => PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
