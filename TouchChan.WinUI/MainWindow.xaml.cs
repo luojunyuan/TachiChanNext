@@ -15,7 +15,8 @@ public sealed partial class MainWindow : Window
     {
         Hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
 
-        this.AppWindow.MoveAndResize(new(-32000, -320000, 0, 0));
+        // WinUI 窗口的初始大小是个谜 MinSize: (136, 39)
+        this.AppWindow.Move(new(-32000, -320000));
         this.AppWindow.IsShownInSwitchers = false;
 
         this.InitializeComponent();

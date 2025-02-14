@@ -1,7 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
 using System;
@@ -202,13 +201,11 @@ public sealed partial class TouchControl : UserControl
                 var touchWidth = TouchWidth(window.Width);
                 return new { WindowSize = window, TouchDock = touchDock, TouchSize = touchWidth };
             })
-            .Prepend(new
+            .Select(pair =>
             {
-                WindowSize = container.ActualSize.ToSize(),
-                TouchDock = _currentDock,
-                TouchSize = TouchWidth(container.ActualWidth),
+                _currentDock = PositionCalculator.TouchDockTransform(pair.TouchDock, pair.WindowSize, pair.TouchSize);
+                return PositionCalculator.CalculateTouchDockRect(pair.WindowSize, _currentDock, pair.TouchSize);
             })
-            .Select(pair => PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
             .Subscribe(SetTouchDockRect);
     }
 
@@ -313,4 +310,6 @@ static partial class Extensions
         rect.Height *= factor;
         return rect;
     }
+
+    public static Size ToWinUISize(this System.Drawing.Size size) => new((int)size.Width, (int)size.Height);
 }

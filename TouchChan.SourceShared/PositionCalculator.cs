@@ -16,6 +16,45 @@ public static class PositionCalculator
     private const int TouchSpace = Constants.TouchSpace;
 
     [Pure]
+    public static TouchDockAnchor TouchDockTransform(TouchDockAnchor currentDock, Size windowSize, double touchSize)
+    {
+        var touchVerticalMiddlePoint = currentDock.Scale * windowSize.Height;
+        var touchHorizontalMiddlePoint = currentDock.Scale * windowSize.Width;
+        var limitDistance = Constants.TouchSpace * 2 + touchSize / 2;
+
+        var (touchMiddlePoint, size) = currentDock.Corner is TouchCorner.Left or TouchCorner.Right
+            ? (touchVerticalMiddlePoint, windowSize.Height)
+            : (touchHorizontalMiddlePoint, windowSize.Width);
+
+        var reverseTouchMiddlePoint = size - touchMiddlePoint + Constants.TouchSpace * 2;
+
+        var dockCorner = currentDock.Corner switch
+        {
+            TouchCorner.Left => touchMiddlePoint <= limitDistance ? TouchCorner.TopLeft
+                : reverseTouchMiddlePoint <= limitDistance ? TouchCorner.BottomLeft
+                : currentDock.Corner,
+
+            TouchCorner.Right => touchMiddlePoint <= limitDistance ? TouchCorner.TopRight
+                : reverseTouchMiddlePoint <= limitDistance ? TouchCorner.BottomRight
+                : currentDock.Corner,
+
+            TouchCorner.Top => touchMiddlePoint <= limitDistance ? TouchCorner.TopLeft
+                : reverseTouchMiddlePoint <= limitDistance ? TouchCorner.TopRight
+                : currentDock.Corner,
+
+            TouchCorner.Bottom => touchMiddlePoint <= limitDistance ? TouchCorner.BottomLeft
+                : reverseTouchMiddlePoint <= limitDistance ? TouchCorner.BottomRight
+                : currentDock.Corner,
+
+            _ => currentDock.Corner,
+        };
+
+        return dockCorner == currentDock.Corner
+            ? currentDock
+            : new TouchDockAnchor(dockCorner, default);
+    }
+
+    [Pure]
     public static TouchDockAnchor GetLastTouchDockAnchor(Size oldWindowSize, Rect touch)
     {
         var touchSize = touch.Width;

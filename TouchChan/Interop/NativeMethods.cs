@@ -18,7 +18,6 @@ namespace Windows.Win32
 
 namespace TouchChan.Interop
 {
-
     /// <summary>
     /// 对 CSWin32 PInvoke 调用的直接封装
     /// </summary>
