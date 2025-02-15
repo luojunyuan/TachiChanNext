@@ -1,8 +1,9 @@
 ### 已知问题 Bug
 - [x] 部分设备或游戏 Touch 位于 right 更改游戏窗口大小 720 -> full 会导致 Touch 卡在左上角卡一半
 - [x] 按钮处于四边时更改窗口大小可能超出边界
-- [ ] 在游戏窗口最大化切换时，透明 Touch 会闪烁（透明度会发生变化）
+- [ ] 部分游戏窗口最大化切换时，透明 Touch 会闪烁（透明度会发生变化）
 - [ ] 点击 Touch 后，游戏父窗口会失去焦点，alt+enter 全屏切换会失效，alt+tab 切换回来可以恢复工作 *4
+- [ ] 子窗口重定位嵌入到新的窗口并不能按照预期工作 *1
 
 ### 框架相关问题
 - [ ] 验证 WAS Shit x，退出 WinUI3 程序究竟是否是在窗口显示前的线程上调用 Exit() 导致的
@@ -57,7 +58,12 @@
 
 ### 详情
 
-*1 为 R3 提供 R3.ObservableEvents.SourceGenerator，以 this.Events() 的形式为前端框架事件生成事件流。
+*1 需要 hook 父窗口，或者 hook 本身的窗口事件。WM_PARENTNOTIFY（父窗口消息？）WM_DESTROY，WM_NCDESTROY 等，WH_CBT WindowHook，拦截子窗口的 HCBT_DESTROYWND。需要在子窗口接收到销毁事件前，把它移动出来，先隐藏再 SetParent nint.Zero 到桌面。最后再按正常流程设置到新窗口上去。
+
+可能的调用顺序： WM_CLOSE -> DestroyWindow(parentHwnd) -> DestroyWindow(childHwnd) -> 发送 WM_DESTROY ->
+每个子窗口收到 WM_DESTROY WM_NCDESTROY(hWnd将被释放) fire EVENT_OBJECT_DESTROY -> Parent 自己本身的 WM_DESTROY WM_NCDESTROY 释放 hWnd
+
+可能的解决方法：在 WM_PARENTNOTIFY 监听 WM_DESTROY
 
 *2 Suspend 游戏进程，Resume 游戏进程。在上面覆盖一个半透明窗口，放置功能按钮，如【恢复】【其他功能】(需要一个建议窗口，详细吸收用户意见)
 

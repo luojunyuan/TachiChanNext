@@ -86,7 +86,6 @@ public partial class App : Application
                 await GameWindowBindingAsync(childWindow, process);
 
                 // 唯一出口点：在后台任务完全结束后退出程序
-                // WAS Shit x: 疑似窗口显示后，在窗口显示前的 UI 线程上调用 Current.Exit() 会引发 0xc000027b 错误
                 Environment.Exit(0);
             }
             catch (Exception ex)

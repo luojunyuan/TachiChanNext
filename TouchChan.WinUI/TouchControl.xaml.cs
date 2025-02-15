@@ -166,9 +166,10 @@ public sealed partial class TouchControl : UserControl
             .Where(_ => Touch.Opacity != 1)
             .Subscribe(_ => FadeInOpacityStoryboard.Begin());
 
-        moveAnimationEndedStream.Select(_ => Unit.Default)
+        MainWindow.OnTouchShowed // Subscription attention
             .Merge(pointerReleasedStream.Select(_ => Unit.Default))
-            .Merge(MainWindow.OnTouchShowed)
+            .Merge(moveAnimationEndedStream.Select(_ => Unit.Default))
+            .Prepend(Unit.Default)
             .Select(_ =>
                 Observable.Timer(FadeOutDuration)
                 .TakeUntil(pointerPressedStream))
@@ -199,7 +200,7 @@ public sealed partial class TouchControl : UserControl
             {
                 var window = windowSize.NewSize;
                 var touchDock = CurrentDock;
-                var touchWidth = window.Width < 600 ? 60 : 100;
+                var touchWidth = window.Width < 600 ? 60 : 80;
                 return new { WindowSize = window, TouchDock = touchDock, TouchSize = touchWidth };
             })
             .Select(pair => PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
