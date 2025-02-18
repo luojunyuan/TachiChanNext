@@ -7,7 +7,7 @@
 - [x] Publish Aot 与 Debug Release 发布行为不同，同步后台线程与窗口 Loaded 的先后次序 *5
 
 ### 框架相关问题
-- [ ] 验证 WAS Shit x，退出 WinUI3 程序究竟是否是在窗口显示前的线程上调用 Exit() 导致的
+- [x] 验证 WAS Shit x，退出 WinUI3 程序究竟是否是在窗口显示前的线程上调用 Exit() 导致的
 - [ ] ~~调整为单一 MainWindow 与 PreferenceView，按需加载 Content （可选）~~
 
 ### 疑惑
@@ -71,6 +71,8 @@ Preference 设置中自动检查 LE 的注册地址，默认以灰色使用安�
 每个子窗口收到 WM_DESTROY WM_NCDESTROY(hWnd将被释放) fire EVENT_OBJECT_DESTROY -> Parent 自己本身的 WM_DESTROY WM_NCDESTROY 释放 hWnd
 
 可能的解决方法：在 WM_PARENTNOTIFY 监听 WM_DESTROY
+
+原本以为是 WAS Shit x 由线程问题引起的 Exit 异常，其实不是。只是子窗口退出异常。
 
 *2 Suspend 游戏进程，Resume 游戏进程。在上面覆盖一个半透明窗口，放置功能按钮，如【恢复】【其他功能】(需要一个建议窗口，详细吸收用户意见)。一些游戏可能直接电源键睡眠，无法恢复，而先 Suspend 反而可以正常恢复也说不定。
 
