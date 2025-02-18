@@ -4,7 +4,7 @@
 二，窗口大小改变时，是一个更新时机
 我需要以更新时机为源，去取 TouchRect 和 Container 俩个状态，来计算新的 _currentDock。
 
- container.Events().SizeChanged
+【✔】container.Events().SizeChanged
      .Select(windowSize =>
      ...
      .Select(pair => PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
@@ -16,3 +16,5 @@
 2. 后台任务的 client size 发出窗口大小便于定位窗口的时机
 3. OnTouchShowed 意义不明，目前只是为了刷新或触发 Touch 的透明事件，不然要不会提前处理完，要不永远不会处理。
 我需要知道的是他们现在的一个执行顺序，谁先谁后，不论游戏是已经启动还是后启动，需要明确一个确切的固定的先后顺序
+
+❓ static OnTouchShowed 里面的 TouchControl 不应该知道外面的状态。。却需要依赖一个东西来刷新
