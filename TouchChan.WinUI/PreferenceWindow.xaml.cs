@@ -1,7 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using R3;
-using System.Threading.Tasks;
 
 namespace TouchChan.WinUI;
 

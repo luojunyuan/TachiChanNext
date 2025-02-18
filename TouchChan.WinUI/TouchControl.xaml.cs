@@ -1,5 +1,3 @@
-using System;
-using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -169,7 +167,6 @@ public sealed partial class TouchControl : UserControl
         MainWindow.OnTouchShowed // Subscription attention
             .Merge(pointerReleasedStream.Select(_ => Unit.Default))
             .Merge(moveAnimationEndedStream.Select(_ => Unit.Default))
-            .Prepend(Unit.Default)
             .Select(_ =>
                 Observable.Timer(FadeOutDuration)
                 .TakeUntil(pointerPressedStream))
@@ -196,12 +193,12 @@ public sealed partial class TouchControl : UserControl
             .Subscribe(touchSize => Touch.CornerRadius = new(touchSize / (touchRectangleShape ? 4 : 2)));
 
         container.Events().SizeChanged
-            .Select(windowSize =>
+            .Select(x => x.NewSize)
+            .Select(window => new
             {
-                var window = windowSize.NewSize;
-                var touchDock = CurrentDock;
-                var touchWidth = window.Width < 600 ? 60 : 80;
-                return new { WindowSize = window, TouchDock = touchDock, TouchSize = touchWidth };
+                WindowSize = window,
+                TouchDock = CurrentDock,
+                TouchSize = window.Width < 600 ? 60 : 80
             })
             .Select(pair => PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
             .Subscribe(SetTouchDockRect);

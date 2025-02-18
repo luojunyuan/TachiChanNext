@@ -1,6 +1,6 @@
-using System;
 using Microsoft.UI.Xaml;
 using R3;
+using R3.ObservableEvents;
 using TouchChan.Interop;
 
 namespace TouchChan.WinUI;
@@ -8,6 +8,8 @@ namespace TouchChan.WinUI;
 public sealed partial class MainWindow : Window
 {
     public static Subject<Unit> OnTouchShowed { get; private set; } = new();
+
+    public ReplaySubject<Unit> Loaded { get; } = new(1);
 
     public nint Hwnd { get; }
 
@@ -20,6 +22,7 @@ public sealed partial class MainWindow : Window
         this.AppWindow.IsShownInSwitchers = false;
 
         this.InitializeComponent();
+        ((FrameworkElement)this.Content).Events().Loaded.Subscribe(_ => Loaded.OnNext(Unit.Default));
         this.SystemBackdrop = new WinUIEx.TransparentTintBackdrop();
         Hwnd.ToggleWindowStyle(false, WindowStyle.TiledWindow);
         Hwnd.ToggleWindowStyle(false, WindowStyle.Popup);

@@ -1,9 +1,3 @@
-using System;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
@@ -28,7 +22,7 @@ public partial class App : Application
         // WAS Shit 8: 异常发生时默认不会结束程序
         UnhandledException += (sender, e) =>
         {
-            Debug.WriteLine(e.Exception);
+            Trace.WriteLine(e.Exception);
             Environment.Exit(1);
         };
 #endif
@@ -78,22 +72,23 @@ public partial class App : Application
             return LaunchResult.Failed;
         }
 
-        // 启动后台绑定窗口任务
-        _ = Task.Factory.StartNew(async () =>
-        {
-            try
+        childWindow.Loaded.Subscribe(_ =>
+            // 在窗口完成准备后启动后台绑定窗口任务
+            Task.Factory.StartNew(async () =>
             {
-                await GameWindowBindingAsync(childWindow, process);
+                try
+                {
+                    await GameWindowBindingAsync(childWindow, process);
 
-                // 唯一出口点：在后台任务完全结束后退出程序
-                Environment.Exit(0);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex);
-                Environment.Exit(1);
-            }
-        }, TaskCreationOptions.LongRunning);
+                    // 唯一出口点：在后台任务完全结束后退出程序
+                    Environment.Exit(0);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex);
+                    Environment.Exit(1);
+                }
+            }, TaskCreationOptions.LongRunning));
 
         return LaunchResult.Success;
     }

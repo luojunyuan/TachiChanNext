@@ -4,7 +4,7 @@
 - [ ] 部分游戏窗口最大化切换时，透明 Touch 会闪烁（透明度会发生变化）
 - [ ] 点击 Touch 后，游戏父窗口会失去焦点，alt+enter 全屏切换会失效，alt+tab 切换回来可以恢复工作 *4
 - [ ] 子窗口重定位嵌入到新的窗口并不能按照预期工作 *1
-- [ ] Publish Aot 与 Debug Release 发布行为不同，前者同时启动两份实例在同一个窗口上时会导致窗口区域无法输入
+- [x] Publish Aot 与 Debug Release 发布行为不同，同步后台线程与窗口 Loaded 的先后次序 *5
 
 ### 框架相关问题
 - [ ] 验证 WAS Shit x，退出 WinUI3 程序究竟是否是在窗口显示前的线程上调用 Exit() 导致的
@@ -77,6 +77,8 @@ Preference 设置中自动检查 LE 的注册地址，默认以灰色使用安�
 *3 比如小圆点的旧样式可以作为会员提供，验证邮箱或手机号后，根据计算机相关值计算一个新值存储到配置文件
 
 *4 可以考虑在 Touch 每次不再交互后，给父窗口手动设置焦点恢复焦点。parentWindow.Focus(); SetFocus；SetForegroundWindow；可以想象一个 win 窗口和 button，焦点在 button 上，即使你点击 window 空白区域，焦点也还在 button 上。尝试测试 SetEventHook，父窗口焦点失去事件会不会触发。
+
+*5 曾经可以应该也只是在内部做了刷新处理，而不是真正解决同步顺序问题。
 
 ### 信息反馈与错误处理
 
