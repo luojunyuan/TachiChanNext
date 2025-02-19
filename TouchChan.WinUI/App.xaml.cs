@@ -76,7 +76,10 @@ public partial class App : Application
                 await GameWindowBindingAsync(childWindow, process),
                 TaskCreationOptions.LongRunning).Unwrap();
 
-            Current.Exit();
+            // WAS Shit 11: 关闭子窗口不能正常退出程序
+            // 重要的不是退出方式，而是能够正确处理部分游戏的窗口全屏切换后的 handle 改变
+            if (NativeMethods.IsWindow(childWindow.Hwnd)) Current.Exit();
+            else Environment.Exit(0);
         });
 
         return LaunchResult.Success;
@@ -94,7 +97,7 @@ public partial class App : Application
 
         var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
 
-        // WAS Shit 11: 关闭子窗口不能正常退出程序
+        // WM_DESTROY -> EventObjectDestroy(too late) -> WM_NCDESTROY
         const uint WM_DESTROY = 0x0002;
         var monitor = new WinUIEx.Messaging.WindowMessageMonitor(childWindow);
         monitor.Events().WindowMessageReceived

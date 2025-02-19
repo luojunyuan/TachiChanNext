@@ -27,3 +27,4 @@ CallNextHookEx
 CWPSTRUCT
 SetFocus
 SendMessage
+IsWindow

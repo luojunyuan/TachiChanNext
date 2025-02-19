@@ -35,6 +35,7 @@ public sealed partial class MainWindow : Window
         Touch.ResetWindowObservable = size => Win32.ResetWindowOriginalObservableRegion(Hwnd, size.ToGdiSize());
         Touch.SetWindowObservable = rect => Win32.SetWindowObservableRegion(Hwnd, rect.ToGdiRect());
 
+        // FIXME: 仅对部分游戏有效，没有改变抢占父窗口焦点的本质
         this.Content.Events().ProcessKeyboardAccelerators
             .Select(x => x.args)
             .Where(args => args.Modifiers == VirtualKeyModifiers.Menu &&

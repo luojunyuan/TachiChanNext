@@ -27,6 +27,8 @@ namespace TouchChan.Interop
 
         [SupportedOSPlatform("windows10.0.14393")]
         public static uint GetDpiForWindow(nint hwnd) => PInvoke.GetDpiForWindow(new(hwnd));
+
+        public static bool IsWindow(nint hwnd) => PInvoke.IsWindow(new(hwnd));
     }
 
     public static class MessageBox
