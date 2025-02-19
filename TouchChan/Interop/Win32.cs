@@ -11,6 +11,22 @@ namespace TouchChan.Interop;
 public static partial class Win32
 {
     /// <summary>
+    /// 发送 Alt + Enter 消息
+    /// </summary>
+    public static void SendAltEnter(IntPtr hwnd)
+    {
+        const uint WM_SYSKEYDOWN = 0x0104;
+        const uint WM_SYSKEYUP = 0x0105;
+        const int VK_RETURN = 0x0D;
+        const int VK_MENU = 0x12; // Alt key
+
+        PInvoke.SendMessage(new(hwnd), WM_SYSKEYDOWN, VK_MENU, nint.Zero);
+        PInvoke.SendMessage(new(hwnd), WM_SYSKEYDOWN, VK_RETURN, 0x20000000);
+        PInvoke.SendMessage(new(hwnd), WM_SYSKEYUP, VK_RETURN, 0x20000000);
+        PInvoke.SendMessage(new(hwnd), WM_SYSKEYUP, VK_MENU, nint.Zero);
+    }
+
+    /// <summary>
     /// 判断进程对象是否对 DPI 不感知
     /// </summary>
     [SupportedOSPlatform("windows8.1")]

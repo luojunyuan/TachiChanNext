@@ -125,9 +125,12 @@ public partial class App : Application
 
             using CompositeDisposable disposables = [];
 
+            // HACK: 传递 Alt+Enter 按键事件到游戏窗口
+            childWindow.UpdateAltEnterHandle(windowHandle);
+
+            // HACK: Pending test 并且一定要显式提示用户
             if (isDpiUnaware)
             {
-                // HACK: Pending test 并且一定要显式提示用户
                 childWindow.UnawareGameWindowShowHideHack(windowHandle)
                     .DisposeWith(disposables);
             }
@@ -136,7 +139,7 @@ public partial class App : Application
 
             GameWindowService.ClientSizeChanged(windowHandle)
                 .SubscribeOn(UISyncContext)
-                .Subscribe(size => childWindow.Hwnd.ResizeClient(size))
+                .Subscribe(size => Win32.ResizeWindow(childWindow.Hwnd, size))
                 .DisposeWith(disposables);
 
             GameWindowService.WindowDestroyed(windowHandle)

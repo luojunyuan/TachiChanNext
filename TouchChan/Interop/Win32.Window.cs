@@ -92,3 +92,17 @@ public static partial class Win32
         _ = PInvoke.SetWindowRgn(new(hwnd), hRgn, true);
     }
 }
+
+public enum WindowStyle : uint
+{
+    ClipChildren = WINDOW_STYLE.WS_CLIPCHILDREN,
+    TiledWindow = WINDOW_STYLE.WS_TILEDWINDOW,
+    Popup = WINDOW_STYLE.WS_POPUP,
+    Child = WINDOW_STYLE.WS_CHILD,
+}
+
+public enum ExtendedWindowStyle : uint
+{
+    Layered = WINDOW_EX_STYLE.WS_EX_LAYERED,
+    AppWindow = WINDOW_EX_STYLE.WS_EX_APPWINDOW,
+}

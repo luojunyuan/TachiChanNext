@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using R3;
 using R3.ObservableEvents;
 using TouchChan.Interop;
+using Windows.System;
 
 namespace TouchChan.WinUI;
 
@@ -22,17 +23,23 @@ public sealed partial class MainWindow : Window
         this.AppWindow.IsShownInSwitchers = false;
 
         this.InitializeComponent();
-        ((FrameworkElement)this.Content).Events().Loaded.Subscribe(_ => Loaded.OnNext(Unit.Default));
         this.SystemBackdrop = new WinUIEx.TransparentTintBackdrop();
-        Hwnd.ToggleWindowStyle(false, WindowStyle.TiledWindow);
-        Hwnd.ToggleWindowStyle(false, WindowStyle.Popup);
-        Hwnd.ToggleWindowStyle(true, WindowStyle.Child);
-        Hwnd.ToggleWindowExStyle(true, ExtendedWindowStyle.Layered);
+        Win32.ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
+        Win32.ToggleWindowStyle(Hwnd, false, WindowStyle.Popup);
+        Win32.ToggleWindowStyle(Hwnd, true, WindowStyle.Child);
+        Win32.ToggleWindowExStyle(Hwnd, true, ExtendedWindowStyle.Layered);
+        ((FrameworkElement)this.Content).Events().Loaded.Subscribe(_ => Loaded.OnNext(Unit.Default));
 
         // NOTE: 设置为子窗口后，this.AppWindow 不再可靠
 
-        Touch.ResetWindowObservable = size => Hwnd.ResetWindowOriginalObservableRegion(size.ToGdiSize());
-        Touch.SetWindowObservable = rect => Hwnd.SetWindowObservableRegion(rect.ToGdiRect());
+        Touch.ResetWindowObservable = size => Win32.ResetWindowOriginalObservableRegion(Hwnd, size.ToGdiSize());
+        Touch.SetWindowObservable = rect => Win32.SetWindowObservableRegion(Hwnd, rect.ToGdiRect());
+
+        this.Content.Events().ProcessKeyboardAccelerators
+            .Select(x => x.args)
+            .Where(args => args.Modifiers == VirtualKeyModifiers.Menu &&
+                args.Key == VirtualKey.Enter)
+            .Subscribe(_ => Win32.SendAltEnter(_gameHandleAltEnter));
 
 #if DEBUG
         if (this.Content is Microsoft.UI.Xaml.Controls.Grid panel)
@@ -47,6 +54,9 @@ public sealed partial class MainWindow : Window
         }
 #endif
     }
+
+    private nint _gameHandleAltEnter;
+    public void UpdateAltEnterHandle(nint handle) => _gameHandleAltEnter = handle;
 
     /// <summary>
     /// DPI Unaware 窗口处于高 DPI 上时隐藏游戏窗口

@@ -27,15 +27,6 @@ namespace TouchChan.Interop
 
         [SupportedOSPlatform("windows10.0.14393")]
         public static uint GetDpiForWindow(nint hwnd) => PInvoke.GetDpiForWindow(new(hwnd));
-
-        public static void SetFocus(nint hwnd)
-        {
-            //PInvoke.SetForegroundWindow(new(hwnd));
-            //PInvoke.SetFocus(new(hwnd));
-        }
-
-        public static void SendMessage(nint hwnd, uint msg, nuint wParam, nint lParam) =>
-            PInvoke.SendMessage(new(hwnd), msg, wParam, lParam);
     }
 
     public static class MessageBox

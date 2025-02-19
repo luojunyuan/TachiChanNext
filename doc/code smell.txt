@@ -19,7 +19,7 @@
 
 ❓ static OnTouchShowed 里面的 TouchControl 不应该知道外面的状态。。却需要依赖一个东西来刷新
 
-❓ 有关 TouchChan.Interop 下的 Win32 函数组织，NativeMethods 方法中基本上都是和 window handle 有关的函数，
+【✔】有关 TouchChan.Interop 下的 Win32 函数组织，NativeMethods 方法中基本上都是和 window handle 有关的函数，
 handle 也全是 window handle，项目中基本不会使用到其他类型 handle。
 这些函数是否到底需要扩展函数封装 this nint hwnd，还是直接使用静态方法，并且操作窗口相关的类名是否需要统一一下名称。
 扩展函数的话有可能不太看得出他是通过 win32 api 调用的。

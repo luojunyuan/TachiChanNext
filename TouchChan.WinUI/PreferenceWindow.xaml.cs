@@ -21,7 +21,6 @@ public sealed partial class PreferenceWindow : Window
     {
         Task.Run(() =>
         {
-
             Observable.Return(Unit.Default)
                 .ObserveOn(App.UISyncContext)
                 .Subscribe(_ => App.Current.Exit());
