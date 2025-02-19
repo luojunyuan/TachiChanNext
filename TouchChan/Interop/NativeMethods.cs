@@ -25,11 +25,17 @@ namespace TouchChan.Interop
     {
         public static nint GetConsoleWindow() => PInvoke.GetConsoleWindow();
 
-        public static Task<bool> SetParentAsync(nint child, nint parent) =>
-            Task.Run(() => PInvoke.SetParent(new(child), new(parent)) != HWND.Null);
-
         [SupportedOSPlatform("windows10.0.14393")]
         public static uint GetDpiForWindow(nint hwnd) => PInvoke.GetDpiForWindow(new(hwnd));
+
+        public static void SetFocus(nint hwnd)
+        {
+            //PInvoke.SetForegroundWindow(new(hwnd));
+            //PInvoke.SetFocus(new(hwnd));
+        }
+
+        public static void SendMessage(nint hwnd, uint msg, nuint wParam, nint lParam) =>
+            PInvoke.SendMessage(new(hwnd), msg, wParam, lParam);
     }
 
     public static class MessageBox

@@ -13,14 +13,17 @@ public class SplashScreen(Stream resource) : IDisposable
 {
     private readonly Image _image = Image.FromStream(resource);
     private readonly SemaphoreSlim _semaphore = new(0, 1);
+    private readonly ManualResetEvent _initialized = new(false);
     private HWND _hWndSplash;
     private HDC _hdc;
 
-    public void Show() =>
+    public void Show()
+    {
         new Thread(() =>
         {
             DisplaySplash(_image);
 
+            _initialized.Set();
             _semaphore.Wait();
 
             _ = PInvoke.ReleaseDC(_hWndSplash, _hdc);
@@ -28,9 +31,13 @@ public class SplashScreen(Stream resource) : IDisposable
 
         }).Start();
 
+        _initialized.WaitOne();
+    }
+
     public void Dispose()
     {
         _semaphore.Release();
+        _initialized.Dispose();
         _image.Dispose();
         GC.SuppressFinalize(this);
     }

@@ -59,36 +59,25 @@ public partial class App : Application
             return LaunchResult.Failed;
         }
 
-        var processTask = Task.Run(async () =>
-            await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le")));
-
-        var childWindow = new MainWindow();
-        childWindow.Activate();
-
-        var processResult = await processTask;
+        var processResult = await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
         if (processResult.IsFailure(out var processError, out var process))
         {
             await MessageBox.ShowAsync(processError.Message);
             return LaunchResult.Failed;
         }
 
-        childWindow.Loaded.Subscribe(_ =>
-            // 在窗口完成准备后启动后台绑定窗口任务
-            Task.Factory.StartNew(async () =>
-            {
-                try
-                {
-                    await GameWindowBindingAsync(childWindow, process);
+        var childWindow = new MainWindow();
+        childWindow.Activate();
 
-                    // 唯一出口点：在后台任务完全结束后退出程序
-                    Environment.Exit(0);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine(ex);
-                    Environment.Exit(1);
-                }
-            }, TaskCreationOptions.LongRunning));
+        childWindow.Loaded.Subscribe(async _ =>
+        {
+            // 在窗口完成准备后启动后台绑定窗口任务
+            await Task.Factory.StartNew(async () =>
+                await GameWindowBindingAsync(childWindow, process),
+                TaskCreationOptions.LongRunning).Unwrap();
+
+            Current.Exit();
+        });
 
         return LaunchResult.Success;
     }
@@ -104,6 +93,19 @@ public partial class App : Application
         var isDpiUnaware = Win32.IsDpiUnaware(process);
 
         var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
+
+        // WAS Shit 11: 关闭子窗口不能正常退出程序
+        const uint WM_DESTROY = 0x0002;
+        var monitor = new WinUIEx.Messaging.WindowMessageMonitor(childWindow);
+        monitor.Events().WindowMessageReceived
+            .SubscribeOn(UISyncContext)
+            .Where(e => e.Message.MessageId == WM_DESTROY &&
+                !childWindowClosedChannel.Reader.Completion.IsCompleted)
+            .Subscribe(async _ =>
+            {
+                Win32.HideWindow(childWindow.Hwnd);
+                await Win32.SetParentWindowAsync(childWindow.Hwnd, nint.Zero);
+            });
 
         process.Events().Exited.Subscribe(_ => childWindowClosedChannel.Writer.Complete());
 
@@ -130,7 +132,7 @@ public partial class App : Application
                     .DisposeWith(disposables);
             }
 
-            await NativeMethods.SetParentAsync(childWindow.Hwnd, windowHandle);
+            await Win32.SetParentWindowAsync(childWindow.Hwnd, windowHandle);
 
             GameWindowService.ClientSizeChanged(windowHandle)
                 .SubscribeOn(UISyncContext)
