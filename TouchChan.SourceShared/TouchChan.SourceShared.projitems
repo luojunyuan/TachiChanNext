@@ -6,9 +6,10 @@
     <SharedGUID>c35b72f8-fc69-4406-929a-bdd402feeb72</SharedGUID>
   </PropertyGroup>
   <PropertyGroup Label="Configuration">
-    <Import_RootNamespace>TouchChan.SourceReference</Import_RootNamespace>
+    <Import_RootNamespace>TouchChan.SourceShared</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Extensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)PositionCalculator.cs" />
   </ItemGroup>
 </Project>

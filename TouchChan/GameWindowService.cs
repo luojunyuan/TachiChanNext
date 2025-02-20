@@ -35,7 +35,7 @@ public static class GameWindowService
             var winEventDelegate = new WINEVENTPROC((hWinEventHook, eventId, hWnd, idObject, idChild, dwEventThread, dwmsEventTime) =>
             {
                 if (eventId == EventObjectLocationChange &&
-                    hWnd.Value == windowHandle &&
+                    hWnd == windowHandle &&
                     idObject == OBJID_WINDOW &&
                     idChild == SWEH_CHILDID_SELF)
                 {
@@ -74,7 +74,7 @@ public static class GameWindowService
             var winEventDelegate = new WINEVENTPROC((hWinEventHook, eventId, hWnd, idObject, idChild, dwEventThread, dwmsEventTime) =>
             {
                 if (eventId == EventObjectDestroy &&
-                    hWnd.Value == windowHandle &&
+                    hWnd == windowHandle &&
                     idObject == OBJID_WINDOW &&
                     idChild == SWEH_CHILDID_SELF)
                 {

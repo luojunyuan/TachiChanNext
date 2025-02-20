@@ -1,5 +1,5 @@
 ﻿using LightResults;
-using System.Diagnostics;
+using TouchChan.Interop;
 using TouchChan.SplashScreenGdiPlus;
 using WindowsShortcutFactory;
 
@@ -113,16 +113,16 @@ public static partial class GameStartup
 
         using var fileStream = EmbeddedResource.KleeGreen;
 
-        Log.Do2("Splash");
-        return await SplashScreen.WithShowAndExecuteAsync(fileStream, async () =>
-        {
-            Log.Do2("（Splash 出现）Splash Showed");
-            var launchResult = await LaunchGameAsync(path, leEnable);
-            if (launchResult.IsFailure(out var launchGameError, out var launchedProcess))
-                return Result.Failure<Process>(launchGameError.Message);
+        Log.Do2("Splash"); 
+        using var splash = new SplashScreen(fileStream);
+        splash.Show();
+        Log.Do2("（Splash 出现）Splash Showed");
 
-            return launchedProcess;
-        });
+        var launchResult = await LaunchGameAsync(path, leEnable);
+        if (launchResult.IsFailure(out var launchGameError, out process))
+            return Result.Failure<Process>(launchGameError.Message);
+
+        return process;
     }
 
     /// <summary>
@@ -174,7 +174,7 @@ public static partial class GameStartup
         return Result.Failure<Process>("Failed to start game within the timeout period.");
     }
 
-    private static Task<Process?> StartProcessAsync(ProcessStartInfo startInfo) => Task.FromResult(Process.Start(startInfo));
+    private static Task<Process?> StartProcessAsync(ProcessStartInfo startInfo) => Task.Run(() => Process.Start(startInfo));
 
     /// <summary>
     /// 尝试通过限定的程序路径获取对应正在运行的，存在 MainWindowHandle 的进程
@@ -183,7 +183,7 @@ public static partial class GameStartup
     {
         var friendlyName = Path.GetFileNameWithoutExtension(gamePath);
         // FUTURE: .log main.bin situation
-        return Task.FromResult(
+        return Task.Run(() =>
             Process.GetProcessesByName(friendlyName)
                 .FirstOrDefault(p =>
                 {

@@ -25,6 +25,6 @@
     </Compile>
   </ItemGroup>
 
-  <Import Project="..\TouchChan.SourceReference\TouchChan.SourceReference.projitems" Label="Shared" />
+  <Import Project="..\TouchChan.SourceShared\TouchChan.SourceShared.projitems" Label="Shared" />
 
 </Project>

@@ -1,49 +1,61 @@
-using System;
-using Microsoft.UI;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using R3;
-using Windows.Foundation;
-using WinRT.Interop;
+using R3.ObservableEvents;
+using TouchChan.Interop;
 
 namespace TouchChan.WinUI;
 
 public sealed partial class MainWindow : Window
 {
+    /// <summary>
+    /// 游戏窗口订阅绑定
+    /// </summary>
+    public Subject<Unit> OnWindowBound { get; private set; } = new();
+
+    /// <summary>
+    /// 子窗口初始化准备完成
+    /// </summary>
+    public ReplaySubject<Unit> Loaded { get; } = new(1);
+
     public nint Hwnd { get; }
 
     public MainWindow()
     {
-        Hwnd = WindowNative.GetWindowHandle(this);
+        Hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
 
-        this.AppWindow.MoveAndResize(new(-32000, -320000, 0, 0));
+        // WinUI 窗口的初始大小是个谜 MinSize: (136, 39)
+        this.AppWindow.Move(new(-32000, -32000));
         this.AppWindow.IsShownInSwitchers = false;
 
         this.InitializeComponent();
         this.SystemBackdrop = new WinUIEx.TransparentTintBackdrop();
-        Hwnd.ToggleWindowStyle(false, WindowStyle.TiledWindow);
-        Hwnd.ToggleWindowStyle(false, WindowStyle.Popup);
-        Hwnd.ToggleWindowStyle(true, WindowStyle.Child);
-        Hwnd.ToggleWindowExStyle(true, ExtendedWindowStyle.Layered);
+        Win32.ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
+        Win32.ToggleWindowStyle(Hwnd, false, WindowStyle.Popup);
+        Win32.ToggleWindowStyle(Hwnd, true, WindowStyle.Child);
+        Win32.ToggleWindowExStyle(Hwnd, true, ExtendedWindowStyle.Layered);
+        ((FrameworkElement)this.Content).Events().Loaded.Subscribe(_ => Loaded.OnNext(Unit.Default));
 
         // NOTE: 设置为子窗口后，this.AppWindow 不再可靠
 
-        Touch.ResetWindowObservable = size => Hwnd.ResetWindowOriginalObservableRegion(size.ToGdiSize());
-        Touch.SetWindowObservable = rect => Hwnd.SetWindowObservableRegion(rect.ToGdiRect());
+        Touch.ResetWindowObservable = size => Win32.ResetWindowOriginalObservableRegion(Hwnd, size.ToGdiSize());
+        Touch.SetWindowObservable = rect => Win32.SetWindowObservableRegion(Hwnd, rect.ToGdiRect());
+        OnWindowBound.Subscribe(Touch.OnWindowBound.OnNext);
 
 #if DEBUG
-        if (this.Content is Grid panel)
+        if (this.Content is Microsoft.UI.Xaml.Controls.Grid panel)
         {
-            panel.Children.Add(new Border()
+            panel.Children.Add(new Microsoft.UI.Xaml.Controls.Border()
             {
                 CornerRadius = new(12),
-                BorderBrush = new SolidColorBrush(Colors.Red),
+                BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                    Microsoft.UI.Colors.Red),
                 BorderThickness = new(1),
             });
         }
 #endif
     }
+
+    public void SetFocusOnGameCallback(Action? value) => Touch.RestoreFocus = value;
 
     /// <summary>
     /// DPI Unaware 窗口处于高 DPI 上时隐藏游戏窗口
@@ -62,31 +74,5 @@ public sealed partial class MainWindow : Window
             .Select(_ => Win32.GetDpiForWindowsMonitor(windowHandle) / 96d)
             .DistinctUntilChanged()
             .Subscribe(dpiScale => SetWindowVisible(dpiScale == 1));
-    }
-}
-
-static class ControllerSizeCoverDpiExtensions
-{
-    public static System.Drawing.Size ToGdiSize(this Size size) => new((int)size.Width, (int)size.Height);
-
-    public static System.Drawing.Rectangle ToGdiRect(this Rect size) => new((int)size.X, (int)size.Y, (int)size.Width, (int)size.Height);
-
-    // XDpi 意味着将框架内部任何元素产生的点或面的值还原回真实的物理像素大小
-
-    public static Size ActualSizeXDpi(this FrameworkElement element, double factor)
-    {
-        var size = element.ActualSize.ToSize();
-        size.Width *= factor;
-        size.Height *= factor;
-        return size;
-    }
-
-    public static Rect XDpi(this Rect rect, double factor)
-    {
-        rect.X *= factor;
-        rect.Y *= factor;
-        rect.Width *= factor;
-        rect.Height *= factor;
-        return rect;
     }
 }

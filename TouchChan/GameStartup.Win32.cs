@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using LightResults;
+﻿using LightResults;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
@@ -51,10 +50,11 @@ public static partial class GameStartup
             foreach (var handle in windows)
             {
                 PInvoke.GetClientRect(handle, out var rect);
+
                 if (IsGoodWindow(rect))
                 {
                     Log.Do3($"loop found {count}");
-                    return handle.Value;
+                    return (nint)handle;
                 }
             }
 

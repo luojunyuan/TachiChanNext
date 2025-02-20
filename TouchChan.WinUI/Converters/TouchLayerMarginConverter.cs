@@ -1,8 +1,7 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
-using System;
 
-namespace TouchChan.WinUI;
+namespace TouchChan.WinUI.Converters;
 
 /// <summary>
 /// 自动计算 Touch 每层圆点所占据宽度
@@ -34,6 +33,7 @@ partial class TouchLayerMarginConverter : IValueConverter
             return true;
         }
 
-        throw new InvalidCastException();
+        factor = default;
+        return false;
     }
 }

@@ -2,12 +2,8 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
 using R3;
-using System;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
+using R3.ObservableEvents;
+using TouchChan.Interop;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
@@ -29,7 +25,7 @@ public partial class App : Application
         // WAS Shit 8: 异常发生时默认不会结束程序
         UnhandledException += (sender, e) =>
         {
-            Debug.WriteLine(e.Exception);
+            Trace.WriteLine(e.Exception);
             Environment.Exit(1);
         };
 #endif
@@ -70,35 +66,31 @@ public partial class App : Application
         }
         Log.Do("PrepareValidGamePath");
 
-        var processTask = Task.Run(async () =>
-            await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le")));
+        var processResult = await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
+        if (processResult.IsFailure(out var processError, out var process))
+        {
+            await MessageBox.ShowAsync(processError.Message);
+            return LaunchResult.Failed;
+        }
+        Log.Do("processResult got", true);
 
         Log.Do("MainWindow");
         var childWindow = new MainWindow();
         childWindow.Activate();
         Log.Do("（主窗口激活出现）MainWindow Activated");
 
-        var processResult = await processTask;
-        Log.Do("processResult got", true);
-        if (processResult.IsFailure(out var processError, out var process))
+        childWindow.Loaded.Subscribe(async _ =>
         {
-            await MessageBox.ShowAsync(processError.Message);
-            return LaunchResult.Failed;
-        }
+            // 在窗口完成准备后启动后台绑定窗口任务
+            await Task.Factory.StartNew(async () =>
+                await GameWindowBindingAsync(childWindow, process),
+                TaskCreationOptions.LongRunning).Unwrap();
 
-        // 启动后台绑定窗口任务
-        _ = Task.Factory.StartNew(async () =>
-        {
-            try
-            {
-                await GameWindowBindingAsync(childWindow, process);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex);
-                Environment.Exit(1);
-            }
-        }, TaskCreationOptions.LongRunning);
+            // WAS Shit 11: 关闭子窗口不能正常退出程序
+            // 重要的不是退出方式，而是能够正确处理部分游戏的窗口全屏切换后的 handle 改变
+            if (NativeMethods.IsWindow(childWindow.Hwnd)) Current.Exit();
+            else Environment.Exit(0);
+        });
 
         Log.Do("StartMainWindowAsync End");
 
@@ -117,8 +109,21 @@ public partial class App : Application
         var isDpiUnaware = Win32.IsDpiUnaware(process);
 
         var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
-        process.EnableRaisingEvents = true;
-        process.RxExited().Subscribe(_ => childWindowClosedChannel.Writer.Complete());
+
+        // WM_DESTROY -> EventObjectDestroy(too late) -> WM_NCDESTROY
+        const uint WM_DESTROY = 0x0002;
+        var monitor = new WinUIEx.Messaging.WindowMessageMonitor(childWindow);
+        monitor.Events().WindowMessageReceived
+            .SubscribeOn(UISyncContext)
+            .Where(e => e.Message.MessageId == WM_DESTROY &&
+                !childWindowClosedChannel.Reader.Completion.IsCompleted)
+            .Subscribe(async _ =>
+            {
+                Win32.HideWindow(childWindow.Hwnd);
+                await Win32.SetParentWindowAsync(childWindow.Hwnd, nint.Zero);
+            });
+
+        process.Events().Exited.Subscribe(_ => childWindowClosedChannel.Writer.Complete());
 
         while (process.HasExited is false)
         {
@@ -138,19 +143,21 @@ public partial class App : Application
 
             using CompositeDisposable disposables = [];
 
+            childWindow.SetFocusOnGameCallback(() => NativeMethods.SetFocus(windowHandle));
+
+            // Pending test 并且一定要显式提示用户
             if (isDpiUnaware)
             {
-                // HACK: Pending test
                 childWindow.UnawareGameWindowShowHideHack(windowHandle)
                     .DisposeWith(disposables);
             }
 
-            await NativeMethods.SetParentAsync(childWindow.Hwnd, windowHandle);
+            await Win32.SetParentWindowAsync(childWindow.Hwnd, windowHandle);
             Log.Do2("（win32api 调整窗口层级）SetParent");
 
             GameWindowService.ClientSizeChanged(windowHandle)
                 .SubscribeOn(UISyncContext)
-                .Subscribe(size => childWindow.Hwnd.ResizeClient(size))
+                .Subscribe(size => Win32.ResizeWindow(childWindow.Hwnd, size))
                 .DisposeWith(disposables);
 
             GameWindowService.WindowDestroyed(windowHandle)
@@ -158,16 +165,14 @@ public partial class App : Application
                 .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
                 .DisposeWith(disposables);
 
-            Log.Do2("Subscribe done");
+            childWindow.OnWindowBound.OnNext(Unit.Default);
 
+            Log.Do2("Subscribe done");
             await childWindowClosedChannel.Reader.ReadAsync();
             Log.Do2("Window Destroyed", true);
 
             process.Refresh();
         }
-
-        // WAS Shit x: 疑似窗口显示后，在窗口显示前的线程上调用 Current.Exit() 会引发错误
-        Environment.Exit(0);
     }
 
     /// <summary>
@@ -192,7 +197,7 @@ public partial class App : Application
         preference.Activate();
         Log.Do("（偏好设置窗口激活出现）Activated PreferenceWindow");
 
-        AppInstance.GetCurrent().RxActivated()
+        AppInstance.GetCurrent().Events().Activated
             .Subscribe(_ =>
             {
                 // WAS Shit 9: preference.Active() 在这里不起用
@@ -203,12 +208,5 @@ public partial class App : Application
             });
 
         return LaunchResult.Success;
-    }
-
-    enum LaunchResult
-    {
-        Success,
-        Redirected,
-        Failed,
     }
 }

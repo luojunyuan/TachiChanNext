@@ -25,3 +25,6 @@ GetModuleHandle
 SetWindowsHookEx
 CallNextHookEx
 CWPSTRUCT
+SetFocus
+SendMessage
+IsWindow

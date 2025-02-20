@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using R3;
@@ -22,7 +21,6 @@ public sealed partial class PreferenceWindow : Window
     {
         Task.Run(() =>
         {
-
             Observable.Return(Unit.Default)
                 .ObserveOn(App.UISyncContext)
                 .Subscribe(_ => App.Current.Exit());

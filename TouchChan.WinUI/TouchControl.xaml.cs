@@ -3,10 +3,12 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
-using System;
+using R3.ObservableEvents;
 using Windows.Foundation;
 
 namespace TouchChan.WinUI;
+
+// TouchControl 依赖 TouchDockAnchor, AnimationTool, TouchLayerMarginConverter(Xaml), PositionCalculator
 
 public sealed partial class TouchControl : UserControl
 {
@@ -23,6 +25,10 @@ public sealed partial class TouchControl : UserControl
 
     public Action<Rect>? SetWindowObservable { get; set; }
 
+    public Action? RestoreFocus { get; set; }
+
+    public Subject<Unit> OnWindowBound { get; private set; } = new();
+
     // WAS Shit 6: DPI 改变后，XamlRoot.RasterizationScale 永远是启动时候的值
     private double DpiScale => this.XamlRoot.RasterizationScale;
 
@@ -30,9 +36,11 @@ public sealed partial class TouchControl : UserControl
     {
         this.InitializeComponent();
 
-        this.RxLoaded()
-            .Select(_ => this.FindParent<Panel>() ?? throw new InvalidOperationException())
-            .Subscribe(InitializeTouchControl);
+        this.Events().Loaded.Subscribe(_ => InitializeTouchControl(this));
+
+        //Touch.Events().PointerPressed
+        //    .Where(e => e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+        //    .Subscribe(_ => NativeMethods.SetFocus(0x00290046));
 
         TranslateXAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
         TranslateYAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
@@ -42,18 +50,18 @@ public sealed partial class TouchControl : UserControl
         AnimationTool.BindingAnimation(FadeOutOpacityStoryboard, AnimationTool.CreateFadeOutOpacityAnimation, Touch, nameof(Opacity));
     }
 
-    private void InitializeTouchControl(Panel container)
+    private void InitializeTouchControl(FrameworkElement container)
     {
         TouchDockSubscribe(container);
 
-        var moveAnimationEndedStream = TranslationStoryboard.RxCompleted();
+        var moveAnimationEndedStream = TranslationStoryboard.Events().Completed;
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
-        var pointerPressedStream = Touch.RxPointerPressed().Do(e => Touch.CapturePointer(e.Pointer));
-        var pointerMovedStream = Touch.RxPointerMoved();
+        var pointerPressedStream = Touch.Events().PointerPressed.Do(e => Touch.CapturePointer(e.Pointer));
+        var pointerMovedStream = Touch.Events().PointerMoved;
         var pointerReleasedStream =
-            Touch.RxPointerReleased()
+            Touch.Events().PointerReleased
             .Merge(raisePointerReleasedSubject)
             .Do(e => Touch.ReleasePointerCapture(e.Pointer));
 
@@ -107,8 +115,8 @@ public sealed partial class TouchControl : UserControl
                     .TakeUntil(pointerReleasedStream)
                     .Select(movedEvent =>
                     {
-                        var distanceToOrigin = movedEvent.GetPosition(container).Warp();
-                        var delta = distanceToOrigin - distanceToElement;
+                        var distanceToOrigin = movedEvent.GetPosition(container);
+                        var delta = distanceToOrigin.Subtract(distanceToElement);
 
                         return new { Delta = delta, MovedEvent = movedEvent };
                     });
@@ -117,10 +125,7 @@ public sealed partial class TouchControl : UserControl
         draggingStream
             .Select(item => item.Delta)
             .Subscribe(newPos =>
-            {
-                TouchTransform.X = newPos.X;
-                TouchTransform.Y = newPos.Y;
-            });
+                (TouchTransform.X, TouchTransform.Y) = (newPos.X, newPos.Y));
 
         // Touch 拖动边界检测
         var boundaryExceededStream =
@@ -139,9 +144,9 @@ public sealed partial class TouchControl : UserControl
             .Do(_ => Touch.IsHitTestVisible = false)
             .Select(pointer =>
             {
-                var distanceToOrigin = pointer.GetPosition(container).Warp();
+                var distanceToOrigin = pointer.GetPosition(container);
                 var distanceToElement = pointer.GetPosition(Touch);
-                var touchPos = distanceToOrigin - distanceToElement;
+                var touchPos = distanceToOrigin.Subtract(distanceToElement);
 
                 return PositionCalculator.CalculateTouchFinalPosition(
                     container.ActualSize.ToSize(), touchPos, (int)Touch.Width);
@@ -154,11 +159,12 @@ public sealed partial class TouchControl : UserControl
 
         // 回调设置容器窗口的可观察区域
         dragStartedStream
-            .Select(_ => container.ActualSizeXDpi(DpiScale))
+            .Select(_ => container.ActualSize.XDpi(DpiScale))
             .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
 
         moveAnimationEndedStream
             .Do(_ => Touch.IsHitTestVisible = true)
+            .Do(_ => RestoreFocus?.Invoke())
             .Select(_ => GetTouchDockRect().XDpi(DpiScale))
             .Subscribe(rect => SetWindowObservable?.Invoke(rect));
 
@@ -167,54 +173,54 @@ public sealed partial class TouchControl : UserControl
             .Where(_ => Touch.Opacity != 1)
             .Subscribe(_ => FadeInOpacityStoryboard.Begin());
 
-        moveAnimationEndedStream.Select(_ => Unit.Default)
+        OnWindowBound
             .Merge(pointerReleasedStream.Select(_ => Unit.Default))
-            .Prepend(Unit.Default)
+            .Merge(moveAnimationEndedStream.Select(_ => Unit.Default))
             .Select(_ =>
                 Observable.Timer(FadeOutDuration)
                 .TakeUntil(pointerPressedStream))
             .Switch()
             .ObserveOn(App.UISyncContext)
             .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
+
+        // 小白点停留时的位置状态
+        moveAnimationEndedStream.Select(_ =>
+                PositionCalculator.GetLastTouchDockAnchor(container.ActualSize.ToSize(), GetTouchDockRect()))
+            .Merge(container.Events().SizeChanged.Select(_ => CurrentDock))
+            .Subscribe(dock =>
+                _currentDock = PositionCalculator.TouchDockTransform(dock, container.ActualSize.ToSize(), Touch.Width));
     }
 
-    private void TouchDockSubscribe(Panel container)
+    private TouchDockAnchor _currentDock = new(TouchCorner.Left, 0.5);
+    public TouchDockAnchor CurrentDock => _currentDock;
+
+    private void TouchDockSubscribe(FrameworkElement container)
     {
         var touchRectangleShape = false;
-        Touch.RxSizeChanged()
+        Touch.Events().SizeChanged
             .Select(x => x.NewSize.Width)
             .Subscribe(touchSize => Touch.CornerRadius = new(touchSize / (touchRectangleShape ? 4 : 2)));
 
-        var defaultDock = new TouchDockAnchor(TouchCorner.Left, 0.5);
-
-        static double TouchWidth(double windowWidth) => windowWidth < 600 ? 60 : 80;
-
-        container.RxSizeChanged()
-            .Select(windowSize =>
+        container.Events().SizeChanged
+            .Select(x => x.NewSize)
+            .Select(window => new
             {
-                var window = windowSize.NewSize;
-                var touchDock = PositionCalculator.GetLastTouchDockAnchor(windowSize.PreviousSize, GetTouchDockRect());
-                var touchWidth = TouchWidth(window.Width);
-                return new { WindowSize = window, TouchDock = touchDock, TouchSize = touchWidth };
-            })
-            .Prepend(new
-            {
-                WindowSize = container.ActualSize.ToSize(),
-                TouchDock = defaultDock,
-                TouchSize = TouchWidth(container.ActualWidth),
+                WindowSize = window,
+                TouchDock = CurrentDock,
+                TouchSize = window.Width < 600 ? 60 : 80
             })
             .Select(pair => PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
             .Subscribe(SetTouchDockRect);
     }
 
     /// <summary>
-    /// 获得触摸按钮停留时应处于的位置
+    /// 获得触摸按钮停留时处于的位置
     /// </summary>
     private Rect GetTouchDockRect() =>
         new(TouchTransform.X,
             TouchTransform.Y,
             Touch.Width,
-            Touch.Height);
+            Touch.Width);
 
     /// <summary>
     /// 设置触摸按钮停留时应处于的位置
@@ -266,4 +272,36 @@ class AnimationTool
         To = OpacityHalf,
         Duration = OpacityFadeOutDuration,
     };
+}
+
+static partial class Extensions
+{
+    // 简化 pointerEvent.GetCurrentPoint(visual).Position -> pointerEvent.GetPosition(visual)
+    public static Point GetPosition(this PointerRoutedEventArgs pointerEvent, UIElement visual) =>
+        pointerEvent.GetCurrentPoint(visual).Position;
+
+    // 用于扩展 Windows.Foundation.Point 之间的减法运算操作符
+    public static Point Subtract(this Point point, Point subPoint) => new(point.X - subPoint.X, point.Y - subPoint.Y);
+
+    // 几何类型转换的扩展方法
+    public static Size ToSize(this Vector2 size) => new((int)size.X, (int)size.Y);
+
+    // XDpi 意味着将框架内部任何元素产生的点或面的值还原回真实的物理像素大小
+
+    public static Rect XDpi(this Rect rect, double factor)
+    {
+        rect.X *= factor;
+        rect.Y *= factor;
+        rect.Width *= factor;
+        rect.Height *= factor;
+        return rect;
+    }
+
+    public static Size XDpi(this Vector2 vector, double factor)
+    {
+        var size = vector.ToSize();
+        size.Width *= factor;
+        size.Height *= factor;
+        return size;
+    }
 }

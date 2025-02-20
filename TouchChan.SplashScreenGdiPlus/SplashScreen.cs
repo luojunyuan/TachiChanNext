@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Nito.AsyncEx;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
@@ -9,44 +9,38 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace TouchChan.SplashScreenGdiPlus;
 
-public class SplashScreen
+public class SplashScreen(Stream resource) : IDisposable
 {
-    public static async Task<T> WithShowAndExecuteAsync<T>(Stream resource, Func<Task<T>> action)
-    {
-        var taskCompletionSource = new TaskCompletionSource<T>();
-
-        AsyncContext.Run(async () =>
-        {
-            using var image = Image.FromStream(resource);
-            var splash = InternalShow(image);
-            try
-            {
-                var result = await action();
-                taskCompletionSource.SetResult(result);
-            }
-            catch (Exception ex)
-            {
-                taskCompletionSource.SetException(ex);
-            }
-            finally
-            {
-                // NOTE: finally 是重要的，他保证了无论 Action 结果如何 splash 都将被清理
-                splash.CleanUp();
-            }
-        });
-
-        return await taskCompletionSource.Task;
-    }
-
-    private static SplashScreen InternalShow(Image image)
-    {
-        var splash = new SplashScreen();
-        splash.DisplaySplash(image);
-        return splash;
-    }
-
+    private readonly Image _image = Image.FromStream(resource);
+    private readonly SemaphoreSlim _semaphore = new(0, 1);
+    private readonly ManualResetEvent _initialized = new(false);
     private HWND _hWndSplash;
     private HDC _hdc;
+
+    public void Show()
+    {
+        new Thread(() =>
+        {
+            DisplaySplash(_image);
+
+            _initialized.Set();
+            _semaphore.Wait();
+
+            _ = PInvoke.ReleaseDC(_hWndSplash, _hdc);
+            PInvoke.DestroyWindow(_hWndSplash);
+
+        }).Start();
+
+        _initialized.WaitOne();
+    }
+
+    public void Dispose()
+    {
+        _semaphore.Release();
+        _initialized.Dispose();
+        _image.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     private unsafe void DisplaySplash(Image image)
     {
@@ -57,14 +51,14 @@ public class SplashScreen
             var wndClass = new WNDCLASSEXW
             {
                 cbSize = (uint)Marshal.SizeOf<WNDCLASSEXW>(),
-                lpfnWndProc = WndProc,
+                lpfnWndProc = &WndProc,
                 lpszClassName = new(lpClassName),
                 hInstance = default,
             };
             PInvoke.RegisterClassEx(in wndClass);
         }
 
-        // Hires image scaling
+        // 高分辨率图像缩放
         const double scaleFactor = 2.0;
         const double scaleFactorMid = 1.5;
         var dpi = (int)(GetDpiScale() * 100);
@@ -94,20 +88,11 @@ public class SplashScreen
         using var g = Graphics.FromHdc(_hdc);
         g.DrawImage(image, 0, 0, width, height);
 
-        PInvoke.SetWindowLong(_hWndSplash, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE,
-            PInvoke.GetWindowLong(_hWndSplash, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE) | (int)WINDOW_EX_STYLE.WS_EX_LAYERED);
+        var originalStyle = PInvoke.GetWindowLong(_hWndSplash, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
+        _ = PInvoke.SetWindowLong(_hWndSplash, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE,
+            originalStyle | (int)WINDOW_EX_STYLE.WS_EX_LAYERED);
 
         PInvoke.SetLayeredWindowAttributes(_hWndSplash, new COLORREF((uint)Color.Green.ToArgb()), 0, LAYERED_WINDOW_ATTRIBUTES_FLAGS.LWA_COLORKEY);
-    }
-
-    /// <summary>
-    /// Clean up resources
-    /// </summary>
-    /// <remarks>Must be executed on the same thread that called CreateWindowEx to be effective</remarks>
-    private void CleanUp()
-    {
-        PInvoke.ReleaseDC(_hWndSplash, _hdc);
-        PInvoke.DestroyWindow(_hWndSplash);
     }
 
     private static unsafe (int X, int Y) CenterToPrimaryScreen(int width, int height)
@@ -133,6 +118,7 @@ public class SplashScreen
         return 1;
     }
 
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
     private static LRESULT WndProc(HWND hwnd, uint uMsg, WPARAM wParam, LPARAM lParam)
         => PInvoke.DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
