@@ -99,6 +99,7 @@ public partial class App : Application
 
         var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
 
+        // NOTE: 在子窗口被销毁前移出游戏窗口
         // WM_DESTROY -> EventObjectDestroy(too late) -> WM_NCDESTROY
         const uint WM_DESTROY = 0x0002;
         var monitor = new WinUIEx.Messaging.WindowMessageMonitor(childWindow);
