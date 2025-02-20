@@ -10,9 +10,8 @@ namespace TouchChan.WinUI;
 
 public partial class App : Application
 {
-    public static readonly SynchronizationContext UISyncContext;
-
-    static App() => UISyncContext = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
+    public static readonly SynchronizationContext UISyncContext =
+        new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
 
     public App()
     {
@@ -59,15 +58,18 @@ public partial class App : Application
             return LaunchResult.Failed;
         }
 
-        var processResult = await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
+        var processTask = Task.Run(() =>
+            GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le")));
+
+        var childWindow = new MainWindow();
+        childWindow.Activate();
+
+        var processResult = await processTask;
         if (processResult.IsFailure(out var processError, out var process))
         {
             await MessageBox.ShowAsync(processError.Message);
             return LaunchResult.Failed;
         }
-
-        var childWindow = new MainWindow();
-        childWindow.Activate();
 
         childWindow.Loaded.Subscribe(async _ =>
         {
