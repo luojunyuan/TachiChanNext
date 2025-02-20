@@ -2,14 +2,21 @@ using Microsoft.UI.Xaml;
 using R3;
 using R3.ObservableEvents;
 using TouchChan.Interop;
-using Windows.System;
 
 namespace TouchChan.WinUI;
 
 public sealed partial class MainWindow : Window
 {
-    public static Subject<Unit> OnTouchShowed { get; private set; } = new();
+    private Action? setFocusOnGame;
 
+    /// <summary>
+    /// 游戏窗口订阅绑定
+    /// </summary>
+    public Subject<Unit> OnWindowBound { get; private set; } = new();
+
+    /// <summary>
+    /// 子窗口初始化准备完成
+    /// </summary>
     public ReplaySubject<Unit> Loaded { get; } = new(1);
 
     public nint Hwnd { get; }
@@ -34,13 +41,7 @@ public sealed partial class MainWindow : Window
 
         Touch.ResetWindowObservable = size => Win32.ResetWindowOriginalObservableRegion(Hwnd, size.ToGdiSize());
         Touch.SetWindowObservable = rect => Win32.SetWindowObservableRegion(Hwnd, rect.ToGdiRect());
-
-        // FIXME: 仅对部分游戏有效，没有改变抢占父窗口焦点的本质
-        this.Content.Events().ProcessKeyboardAccelerators
-            .Select(x => x.args)
-            .Where(args => args.Modifiers == VirtualKeyModifiers.Menu &&
-                args.Key == VirtualKey.Enter)
-            .Subscribe(_ => Win32.SendAltEnter(_gameHandleAltEnter));
+        OnWindowBound.Subscribe(Touch.OnWindowBound.OnNext);
 
 #if DEBUG
         if (this.Content is Microsoft.UI.Xaml.Controls.Grid panel)
@@ -56,8 +57,7 @@ public sealed partial class MainWindow : Window
 #endif
     }
 
-    private nint _gameHandleAltEnter;
-    public void UpdateAltEnterHandle(nint handle) => _gameHandleAltEnter = handle;
+    public void SetFocusOnGameCallback(Action? value) => Touch.RestoreFocus = value;
 
     /// <summary>
     /// DPI Unaware 窗口处于高 DPI 上时隐藏游戏窗口

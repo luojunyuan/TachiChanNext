@@ -25,6 +25,10 @@ public sealed partial class TouchControl : UserControl
 
     public Action<Rect>? SetWindowObservable { get; set; }
 
+    public Action? RestoreFocus { get; set; }
+
+    public Subject<Unit> OnWindowBound { get; private set; } = new();
+
     // WAS Shit 6: DPI 改变后，XamlRoot.RasterizationScale 永远是启动时候的值
     private double DpiScale => this.XamlRoot.RasterizationScale;
 
@@ -33,6 +37,10 @@ public sealed partial class TouchControl : UserControl
         this.InitializeComponent();
 
         this.Events().Loaded.Subscribe(_ => InitializeTouchControl(this));
+
+        //Touch.Events().PointerPressed
+        //    .Where(e => e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+        //    .Subscribe(_ => NativeMethods.SetFocus(0x00290046));
 
         TranslateXAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
         TranslateYAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
@@ -156,6 +164,7 @@ public sealed partial class TouchControl : UserControl
 
         moveAnimationEndedStream
             .Do(_ => Touch.IsHitTestVisible = true)
+            .Do(_ => RestoreFocus?.Invoke())
             .Select(_ => GetTouchDockRect().XDpi(DpiScale))
             .Subscribe(rect => SetWindowObservable?.Invoke(rect));
 
@@ -164,7 +173,7 @@ public sealed partial class TouchControl : UserControl
             .Where(_ => Touch.Opacity != 1)
             .Subscribe(_ => FadeInOpacityStoryboard.Begin());
 
-        MainWindow.OnTouchShowed // Subscription attention
+        OnWindowBound
             .Merge(pointerReleasedStream.Select(_ => Unit.Default))
             .Merge(moveAnimationEndedStream.Select(_ => Unit.Default))
             .Select(_ =>

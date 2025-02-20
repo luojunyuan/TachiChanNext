@@ -1,3 +1,16 @@
+### 已知问题 Bug
+- [ ] 部分游戏窗口最大化切换时，透明 Touch 会闪烁（透明度会发生变化）
+- [ ] 先左键再右键 Touch 后会阻碍输出
+- [x] 部分设备或游戏 Touch 位于 right 更改游戏窗口大小 720 -> full 会导致 Touch 卡在左上角卡一半
+- [x] 按钮处于四边时更改窗口大小可能超出边界
+- [x] 点击 Touch 后，游戏父窗口会失去焦点，alt+enter 全屏切换会失效，alt+tab 切换回来可以恢复工作 *4
+- [x] 子窗口重定位嵌入到新的窗口并不能按照预期工作 *1
+- [x] Publish Aot 与 Debug Release 发布行为不同，同步后台线程与窗口 Loaded 的先后次序 *5
+
+### 框架相关问题
+- [x] 验证 WAS Shit x，退出 WinUI3 程序究竟是否是在窗口显示前的线程上调用 Exit() 导致的
+- [ ] ~~调整为单一 MainWindow 与 PreferenceView，按需加载 Content （可选）~~
+
 ### 疑惑
 - [ ] Aot int.TryParse 为何首次执行耗时
 - [x] ~~R3.WinUI 设置 Observable 导致 cpu 占用，是否需要检查原因或报告问题~~

@@ -128,10 +128,9 @@ public partial class App : Application
 
             using CompositeDisposable disposables = [];
 
-            // HACK: 传递 Alt+Enter 按键事件到游戏窗口
-            childWindow.UpdateAltEnterHandle(windowHandle);
+            childWindow.SetFocusOnGameCallback(() => NativeMethods.SetFocus(windowHandle));
 
-            // HACK: Pending test 并且一定要显式提示用户
+            // Pending test 并且一定要显式提示用户
             if (isDpiUnaware)
             {
                 childWindow.UnawareGameWindowShowHideHack(windowHandle)
@@ -150,7 +149,7 @@ public partial class App : Application
                 .Subscribe(x => childWindowClosedChannel.Writer.TryWrite(x))
                 .DisposeWith(disposables);
 
-            MainWindow.OnTouchShowed.OnNext(Unit.Default);
+            childWindow.OnWindowBound.OnNext(Unit.Default);
             await childWindowClosedChannel.Reader.ReadAsync();
 
             process.Refresh();
