@@ -9,7 +9,7 @@
   <ItemGroup>
     <Using Include="System.Diagnostics" />
   </ItemGroup>
-	
+
   <ItemGroup>
     <PackageReference Include="LightResults" Version="9.0.0" />
     <PackageReference Include="R3" Version="1.2.9" />
@@ -25,14 +25,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="EmbeddedResource.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>EmbeddedResource.resx</DependentUpon>
-    </Compile>
     <EmbeddedResource Update="EmbeddedResource.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>EmbeddedResource.Designer.cs</LastGenOutput>
+      <Generator>MSBuild:Compile</Generator>
     </EmbeddedResource>
   </ItemGroup>
 
