@@ -186,7 +186,7 @@ public partial class App : Application
     }
 }
 
-public static class WindowExtensions
+public static class FluentWinUIExtensions
 {
     public static T WithActivate<T>(this T window) where T : Window
     {
