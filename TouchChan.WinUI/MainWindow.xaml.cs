@@ -7,8 +7,6 @@ namespace TouchChan.WinUI;
 
 public sealed partial class MainWindow : Window
 {
-    private Action? setFocusOnGame;
-
     /// <summary>
     /// 游戏窗口订阅绑定
     /// </summary>
