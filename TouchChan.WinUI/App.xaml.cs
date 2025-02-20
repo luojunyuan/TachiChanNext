@@ -61,8 +61,7 @@ public partial class App : Application
         var processTask = Task.Run(() =>
             GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le")));
 
-        var childWindow = new MainWindow();
-        childWindow.Activate();
+        var childWindow = new MainWindow().WithActivate();
 
         var processResult = await processTask;
         if (processResult.IsFailure(out var processError, out var process))
@@ -173,8 +172,7 @@ public partial class App : Application
             return LaunchResult.Redirected;
         }
 
-        var preference = new PreferenceWindow();
-        preference.Activate();
+        var preference = new PreferenceWindow().WithActivate();
 
         AppInstance.GetCurrent().Events().Activated
             .Subscribe(_ =>
@@ -185,5 +183,14 @@ public partial class App : Application
             });
 
         return LaunchResult.Success;
+    }
+}
+
+public static class WindowExtensions
+{
+    public static T WithActivate<T>(this T window) where T : Window
+    {
+        window.Activate();
+        return window;
     }
 }
