@@ -66,18 +66,22 @@ public partial class App : Application
         }
         Log.Do("PrepareValidGamePath");
 
-        var processResult = await GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le"));
-        if (processResult.IsFailure(out var processError, out var process))
-        {
-            await MessageBox.ShowAsync(processError.Message);
-            return LaunchResult.Failed;
-        }
-        Log.Do("processResult got", true);
+        var processTask = Task.Run(() =>
+            GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le")));
 
         Log.Do("MainWindow");
         var childWindow = new MainWindow();
         childWindow.Activate();
         Log.Do("（主窗口激活出现）MainWindow Activated");
+
+        var processResult = await processTask;
+        if (processResult.
+            IsFailure(out var processError, out var process))
+        {
+            await MessageBox.ShowAsync(processError.Message);
+            return LaunchResult.Failed;
+        }
+        Log.Do("process got", true);
 
         childWindow.Loaded.Subscribe(async _ =>
         {
