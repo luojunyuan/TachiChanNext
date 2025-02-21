@@ -10,7 +10,6 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Platforms>x64;ARM64</Platforms>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>WinUI;TRACE</DefineConstants>
   </PropertyGroup>
 
