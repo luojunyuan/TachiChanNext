@@ -65,7 +65,7 @@ public partial class App : Application
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
+                Trace.WriteLine(ex);
                 Environment.Exit(1);
             }
         }, TaskCreationOptions.LongRunning);

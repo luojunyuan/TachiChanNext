@@ -27,7 +27,7 @@ public static partial class GameStartup
         }
         catch (Exception ex)
         {
-            Debug.WriteLine(ex);
+            Trace.WriteLine(ex);
             return Result.Failure<string>($"Failed when resolve \"{path}\", please try start from game folder.");
         }
 
