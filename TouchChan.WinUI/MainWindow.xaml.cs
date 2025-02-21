@@ -29,16 +29,16 @@ public sealed partial class MainWindow : Window
 
         this.InitializeComponent();
         this.SystemBackdrop = new WinUIEx.TransparentTintBackdrop();
-        Win32.ToggleWindowStyle(Hwnd, false, WindowStyle.TiledWindow);
-        Win32.ToggleWindowStyle(Hwnd, false, WindowStyle.Popup);
-        Win32.ToggleWindowStyle(Hwnd, true, WindowStyle.Child);
-        Win32.ToggleWindowExStyle(Hwnd, true, ExtendedWindowStyle.Layered);
+        this.ToggleWindowStyle(false, WindowStyle.TiledWindow);
+        this.ToggleWindowStyle(false, WindowStyle.Popup);
+        this.ToggleWindowStyle(true, WindowStyle.Child);
+        this.ToggleWindowExStyle(true, ExtendedWindowStyle.Layered);
         ((FrameworkElement)this.Content).Events().Loaded.Subscribe(_ => Loaded.OnNext(Unit.Default));
 
         // NOTE: 设置为子窗口后，this.AppWindow 不再可靠
 
-        Touch.ResetWindowObservable = size => Win32.ResetWindowOriginalObservableRegion(Hwnd, size.ToGdiSize());
-        Touch.SetWindowObservable = rect => Win32.SetWindowObservableRegion(Hwnd, rect.ToGdiRect());
+        Touch.ResetWindowObservable = this.ResetWindowOriginalObservableRegion;
+        Touch.SetWindowObservable = this.SetWindowObservableRegion;
         OnWindowBound.Subscribe(Touch.OnWindowBound.OnNext);
 
 #if DEBUG

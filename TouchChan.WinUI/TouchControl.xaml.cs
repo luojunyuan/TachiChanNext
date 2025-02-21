@@ -274,7 +274,9 @@ class AnimationTool
     };
 }
 
-static partial class Extensions
+#region Extensions
+
+static class TouchControlExtensions
 {
     // 简化 pointerEvent.GetCurrentPoint(visual).Position -> pointerEvent.GetPosition(visual)
     public static Point GetPosition(this PointerRoutedEventArgs pointerEvent, UIElement visual) =>
@@ -305,3 +307,5 @@ static partial class Extensions
         return size;
     }
 }
+
+#endregion

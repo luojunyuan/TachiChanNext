@@ -4,6 +4,7 @@ using Microsoft.Windows.AppLifecycle;
 using R3;
 using R3.ObservableEvents;
 using TouchChan.Interop;
+using Windows.Foundation;
 using WinRT.Interop;
 
 namespace TouchChan.WinUI;
@@ -108,8 +109,8 @@ public partial class App : Application
                 !childWindowClosedChannel.Reader.Completion.IsCompleted)
             .Subscribe(async _ =>
             {
-                Win32.HideWindow(childWindow.Hwnd);
-                await Win32.SetParentWindowAsync(childWindow.Hwnd, nint.Zero);
+                childWindow.Hide();
+                await childWindow.SetParentAsync(nint.Zero);
             });
 
         process.Events().Exited.Subscribe(_ => childWindowClosedChannel.Writer.Complete());
@@ -139,7 +140,7 @@ public partial class App : Application
                     .DisposeWith(disposables);
             }
 
-            await Win32.SetParentWindowAsync(childWindow.Hwnd, windowHandle);
+            await childWindow.SetParentAsync(windowHandle);
 
             GameWindowService.ClientSizeChanged(windowHandle)
                 .SubscribeOn(UISyncContext)
@@ -178,19 +179,40 @@ public partial class App : Application
             .Subscribe(_ =>
             {
                 // WAS Shit 9: preference.Active() 在这里不起用 #7595
-                var preferenceHandle = WindowNative.GetWindowHandle(preference);
-                Win32.ActiveWindow(preferenceHandle);
+                var handle = WindowNative.GetWindowHandle(preference);
+                Win32.ActiveWindow(handle);
             });
 
         return LaunchResult.Success;
     }
 }
 
-public static class FluentWinUIExtensions
+#region Extensions
+
+static class FluentWinUIExtensions
 {
     public static T WithActivate<T>(this T window) where T : Window
     {
         window.Activate();
         return window;
     }
+
+    public static void Hide(this MainWindow window) => Win32.HideWindow(window.Hwnd);
+
+    public static Task SetParentAsync(this MainWindow window, nint parent) =>
+        Win32.SetParentWindowAsync(window.Hwnd, parent);
+
+    public static void ToggleWindowStyle(this MainWindow window, bool enable, WindowStyle style)
+        => Win32.ToggleWindowStyle(window.Hwnd, enable, style);
+
+    public static void ToggleWindowExStyle(this MainWindow window, bool enable, ExtendedWindowStyle exStyle)
+        => Win32.ToggleWindowExStyle(window.Hwnd, enable, exStyle);
+
+    public static void SetWindowObservableRegion(this MainWindow window, Rect rect) =>
+        Win32.SetWindowObservableRegion(window.Hwnd, rect.ToGdiRect());
+
+    public static void ResetWindowOriginalObservableRegion(this MainWindow window, Size size) =>
+        Win32.ResetWindowOriginalObservableRegion(window.Hwnd, size.ToGdiSize());
 }
+
+#endregion
