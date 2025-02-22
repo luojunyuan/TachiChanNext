@@ -2,6 +2,7 @@
 DefWindowProc
 RegisterClassEx
 CreateWindowEx
+DestroyWindow
 
 // Position
 SystemParametersInfo
@@ -14,13 +15,10 @@ GetDpiForMonitor
 GetDC
 ReleaseDC
 
-// Layered to make unwaitable
+// Layered style
 WINDOW_EX_STYLE
 SetWindowLong
 GetWindowLong
 
 // Transparency color key
 SetLayeredWindowAttributes
-
-// Messge loop
-DestroyWindow
