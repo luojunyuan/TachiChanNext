@@ -66,7 +66,7 @@ public class SplashScreen(Stream resource) : IDisposable
         var (width, height) = dpi switch
         {
             < 150 => ((int)(image.Width / scaleFactor), (int)(image.Height / scaleFactor)),
-            >= 150 and < 200 => ((int)(image.Width / scaleFactorMid), (int)(image.Height / scaleFactorMid)),
+            >= 150 and < 175 => ((int)(image.Width / scaleFactorMid), (int)(image.Height / scaleFactorMid)),
             _ => (image.Width, image.Height),
         };
 
