@@ -12,7 +12,7 @@
 - [ ] ~~调整为单一 MainWindow 与 PreferenceView，按需加载 Content （可选）~~
 
 ### 疑惑
-- [ ] Aot int.TryParse 为何首次执行耗时
+- [x] Aot int.TryParse 为何首次执行耗时 => 是计时器冷启动带来的周边消耗
 - [x] ~~R3.WinUI 设置 Observable 导致 cpu 占用，是否需要检查原因或报告问题~~
 
 ### 行为调整 Improvement
