@@ -10,6 +10,13 @@ namespace TouchChan.WinUI;
 
 // TouchControl 依赖 TouchDockAnchor, AnimationTool, TouchLayerMarginConverter(Xaml), PositionCalculator
 
+public sealed partial class TouchControl
+{
+    private ObservableAsPropertyHelper<TouchDockAnchor> _currentDock = null!;
+
+    public TouchDockAnchor CurrentDock => _currentDock.Value;
+}
+
 public sealed partial class TouchControl : UserControl
 {
     private readonly TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
@@ -58,8 +65,13 @@ public sealed partial class TouchControl : UserControl
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
-        var pointerPressedStream = Touch.Events().PointerPressed.Do(e => Touch.CapturePointer(e.Pointer));
-        var pointerMovedStream = Touch.Events().PointerMoved;
+        var pointerPressedStream = 
+            Touch.Events().PointerPressed
+            .Where(e => e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            .Do(e => Touch.CapturePointer(e.Pointer));
+        var pointerMovedStream = 
+            Touch.Events().PointerMoved
+            .Where(e => e.GetCurrentPoint(this).Properties.IsLeftButtonPressed);
         var pointerReleasedStream =
             Touch.Events().PointerReleased
             .Merge(raisePointerReleasedSubject)
@@ -184,22 +196,20 @@ public sealed partial class TouchControl : UserControl
             .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
 
         // 小白点停留时的位置状态
-        moveAnimationEndedStream.Select(_ =>
+        _currentDock = 
+            moveAnimationEndedStream.Select(_ =>
                 PositionCalculator.GetLastTouchDockAnchor(container.ActualSize.ToSize(), GetTouchDockRect()))
             .Merge(container.Events().SizeChanged.Select(_ => CurrentDock))
-            .Subscribe(dock =>
-                _currentDock = PositionCalculator.TouchDockTransform(dock, container.ActualSize.ToSize(), Touch.Width));
+            .Select(dock => PositionCalculator.TouchDockTransform(dock, container.ActualSize.ToSize(), Touch.Width))
+            .ToProperty(new(TouchCorner.Left, 0.5));
     }
-
-    private TouchDockAnchor _currentDock = new(TouchCorner.Left, 0.5);
-    public TouchDockAnchor CurrentDock => _currentDock;
 
     private void TouchDockSubscribe(FrameworkElement container)
     {
-        var touchRectangleShape = false;
+        var rectangleShape = false;
         Touch.Events().SizeChanged
             .Select(x => x.NewSize.Width)
-            .Subscribe(touchSize => Touch.CornerRadius = new(touchSize / (touchRectangleShape ? 4 : 2)));
+            .Subscribe(touchSize => Touch.CornerRadius = new(touchSize / (rectangleShape ? 4 : 2)));
 
         container.Events().SizeChanged
             .Select(x => x.NewSize)
@@ -273,39 +283,3 @@ class AnimationTool
         Duration = OpacityFadeOutDuration,
     };
 }
-
-#region Extensions
-
-static class TouchControlExtensions
-{
-    // 简化 pointerEvent.GetCurrentPoint(visual).Position -> pointerEvent.GetPosition(visual)
-    public static Point GetPosition(this PointerRoutedEventArgs pointerEvent, UIElement visual) =>
-        pointerEvent.GetCurrentPoint(visual).Position;
-
-    // 用于扩展 Windows.Foundation.Point 之间的减法运算操作符
-    public static Point Subtract(this Point point, Point subPoint) => new(point.X - subPoint.X, point.Y - subPoint.Y);
-
-    // 几何类型转换的扩展方法
-    public static Size ToSize(this Vector2 size) => new((int)size.X, (int)size.Y);
-
-    // XDpi 意味着将框架内部任何元素产生的点或面的值还原回真实的物理像素大小
-
-    public static Rect XDpi(this Rect rect, double factor)
-    {
-        rect.X *= factor;
-        rect.Y *= factor;
-        rect.Width *= factor;
-        rect.Height *= factor;
-        return rect;
-    }
-
-    public static Size XDpi(this Vector2 vector, double factor)
-    {
-        var size = vector.ToSize();
-        size.Width *= factor;
-        size.Height *= factor;
-        return size;
-    }
-}
-
-#endregion

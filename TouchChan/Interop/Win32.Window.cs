@@ -15,7 +15,7 @@ public static partial class Win32
     /// <summary>
     /// 激活窗口
     /// </summary>
-    public static void ActiveWindow(nint hwnd)
+    public static void ActivateWindow(nint hwnd)
     {
         PInvoke.ShowWindow(new(hwnd), SHOW_WINDOW_CMD.SW_RESTORE);
         PInvoke.SetForegroundWindow(new(hwnd));

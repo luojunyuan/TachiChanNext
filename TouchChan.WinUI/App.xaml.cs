@@ -4,8 +4,6 @@ using Microsoft.Windows.AppLifecycle;
 using R3;
 using R3.ObservableEvents;
 using TouchChan.Interop;
-using Windows.Foundation;
-using WinRT.Interop;
 
 namespace TouchChan.WinUI;
 
@@ -80,7 +78,7 @@ public partial class App : Application
 
             // WAS Shit 11: 关闭子窗口不能正常退出程序
             // 重要的不是退出方式，而是能够正确处理部分游戏的窗口全屏切换后的 handle 改变
-            if (NativeMethods.IsWindow(childWindow.Hwnd)) Current.Exit();
+            if (childWindow.IsClosed()) Current.Exit();
             else Environment.Exit(0);
         });
 
@@ -144,7 +142,7 @@ public partial class App : Application
 
             GameWindowService.ClientSizeChanged(windowHandle)
                 .SubscribeOn(UISyncContext)
-                .Subscribe(size => Win32.ResizeWindow(childWindow.Hwnd, size))
+                .Subscribe(childWindow.Resize)
                 .DisposeWith(disposables);
 
             GameWindowService.WindowDestroyed(windowHandle)
@@ -178,41 +176,10 @@ public partial class App : Application
         AppInstance.GetCurrent().Events().Activated
             .Subscribe(_ =>
             {
-                // WAS Shit 9: preference.Active() 在这里不起用 #7595
-                var handle = WindowNative.GetWindowHandle(preference);
-                Win32.ActiveWindow(handle);
+                // WAS Shit 9: preference.Activate() 在这里不起用 #7595
+                preference.NativeActivate();
             });
 
         return LaunchResult.Success;
     }
 }
-
-#region Extensions
-
-static class FluentWinUIExtensions
-{
-    public static T WithActivate<T>(this T window) where T : Window
-    {
-        window.Activate();
-        return window;
-    }
-
-    public static void Hide(this MainWindow window) => Win32.HideWindow(window.Hwnd);
-
-    public static Task SetParentAsync(this MainWindow window, nint parent) =>
-        Win32.SetParentWindowAsync(window.Hwnd, parent);
-
-    public static void ToggleWindowStyle(this MainWindow window, bool enable, WindowStyle style)
-        => Win32.ToggleWindowStyle(window.Hwnd, enable, style);
-
-    public static void ToggleWindowExStyle(this MainWindow window, bool enable, ExtendedWindowStyle exStyle)
-        => Win32.ToggleWindowExStyle(window.Hwnd, enable, exStyle);
-
-    public static void SetWindowObservableRegion(this MainWindow window, Rect rect) =>
-        Win32.SetWindowObservableRegion(window.Hwnd, rect.ToGdiRect());
-
-    public static void ResetWindowOriginalObservableRegion(this MainWindow window, Size size) =>
-        Win32.ResetWindowOriginalObservableRegion(window.Hwnd, size.ToGdiSize());
-}
-
-#endregion

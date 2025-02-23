@@ -17,12 +17,8 @@ public sealed partial class MainWindow : Window
     /// </summary>
     public ReplaySubject<Unit> Loaded { get; } = new(1);
 
-    public nint Hwnd { get; }
-
     public MainWindow()
     {
-        Hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-
         // WinUI 窗口的初始大小是个谜 MinSize: (136, 39)
         this.AppWindow.Move(new(-32000, -32000));
         this.AppWindow.IsShownInSwitchers = false;
