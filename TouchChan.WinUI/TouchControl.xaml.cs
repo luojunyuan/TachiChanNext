@@ -12,9 +12,9 @@ namespace TouchChan.WinUI;
 
 public sealed partial class TouchControl
 {
-    private ObservableAsPropertyHelper<TouchDockAnchor> _currentDock = null!;
+    private readonly ObservableAsPropertyHelper<TouchDockAnchor> _currentDockHelper;
 
-    public TouchDockAnchor CurrentDock => _currentDock.Value;
+    public TouchDockAnchor CurrentDock => _currentDockHelper.Value;
 }
 
 public sealed partial class TouchControl : UserControl
@@ -43,11 +43,10 @@ public sealed partial class TouchControl : UserControl
     {
         this.InitializeComponent();
 
-        this.Events().Loaded.Subscribe(_ => InitializeTouchControl(this));
+        FrameworkElement container = this;
 
-        //Touch.Events().PointerPressed
-        //    .Where(e => e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
-        //    .Subscribe(_ => NativeMethods.SetFocus(0x00290046));
+        this.TouchControlSubscribe(container, out _currentDockHelper);
+        this.TouchDockSubscribe(container);
 
         TranslateXAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
         TranslateYAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
@@ -57,21 +56,20 @@ public sealed partial class TouchControl : UserControl
         AnimationTool.BindingAnimation(FadeOutOpacityStoryboard, AnimationTool.CreateFadeOutOpacityAnimation, Touch, nameof(Opacity));
     }
 
-    private void InitializeTouchControl(FrameworkElement container)
+    private void TouchControlSubscribe(FrameworkElement container, 
+        out ObservableAsPropertyHelper<TouchDockAnchor> dockObservable)
     {
-        TouchDockSubscribe(container);
-
         var moveAnimationEndedStream = TranslationStoryboard.Events().Completed;
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
         var pointerPressedStream = 
             Touch.Events().PointerPressed
-            .Where(e => e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            .Where(e => e.GetCurrentPoint(container).Properties.IsLeftButtonPressed)
             .Do(e => Touch.CapturePointer(e.Pointer));
         var pointerMovedStream = 
             Touch.Events().PointerMoved
-            .Where(e => e.GetCurrentPoint(this).Properties.IsLeftButtonPressed);
+            .Where(e => e.GetCurrentPoint(container).Properties.IsLeftButtonPressed);
         var pointerReleasedStream =
             Touch.Events().PointerReleased
             .Merge(raisePointerReleasedSubject)
@@ -196,7 +194,7 @@ public sealed partial class TouchControl : UserControl
             .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
 
         // 小白点停留时的位置状态
-        _currentDock = 
+        dockObservable =
             moveAnimationEndedStream.Select(_ =>
                 PositionCalculator.GetLastTouchDockAnchor(container.ActualSize.ToSize(), GetTouchDockRect()))
             .Merge(container.Events().SizeChanged.Select(_ => CurrentDock))
