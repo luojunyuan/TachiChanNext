@@ -77,24 +77,23 @@ public sealed partial class TouchControl : UserControl
 
         var dragStartedStream =
             pointerPressedStream
-            .SelectMany(_ =>
+            .SelectMany(pressEvent =>
                 pointerMovedStream
                 .Skip(1)
+                .Where(moveEvent =>
+                {
+                    var pressPos = pressEvent.GetPosition(container);
+                    var movePos = moveEvent.GetPosition(container);
+                    return pressPos != movePos;
+                })
                 .Take(1)
                 .TakeUntil(pointerReleasedStream));
 
-        // NOTE: 这里 drag end 时机是依赖按下放开时的鼠标位置决定的
         var dragEndedStream =
-            pointerReleasedStream
-            .WithLatestFrom(pointerPressedStream, (releaseEvent, pressedEvent) =>
-            {
-                var releasePosition = releaseEvent.GetPosition(container);
-                var pressedPosition = pressedEvent.GetPosition(container);
-
-                return new { DragReleased = releaseEvent, EndPoint = releasePosition, StartPoint = pressedPosition, };
-            })
-            .Where(x => x.EndPoint != x.StartPoint)
-            .Select(x => x.DragReleased);
+            dragStartedStream
+            .SelectMany(_ =>
+                pointerReleasedStream
+                .Take(1));
 
         // Time -->
         // |
