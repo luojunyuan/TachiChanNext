@@ -8,7 +8,7 @@ namespace TouchChan.WinUI;
 public sealed partial class MainWindow : Window
 {
     /// <summary>
-    /// 游戏窗口订阅绑定
+    /// 游戏窗口与子窗口完成绑定
     /// </summary>
     public Subject<Unit> OnWindowBound { get; private set; } = new();
 
@@ -29,7 +29,7 @@ public sealed partial class MainWindow : Window
         this.ToggleWindowStyle(false, WindowStyle.Popup);
         this.ToggleWindowStyle(true, WindowStyle.Child);
         this.ToggleWindowExStyle(true, ExtendedWindowStyle.Layered);
-        ((FrameworkElement)this.Content).Events().Loaded.Subscribe(_ => Loaded.OnNext(Unit.Default));
+        this.Root.Events().Loaded.Subscribe(_ => Loaded.OnNext(Unit.Default));
 
         // NOTE: 设置为子窗口后，this.AppWindow 不再可靠
 

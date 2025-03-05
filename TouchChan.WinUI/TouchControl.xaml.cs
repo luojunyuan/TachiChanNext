@@ -20,10 +20,10 @@ public sealed partial class TouchControl
 public sealed partial class TouchControl : UserControl
 {
     private readonly static TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
+    private readonly TimeSpan OpacityFadeDelay = TimeSpan.FromMilliseconds(4000);
     private readonly Storyboard TranslationStoryboard = new();
     private readonly DoubleAnimation TranslateXAnimation = new() { Duration = ReleaseToEdgeDuration };
     private readonly DoubleAnimation TranslateYAnimation = new() { Duration = ReleaseToEdgeDuration };
-    private readonly TimeSpan FadeOutDuration = TimeSpan.FromMilliseconds(4000);
     private readonly Storyboard FadeInOpacityStoryboard = new();
     private readonly Storyboard FadeOutOpacityStoryboard = new();
 
@@ -39,6 +39,10 @@ public sealed partial class TouchControl : UserControl
     // WAS Shit 6: DPI 改变后，XamlRoot.RasterizationScale 永远是启动时候的值
     private double DpiScale => this.XamlRoot.RasterizationScale;
 
+    private Subject<Unit> OnMenuClosed { get; } = new();
+
+    private ViewModel.AssistiveTouchViewModel ViewModel { get; set; } = new();
+
     public TouchControl()
     {
         this.InitializeComponent();
@@ -46,13 +50,25 @@ public sealed partial class TouchControl : UserControl
         // NOTE: TouchControl 的大小是跟随窗口的，而 this.Touch 才是真正的控件大小
         FrameworkElement container = this;
 
-        this.TouchControlSubscribe(container, out _currentDockHelper);
-        this.TouchDockSubscribe(container);
-        TouchClicked()
+        TouchSubscribe(container, out _currentDockHelper);
+        TouchDockSubscribe(container);
+
+        Touch.Clicked()
             .Do(_ => RestoreFocus?.Invoke())
             .Subscribe(_ =>
             {
-                Console.WriteLine("Touch Clicked!");
+                ViewModel.IsMenuShowed.Value = true;
+            });
+
+        this.Events().Loaded
+            .SelectMany(_ => (this.Parent as FrameworkElement).Events().PointerPressed)
+            .Where(e => e.OriginalSource is FrameworkElement { Name: "Root" } &&
+                this.Visibility == Visibility.Collapsed)
+            .Subscribe(_ => 
+            {
+                // MenuClosingAnimation?.Invoke()
+                ViewModel.IsMenuShowed.Value = false;
+                OnMenuClosed.OnNext(Unit.Default);
             });
 
         TranslationStoryboard.BindingAnimation(TranslateXAnimation, TouchTransform, AnimationTool.XProperty);
@@ -61,7 +77,7 @@ public sealed partial class TouchControl : UserControl
         FadeOutOpacityStoryboard.BindingAnimation(AnimationTool.CreateFadeOutAnimation(), Touch, nameof(Opacity));
     }
 
-    private void TouchControlSubscribe(FrameworkElement container,
+    private void TouchSubscribe(FrameworkElement container,
         out ObservableAsPropertyHelper<TouchDockAnchor> dockObservable)
     {
         var moveAnimationEndedStream = TranslationStoryboard.Events().Completed;
@@ -172,12 +188,14 @@ public sealed partial class TouchControl : UserControl
             });
 
         // 回调设置容器窗口的可观察区域
-        dragStartedStream
+        Touch.Clicked()
+            .Merge(dragStartedStream.Select(_ => Unit.Default))
             .Select(_ => container.ActualSize.XDpi(DpiScale))
             .Subscribe(clientArea => ResetWindowObservable?.Invoke(clientArea));
 
-        moveAnimationEndedStream
+        moveAnimationEndedStream.Select(_ => Unit.Default)
             .Do(_ => Touch.IsHitTestVisible = true)
+            .Merge(OnMenuClosed)
             .Do(_ => RestoreFocus?.Invoke())
             .Select(_ => GetTouchDockRect().XDpi(DpiScale))
             .Subscribe(rect => SetWindowObservable?.Invoke(rect));
@@ -191,7 +209,7 @@ public sealed partial class TouchControl : UserControl
             .Merge(pointerReleasedStream.Select(_ => Unit.Default))
             .Merge(moveAnimationEndedStream.Select(_ => Unit.Default))
             .Select(_ =>
-                Observable.Timer(FadeOutDuration)
+                Observable.Timer(OpacityFadeDelay)
                 .TakeUntil(pointerPressedStream))
             .Switch()
             .ObserveOn(App.UISyncContext)
@@ -244,32 +262,6 @@ public sealed partial class TouchControl : UserControl
 
         SetWindowObservable?.Invoke(rect.XDpi(DpiScale));
     }
-
-    private Observable<Unit> TouchClicked()
-    {
-        const double clickThreshold = 0;
-
-        return Touch.Events().PointerPressed
-            .Where(e => e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
-            .SelectMany(pressEvent =>
-            {
-                var pressPosition = pressEvent.GetPosition();
-
-                return Touch.Events().PointerReleased
-                    .Take(1)
-                    .Where(releaseEvent =>
-                    {
-                        var releasePosition = releaseEvent.GetPosition();
-                        var distance = Math.Sqrt(
-                            Math.Pow(releasePosition.X - pressPosition.X, 2) +
-                            Math.Pow(releasePosition.Y - pressPosition.Y, 2));
-
-                        return distance <= clickThreshold;
-                    })
-                    .Select(_ => Unit.Default);
-            });
-    }
-
 }
 
 file static class AnimationTool

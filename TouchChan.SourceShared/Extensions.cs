@@ -3,6 +3,8 @@
 #if WinUI
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Controls;
+using R3.ObservableEvents;
 using TouchChan.Interop;
 using Windows.Foundation;
 using Rect = Windows.Foundation.Rect;
@@ -80,6 +82,31 @@ static class FluentWinUIExtensions
 
 static class TouchControlExtensions
 {
+    public static Observable<Unit> Clicked(this Border border)
+    {
+        const double clickThreshold = 0;
+
+        return border.Events().PointerPressed
+            .Where(e => e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            .SelectMany(pressEvent =>
+            {
+                var pressPosition = pressEvent.GetPosition();
+
+                return border.Events().PointerReleased
+                    .Take(1)
+                    .Where(releaseEvent =>
+                    {
+                        var releasePosition = releaseEvent.GetPosition();
+                        var distance = Math.Sqrt(
+                            Math.Pow(releasePosition.X - pressPosition.X, 2) +
+                            Math.Pow(releasePosition.Y - pressPosition.Y, 2));
+
+                        return distance <= clickThreshold;
+                    })
+                    .Select(_ => Unit.Default);
+            });
+    }
+
     // 简化 pointerEvent.GetCurrentPoint(visual).Position -> pointerEvent.GetPosition(visual)
     public static Point GetPosition(this PointerRoutedEventArgs pointerEvent, UIElement? visual = null) =>
         pointerEvent.GetCurrentPoint(visual).Position;
