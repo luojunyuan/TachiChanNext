@@ -81,7 +81,7 @@ static class FluentWinUIExtensions
 static class TouchControlExtensions
 {
     // 简化 pointerEvent.GetCurrentPoint(visual).Position -> pointerEvent.GetPosition(visual)
-    public static Point GetPosition(this PointerRoutedEventArgs pointerEvent, UIElement visual) =>
+    public static Point GetPosition(this PointerRoutedEventArgs pointerEvent, UIElement? visual = null) =>
         pointerEvent.GetCurrentPoint(visual).Position;
 
     // 用于扩展 Windows.Foundation.Point 之间的减法运算操作符

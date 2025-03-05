@@ -48,6 +48,12 @@ public sealed partial class TouchControl : UserControl
 
         this.TouchControlSubscribe(container, out _currentDockHelper);
         this.TouchDockSubscribe(container);
+        TouchClicked()
+            .Do(_ => RestoreFocus?.Invoke())
+            .Subscribe(_ =>
+            {
+                Console.WriteLine("Touch Clicked!");
+            });
 
         TranslationStoryboard.BindingAnimation(TranslateXAnimation, TouchTransform, AnimationTool.XProperty);
         TranslationStoryboard.BindingAnimation(TranslateYAnimation, TouchTransform, AnimationTool.YProperty);
@@ -64,11 +70,11 @@ public sealed partial class TouchControl : UserControl
 
         var pointerPressedStream =
             Touch.Events().PointerPressed
-            .Where(e => e.GetCurrentPoint(container).Properties.IsLeftButtonPressed)
+            .Where(e => e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             .Do(e => Touch.CapturePointer(e.Pointer));
         var pointerMovedStream =
             Touch.Events().PointerMoved
-            .Where(e => e.GetCurrentPoint(container).Properties.IsLeftButtonPressed);
+            .Where(e => e.GetCurrentPoint(null).Properties.IsLeftButtonPressed);
         var pointerReleasedStream =
             Touch.Events().PointerReleased
             .Merge(raisePointerReleasedSubject)
@@ -81,8 +87,8 @@ public sealed partial class TouchControl : UserControl
                 .Skip(1)
                 .Where(moveEvent =>
                 {
-                    var pressPos = pressEvent.GetPosition(container);
-                    var movePos = moveEvent.GetPosition(container);
+                    var pressPos = pressEvent.GetPosition();
+                    var movePos = moveEvent.GetPosition();
                     return pressPos != movePos;
                 })
                 .Take(1)
@@ -94,7 +100,7 @@ public sealed partial class TouchControl : UserControl
                 pointerReleasedStream
                 .Take(1));
 
-        // Time -->
+        // Timeline -->
         // |
         // |    Pressed suddenly released
         // | x -*|----->
@@ -123,7 +129,7 @@ public sealed partial class TouchControl : UserControl
                     .TakeUntil(pointerReleasedStream)
                     .Select(movedEvent =>
                     {
-                        var distanceToOrigin = movedEvent.GetPosition(container);
+                        var distanceToOrigin = movedEvent.GetPosition();
                         var delta = distanceToOrigin.Subtract(distanceToElement);
 
                         return new { Delta = delta, MovedEvent = movedEvent };
@@ -152,7 +158,7 @@ public sealed partial class TouchControl : UserControl
             .Do(_ => Touch.IsHitTestVisible = false)
             .Select(pointer =>
             {
-                var distanceToOrigin = pointer.GetPosition(container);
+                var distanceToOrigin = pointer.GetPosition();
                 var distanceToElement = pointer.GetPosition(Touch);
                 var touchPos = distanceToOrigin.Subtract(distanceToElement);
 
@@ -238,9 +244,35 @@ public sealed partial class TouchControl : UserControl
 
         SetWindowObservable?.Invoke(rect.XDpi(DpiScale));
     }
+
+    private Observable<Unit> TouchClicked()
+    {
+        const double clickThreshold = 0;
+
+        return Touch.Events().PointerPressed
+            .Where(e => e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            .SelectMany(pressEvent =>
+            {
+                var pressPosition = pressEvent.GetPosition();
+
+                return Touch.Events().PointerReleased
+                    .Take(1)
+                    .Where(releaseEvent =>
+                    {
+                        var releasePosition = releaseEvent.GetPosition();
+                        var distance = Math.Sqrt(
+                            Math.Pow(releasePosition.X - pressPosition.X, 2) +
+                            Math.Pow(releasePosition.Y - pressPosition.Y, 2));
+
+                        return distance <= clickThreshold;
+                    })
+                    .Select(_ => Unit.Default);
+            });
+    }
+
 }
 
-static class AnimationTool
+file static class AnimationTool
 {
     // 在设置 storyboard 时使用并且确保绑定对象没有在 TransformGroup 里面 （需作为 RenderTransform 的单独元素使用）
     public const string XProperty = "X";
