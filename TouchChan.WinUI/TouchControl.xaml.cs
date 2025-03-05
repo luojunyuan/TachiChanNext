@@ -19,10 +19,10 @@ public sealed partial class TouchControl
 
 public sealed partial class TouchControl : UserControl
 {
-    private readonly TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
+    private readonly static TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
     private readonly Storyboard TranslationStoryboard = new();
-    private readonly DoubleAnimation TranslateXAnimation;
-    private readonly DoubleAnimation TranslateYAnimation;
+    private readonly DoubleAnimation TranslateXAnimation = new() { Duration = ReleaseToEdgeDuration };
+    private readonly DoubleAnimation TranslateYAnimation = new() { Duration = ReleaseToEdgeDuration };
     private readonly TimeSpan FadeOutDuration = TimeSpan.FromMilliseconds(4000);
     private readonly Storyboard FadeInOpacityStoryboard = new();
     private readonly Storyboard FadeOutOpacityStoryboard = new();
@@ -43,31 +43,30 @@ public sealed partial class TouchControl : UserControl
     {
         this.InitializeComponent();
 
+        // NOTE: TouchControl 的大小是跟随窗口的，而 this.Touch 才是真正的控件大小
         FrameworkElement container = this;
 
         this.TouchControlSubscribe(container, out _currentDockHelper);
         this.TouchDockSubscribe(container);
 
-        TranslateXAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
-        TranslateYAnimation = new DoubleAnimation { Duration = ReleaseToEdgeDuration };
-        AnimationTool.BindingAnimation(TranslationStoryboard, TranslateXAnimation, TouchTransform, AnimationTool.XProperty);
-        AnimationTool.BindingAnimation(TranslationStoryboard, TranslateYAnimation, TouchTransform, AnimationTool.YProperty);
-        AnimationTool.BindingAnimation(FadeInOpacityStoryboard, AnimationTool.CreateFadeInOpacityAnimation, Touch, nameof(Opacity));
-        AnimationTool.BindingAnimation(FadeOutOpacityStoryboard, AnimationTool.CreateFadeOutOpacityAnimation, Touch, nameof(Opacity));
+        TranslationStoryboard.BindingAnimation(TranslateXAnimation, TouchTransform, AnimationTool.XProperty);
+        TranslationStoryboard.BindingAnimation(TranslateYAnimation, TouchTransform, AnimationTool.YProperty);
+        FadeInOpacityStoryboard.BindingAnimation(AnimationTool.CreateFadeInAnimation(), Touch, nameof(Opacity));
+        FadeOutOpacityStoryboard.BindingAnimation(AnimationTool.CreateFadeOutAnimation(), Touch, nameof(Opacity));
     }
 
-    private void TouchControlSubscribe(FrameworkElement container, 
+    private void TouchControlSubscribe(FrameworkElement container,
         out ObservableAsPropertyHelper<TouchDockAnchor> dockObservable)
     {
         var moveAnimationEndedStream = TranslationStoryboard.Events().Completed;
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
-        var pointerPressedStream = 
+        var pointerPressedStream =
             Touch.Events().PointerPressed
             .Where(e => e.GetCurrentPoint(container).Properties.IsLeftButtonPressed)
             .Do(e => Touch.CapturePointer(e.Pointer));
-        var pointerMovedStream = 
+        var pointerMovedStream =
             Touch.Events().PointerMoved
             .Where(e => e.GetCurrentPoint(container).Properties.IsLeftButtonPressed);
         var pointerReleasedStream =
@@ -241,7 +240,7 @@ public sealed partial class TouchControl : UserControl
     }
 }
 
-class AnimationTool
+static class AnimationTool
 {
     // 在设置 storyboard 时使用并且确保绑定对象没有在 TransformGroup 里面 （需作为 RenderTransform 的单独元素使用）
     public const string XProperty = "X";
@@ -251,7 +250,7 @@ class AnimationTool
     /// 绑定动画到对象的属性
     /// </summary>
     public static void BindingAnimation(
-        Storyboard storyboard,
+        this Storyboard storyboard,
         Timeline animation,
         DependencyObject target,
         string path)
@@ -266,14 +265,14 @@ class AnimationTool
     private const double OpacityHalf = 0.4;
     private const double OpacityFull = 1;
 
-    public static DoubleAnimation CreateFadeInOpacityAnimation => new()
+    public static DoubleAnimation CreateFadeInAnimation() => new()
     {
         From = OpacityHalf,
         To = OpacityFull,
         Duration = OpacityFadeInDuration,
     };
 
-    public static DoubleAnimation CreateFadeOutOpacityAnimation => new()
+    public static DoubleAnimation CreateFadeOutAnimation() => new()
     {
         From = OpacityFull,
         To = OpacityHalf,
