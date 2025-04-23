@@ -21,7 +21,7 @@ namespace TouchChan.Interop
     /// <summary>
     /// 对 CSWin32 PInvoke 调用的直接封装
     /// </summary>
-    public static partial class NativeMethods
+    public static partial class Win32 // DirectCall
     {
         public static nint GetConsoleWindow() => PInvoke.GetConsoleWindow();
 

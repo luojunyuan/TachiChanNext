@@ -10,7 +10,7 @@ namespace TouchChan.Interop;
 /// <summary>
 /// 操作 Windows 窗口相关的业务逻辑
 /// </summary>
-public static partial class Win32
+public static partial class Win32 // Window
 {
     /// <summary>
     /// 激活窗口

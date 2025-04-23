@@ -130,7 +130,7 @@ public partial class App : Application
             using CompositeDisposable disposables = [];
 
             // NOTE: 似乎设置时机不能在鼠标事件发生后，点击在空白处时仍无法工作
-            childWindow.SetFocusOnGameCallback(() => NativeMethods.SetFocus(windowHandle));
+            childWindow.SetFocusOnGameCallback(() => Win32.SetFocus(windowHandle));
 
             // Pending test 并且一定要显式提示用户
             if (isDpiUnaware)

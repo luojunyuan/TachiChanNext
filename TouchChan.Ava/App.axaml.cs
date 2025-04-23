@@ -76,7 +76,7 @@ public partial class App : Application
     private static async Task GameWindowBindingAsync(IClassicDesktopStyleApplicationLifetime desktop, Process process)
     {
         // NOTE: 设置为高 DPI 缩放时不支持非 DPI 感知的游戏窗口
-        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) &&NativeMethods.IsDpiUnaware(process);
+        var isDpiUnaware = OperatingSystem.IsWindowsVersionAtLeast(8, 1) &&Win32.IsDpiUnaware(process);
 
         var childWindowClosedChannel = Channel.CreateUnbounded<Unit>();
 
@@ -102,7 +102,7 @@ public partial class App : Application
 
                 desktop.MainWindow = childWindow;
 
-                await NativeMethods.SetParentAsync(childWindow.Hwnd, gameWindowHandle);
+                await Win32.SetParentAsync(childWindow.Hwnd, gameWindowHandle);
 
                 GameWindowService.ClientSizeChanged(gameWindowHandle)
                     .Subscribe(size => childWindow.Hwnd.ResizeClient(size))

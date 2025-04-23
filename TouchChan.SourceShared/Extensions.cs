@@ -55,7 +55,7 @@ static class FluentWinUIExtensions
         return Cache[cacheKey] = WinRT.Interop.WindowNative.GetWindowHandle(window);
     }
 
-    public static bool IsClosed(this Window window) => NativeMethods.IsWindow(window.GetWindowHandle());
+    public static bool IsClosed(this Window window) => Win32.IsWindow(window.GetWindowHandle());
 
     public static void NativeActivate(this Window window) => Win32.ActivateWindow(window.GetWindowHandle());
 
