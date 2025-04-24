@@ -24,7 +24,7 @@ public static partial class Win32 // Window
     /// <summary>
     /// 隐藏窗口
     /// </summary>
-    public static bool HideWindow(IntPtr hWnd) => PInvoke.ShowWindow(new(hWnd), SHOW_WINDOW_CMD.SW_HIDE);
+    public static bool HideWindow(nint hWnd) => PInvoke.ShowWindow(new(hWnd), SHOW_WINDOW_CMD.SW_HIDE);
 
     /// <summary>
     /// 尝试恢复最小化的窗口

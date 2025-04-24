@@ -107,7 +107,7 @@ public partial class App : Application
                 !childWindowClosedChannel.Reader.Completion.IsCompleted)
             .Subscribe(async _ =>
             {
-                childWindow.Hide();
+                childWindow.NativeHide();
                 await childWindow.SetParentAsync(nint.Zero);
             });
 
@@ -143,7 +143,7 @@ public partial class App : Application
 
             GameWindowService.ClientSizeChanged(windowHandle)
                 .SubscribeOn(UISyncContext)
-                .Subscribe(childWindow.Resize)
+                .Subscribe(childWindow.NativeResize)
                 .DisposeWith(disposables);
 
             GameWindowService.WindowDestroyed(windowHandle)

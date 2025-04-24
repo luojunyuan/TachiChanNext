@@ -59,9 +59,9 @@ static class FluentWinUIExtensions
 
     public static void NativeActivate(this Window window) => Win32.ActivateWindow(window.GetWindowHandle());
 
-    public static void Hide(this Window window) => Win32.HideWindow(window.GetWindowHandle());
+    public static void NativeHide(this Window window) => Win32.HideWindow(window.GetWindowHandle());
 
-    public static void Resize(this Window window, System.Drawing.Size size) =>
+    public static void NativeResize(this Window window, System.Drawing.Size size) =>
         Win32.ResizeWindow(window.GetWindowHandle(), size);
 
     public static Task SetParentAsync(this Window window, nint parent) =>
