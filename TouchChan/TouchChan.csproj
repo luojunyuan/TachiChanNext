@@ -11,8 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="LightResults" Version="9.0.0" />
-    <PackageReference Include="R3" Version="1.2.9" />
+    <PackageReference Include="LightResults" Version="9.0.2" />
+    <PackageReference Include="R3" Version="1.3.0" />
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.183">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

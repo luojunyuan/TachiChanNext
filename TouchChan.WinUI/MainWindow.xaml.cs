@@ -37,7 +37,7 @@ public sealed partial class MainWindow : Window
         Touch.SetWindowObservable = this.SetWindowObservableRegion;
         OnWindowBound.Subscribe(Touch.OnWindowBound.OnNext);
 
-#if DEBUG
+#if DEBUG // 添加一个红色边框以确定可以点击（观测）的窗口范围
         if (this.Content is Microsoft.UI.Xaml.Controls.Grid panel)
         {
             panel.Children.Add(new Microsoft.UI.Xaml.Controls.Border()

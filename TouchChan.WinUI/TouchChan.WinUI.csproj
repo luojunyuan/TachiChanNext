@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
+    <!--  让项目文件中不存在以 using System 开头的命名空间引用（应付不同平台不同排序方式老是扯皮）  -->
     <Using Include="System.Diagnostics" />
     <Using Include="System.Numerics" />
     <Using Include="System.Threading.Channels" />
@@ -31,18 +32,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TouchChan.ViewModel\TouchChan.ViewModel.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Page Update="PreferenceWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Page Update="TouchControl.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
   </ItemGroup>
 
   <Import Project="..\TouchChan.SourceShared\TouchChan.SourceShared.projitems" Label="Shared" />
