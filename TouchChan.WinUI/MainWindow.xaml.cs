@@ -64,8 +64,7 @@ public sealed partial class MainWindow : Window
         void SetWindowVisible(bool visible)
         {
             // Ques：不知 AppWindow.Show Hide 或者 NativeShow NativeHide 这里能不能正常使用
-            if (visible) WinUIEx.WindowExtensions.Show(this);
-            else WinUIEx.WindowExtensions.Hide(this);
+            throw new NotImplementedException();
         }
         return GameWindowService.ClientSizeChanged(windowHandle)
             .Select(_ => Win32.GetDpiForWindowsMonitor(windowHandle) / 96d)

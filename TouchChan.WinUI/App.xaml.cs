@@ -58,7 +58,7 @@ public partial class App : Application
         }
 
         var processTask = Task.Run(() =>
-            GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, arguments.Contains("-le")));
+            GameStartup.GetOrLaunchGameWithSplashAsync(gamePath));
 
         var childWindow = new MainWindow().WithActivate();
 

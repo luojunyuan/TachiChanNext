@@ -10,7 +10,7 @@ public sealed class ProcessExitedError : Error;
 
 public sealed class ProcessPendingExitedError : Error;
 
-public static partial class GameStartup
+public static partial class GameStartup // Win32
 {
     private const int GoodWindowWidth = 320;
     private const int GoodWindowHeight = 240;

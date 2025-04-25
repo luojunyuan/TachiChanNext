@@ -12,10 +12,6 @@ public sealed partial class PreferenceWindow : Window
 
         this.SystemBackdrop = new MicaBackdrop();
         this.ExtendsContentIntoTitleBar = true;
-
-        this.AppWindow.Resize(new(500, 500)); // Ques: 非 Dpi 感应？
-        WinUIEx.WindowManager.Get(this).MinWidth = 500;
-        WinUIEx.WindowManager.Get(this).MinHeight = 500;
     }
 
     private void Button_Click(object sender, RoutedEventArgs e)

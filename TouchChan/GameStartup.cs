@@ -37,7 +37,7 @@ public static partial class GameStartup
         return resolvedPath;
     }
 
-    public static async Task<Result<Process>> GetOrLaunchGameWithSplashAsync(string path, bool leEnable)
+    public static async Task<Result<Process>> GetOrLaunchGameWithSplashAsync(string path)
     {
         var process = await GetWindowProcessByPathAsync(path);
         if (process != null)
@@ -51,7 +51,7 @@ public static partial class GameStartup
         using var splash = new SplashScreen(fileStream);
         splash.Show();
 
-        var launchResult = await LaunchGameAsync(path, leEnable);
+        var launchResult = await LaunchGameAsync(path);
         if (launchResult.IsFailure(out var launchGameError, out process))
             return Result.Failure<Process>(launchGameError.Message);
 
@@ -61,12 +61,14 @@ public static partial class GameStartup
     /// <summary>
     /// 启动游戏进程
     /// </summary>
-    private static async Task<Result<Process>> LaunchGameAsync(string path, bool leEnable)
+    private static async Task<Result<Process>> LaunchGameAsync(string path)
     {
         // NOTE: NUKITASHI2(steam) 会先启动一个进程闪现黑屏窗口，然后再重新启动游戏进程
 
         // TODO: 通过 LE 启动，思考检查游戏id好的方法，处理超时和错误情况
         // 考虑 LE 通过注册表查找还是通过配置文件，还是通过指定路径来启动
+        // 考虑侵入式的设计对 Locale Emulator 的支持
+        // Environment.GetCommandLineArgs().Contains("-le")
 
         // NOTE: 设置 WorkingDirectory 在游戏路径，避免部分游戏无法索引自身资源导致异常
         var startInfo = new ProcessStartInfo
