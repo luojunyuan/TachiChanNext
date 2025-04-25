@@ -1,4 +1,6 @@
-﻿### 本项目的特征
+﻿针对旧项目 https://github.com/luojunyuan/TachiChan 的重写版本，得益于 `SetWindowRgn` 的特性，才得以在 WinUI 上实现 TachiChan 需要的透明窗口的效果
+
+### 本项目的特征
 - 使用 Result 类型作为函数返回值来构建业务逻辑（ Prefer `Result<T>` over `Exception` ）
 - 使用 Observable(流) 替代 Event(事件)
 - 使用 Reactive Extensions ([R3](https://github.com/Cysharp/R3)) 反应式构建 UI 拖动交互，数据处理等核心逻辑
