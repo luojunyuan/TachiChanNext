@@ -73,7 +73,7 @@ public partial class App : Application
             return LaunchResult.Failed;
         }
 
-        childWindow.Loaded.Subscribe(async _ =>
+        childWindow.Loaded.SubscribeAwait(async (_, _) =>
         {
             // 在窗口完成准备后启动后台绑定窗口任务
             await Task.Factory.StartNew(async () =>
@@ -109,7 +109,7 @@ public partial class App : Application
             .SubscribeOn(UISyncContext)
             .Where(e => e.Message.MessageId == WM_DESTROY &&
                 !childWindowClosedChannel.Reader.Completion.IsCompleted)
-            .Subscribe(async _ =>
+            .SubscribeAwait(async (_, _) =>
             {
                 childWindow.NativeHide();
                 await childWindow.SetParentAsync(nint.Zero);

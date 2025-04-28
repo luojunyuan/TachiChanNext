@@ -75,11 +75,11 @@ public partial class TouchControl : UserControl
                 var touchPos = distanceToOrigin - distanceToElement;
                 return (touchPos, PositionCalculator.CalculateTouchFinalPosition(parent.Bounds.Size, touchPos, (int)Touch.Width));
             })
-            .Subscribe(async pair =>
+            .SubscribeAwait(async (pair, _) =>
             {
                 var (startPos, stopPos) = pair;
                 UpdateSmoothMoveStoryboard(startPos, new(stopPos.X, stopPos.Y));
-                await SmoothMoveStoryboard.RunAsync(Touch);
+                await SmoothMoveStoryboard.RunAsync(Touch, CancellationToken.None);
                 smoothMoveCompletedSubject.OnNext(Unit.Default);
             });
 
