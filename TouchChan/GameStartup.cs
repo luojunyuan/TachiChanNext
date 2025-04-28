@@ -37,7 +37,7 @@ public static partial class GameStartup
         return resolvedPath;
     }
 
-    public static async Task<Result<Process>> GetOrLaunchGameWithSplashAsync(string path)
+    public static async Task<Result<Process>> GetOrLaunchGameWithSplashAsync(string path, SynchronizationContext syncContext)
     {
         var process = await GetWindowProcessByPathAsync(path);
         if (process != null)
@@ -48,14 +48,16 @@ public static partial class GameStartup
 
         using var fileStream = EmbeddedResource.KleeGreen;
 
-        using var splash = new SplashScreen(fileStream);
-        splash.Show();
+        var splash = new SplashScreen(fileStream);
 
-        var launchResult = await LaunchGameAsync(path);
-        if (launchResult.IsFailure(out var launchGameError, out process))
-            return Result.Failure<Process>(launchGameError.Message);
+        return await splash.ShowAsync(async () =>
+        {
+            var launchResult = await LaunchGameAsync(path);
+            if (launchResult.IsFailure(out var launchGameError, out process))
+                return Result.Failure<Process>(launchGameError.Message);
 
-        return process;
+            return process;
+        }, syncContext);
     }
 
     /// <summary>

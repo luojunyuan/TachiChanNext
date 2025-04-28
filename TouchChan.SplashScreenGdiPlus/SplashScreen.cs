@@ -9,37 +9,37 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace TouchChan.SplashScreenGdiPlus;
 
-public class SplashScreen(Stream resource) : IDisposable
+public class SplashScreen(Stream resource)
 {
     private readonly Image _image = Image.FromStream(resource);
-    private readonly SemaphoreSlim _semaphore = new(0, 1);
-    private readonly ManualResetEvent _initialized = new(false);
     private HWND _hWndSplash;
     private HDC _hdc;
 
-    public void Show()
+    public async Task<T> ShowAsync<T>(Func<Task<T>> action, SynchronizationContext syncContext)
     {
-        new Thread(() =>
+        var tcs = new TaskCompletionSource();
+
+        syncContext.Post(_ =>
         {
             DisplaySplash(_image);
+            tcs.SetResult();
+        }, null);
 
-            _initialized.Set();
-            _semaphore.Wait();
+        await tcs.Task;
 
-            _ = PInvoke.ReleaseDC(_hWndSplash, _hdc);
-            PInvoke.DestroyWindow(_hWndSplash);
-
-        }).Start();
-
-        _initialized.WaitOne();
-    }
-
-    public void Dispose()
-    {
-        _semaphore.Release();
-        _initialized.Dispose();
-        _image.Dispose();
-        GC.SuppressFinalize(this);
+        try
+        {
+            return await action();
+        }
+        finally
+        {
+            syncContext.Post(_ =>
+            {
+                _image.Dispose();
+                _ = PInvoke.ReleaseDC(_hWndSplash, _hdc);
+                PInvoke.DestroyWindow(_hWndSplash);
+            }, null);
+        }
     }
 
     private unsafe void DisplaySplash(Image image)

@@ -7,11 +7,15 @@ using TouchChan.Interop;
 
 namespace TouchChan.WinUI;
 
+public partial class App // Static
+{
+    public static readonly SynchronizationContext UISyncContext;
+
+    static App() => UISyncContext = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
+}
+
 public partial class App : Application
 {
-    public static readonly SynchronizationContext UISyncContext =
-        new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
-
     public App()
     {
         this.InitializeComponent();
@@ -58,7 +62,7 @@ public partial class App : Application
         }
 
         var processTask = Task.Run(() =>
-            GameStartup.GetOrLaunchGameWithSplashAsync(gamePath));
+            GameStartup.GetOrLaunchGameWithSplashAsync(gamePath, UISyncContext));
 
         var childWindow = new MainWindow().WithActivate();
 
