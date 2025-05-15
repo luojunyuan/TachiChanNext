@@ -1,4 +1,4 @@
-﻿针对旧项目 https://github.com/luojunyuan/TachiChan 的重写版本，得益于 `SetWindowRgn` 的特性，才能够在 WinUI 上实现 TachiChan 需要的透明窗口的效果
+﻿针对旧项目 https://github.com/luojunyuan/TachiChan 的重写版本，得益于 [`SetWindowRgn`](https://learn.microsoft.com/zh-cn/windows/win32/api/winuser/nf-winuser-setwindowrgn) 的特性，才能够在 WinUI 上实现 TachiChan 需要的透明窗口的效果
 
 ### 本项目的特征
 - 使用 Result 类型作为函数返回值来构建业务逻辑（ Prefer `Result<T>` over `Exception` ）
