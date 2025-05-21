@@ -15,6 +15,11 @@
   <Project Path="TouchChan.SourceShared/TouchChan.SourceShared.shproj" />
   <Project Path="TouchChan.SplashScreenGdiPlus/TouchChan.SplashScreenGdiPlus.csproj" />
   <Project Path="TouchChan.ViewModel/TouchChan.ViewModel.csproj" />
+  <Project Path="TouchChan.WinUI.Sample/TouchChan.WinUI.Sample.csproj" Id="38e83539-91e9-4314-92af-932436dc611d">
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Deploy />
+  </Project>
   <Project Path="TouchChan.WinUI/TouchChan.WinUI.csproj">
     <Platform Solution="*|ARM64" Project="ARM64" />
     <Platform Solution="*|x64" Project="x64" />

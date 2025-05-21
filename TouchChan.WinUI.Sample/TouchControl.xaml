@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl x:Class="TouchChan.WinUI.Sample.TouchControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converter="using:TouchChan.WinUI.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:TouchChan.WinUI.Sample"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    HorizontalAlignment="Left"
+    VerticalAlignment="Top"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="AssistiveTouchBackground" Color="#2A2A2A" />
+        <SolidColorBrush x:Key="AssistiveTouchLayerOneLine" Color="#232323" />
+        <SolidColorBrush x:Key="AssistiveTouchLayerOneBackground" Color="#696969" />
+        <SolidColorBrush x:Key="AssistiveTouchLayerTwoLine" Color="#606060" />
+        <SolidColorBrush x:Key="AssistiveTouchLayerTwoBackground" Color="#969696" />
+        <SolidColorBrush x:Key="AssistiveTouchLayerThreeLine" Color="#808080" />
+        <SolidColorBrush x:Key="AssistiveTouchLayerThreeBackground" Color="#FEFEFE" />
+        <x:Double x:Key="AssistiveTouchCircleThickness">0.8</x:Double>
+        <converter:TouchLayerMarginConverter x:Key="TouchLayerMarginConverter" />
+    </UserControl.Resources>
+
+    <Border x:Name="Touch"
+        Width="80"
+        Height="{x:Bind Touch.Width, Mode=OneWay}"
+        Background="{StaticResource AssistiveTouchBackground}"
+        CornerRadius="50">
+        <Grid>
+            <Ellipse
+                Margin="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/8}"
+                Fill="{StaticResource AssistiveTouchLayerOneBackground}"
+                Stroke="{StaticResource AssistiveTouchLayerOneLine}"
+                StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+
+            <Ellipse
+                Margin="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=3/16}"
+                Fill="{StaticResource AssistiveTouchLayerTwoBackground}"
+                Stroke="{StaticResource AssistiveTouchLayerTwoLine}"
+                StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+
+            <Ellipse
+                Margin="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/4}"
+                Fill="{StaticResource AssistiveTouchLayerThreeBackground}"
+                Stroke="{StaticResource AssistiveTouchLayerThreeLine}"
+                StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+        </Grid>
+
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="TouchTransform" />
+        </Border.RenderTransform>
+    </Border>
+</UserControl>
