@@ -31,6 +31,9 @@ static class ReactiveExtensions
 
     public static void DisposeWith(this IDisposable disposable, CompositeDisposable compositeDisposable) =>
         compositeDisposable.Add(disposable);
+
+    public static IDisposable Subscribe<T1, T2>(this Observable<(T1, T2)> source, Action<T1, T2> onNext) =>
+        source.Subscribe(tuple => onNext(tuple.Item1, tuple.Item2));
 }
 
 #if WinUI

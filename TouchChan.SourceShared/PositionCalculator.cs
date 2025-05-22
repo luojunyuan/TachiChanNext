@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics.Contracts;
+using System.Diagnostics;
+
 #if WinUI
 using Point = Windows.Foundation.Point;
 using Size = Windows.Foundation.Size;
@@ -72,7 +74,7 @@ public static class PositionCalculator
             { X: var x, Y: TouchSpace } => new(TouchCorner.Top, (x + TouchSpace + (touchSize / 2)) / oldWindowSize.Width),
             { X: var x, Y: var y } when x == oldRight => new(TouchCorner.Right, (y + TouchSpace + (touchSize / 2)) / oldWindowSize.Height),
             { X: var x, Y: var y } when y == oldBottom => new(TouchCorner.Bottom, (x + TouchSpace + (touchSize / 2)) / oldWindowSize.Width),
-            _ => default,
+            _ => throw new UnreachableException(),
         };
     }
 
@@ -91,7 +93,7 @@ public static class PositionCalculator
             { Corner: TouchCorner.Top, Scale: var posScale } => new(window.Width * posScale - TouchSpace - (touchSize / 2), TouchSpace),
             { Corner: TouchCorner.Right, Scale: var posScale } => new(newRight, window.Height * posScale - TouchSpace - (touchSize / 2)),
             { Corner: TouchCorner.Bottom, Scale: var posScale } => new(window.Width * posScale - TouchSpace - (touchSize / 2), newBottom),
-            _ => default,
+            _ => throw new UnreachableException(),
         };
 
         return new(pos.X, pos.Y, touchSize, touchSize);

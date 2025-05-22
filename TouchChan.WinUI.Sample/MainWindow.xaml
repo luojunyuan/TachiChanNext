@@ -13,9 +13,6 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <!--  Update: 微调 B0:FEFEFE B1:969696 B3:2A2A2A  -->
-    <!--  底色更浅 B2:696969  -->
-    <!--  线条更浅 L1:808080 L2:606060  -->
     <Grid x:Name="Root">
         <local:TouchControl />
     </Grid>

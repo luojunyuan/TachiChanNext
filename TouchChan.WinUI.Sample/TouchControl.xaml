@@ -6,10 +6,13 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:TouchChan.WinUI.Sample"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    HorizontalAlignment="Left"
-    VerticalAlignment="Top"
     mc:Ignorable="d">
+    <!--  NOTE: 默认对齐为 Stretch 才会使得 SizeChanged 生效  -->
 
+    <!--  Update: 微调 B0:FEFEFE B1:969696 B3:2A2A2A  -->
+    <!--  底色更浅 B2:696969  -->
+    <!--  线条更浅 L1:808080 L2:606060  -->
+    <!--  线条更细  -->
     <UserControl.Resources>
         <SolidColorBrush x:Key="AssistiveTouchBackground" Color="#2A2A2A" />
         <SolidColorBrush x:Key="AssistiveTouchLayerOneLine" Color="#232323" />
@@ -20,13 +23,14 @@
         <SolidColorBrush x:Key="AssistiveTouchLayerThreeBackground" Color="#FEFEFE" />
         <x:Double x:Key="AssistiveTouchCircleThickness">0.8</x:Double>
         <converter:TouchLayerMarginConverter x:Key="TouchLayerMarginConverter" />
+        <converter:HalfValueConverter x:Key="HalfValueConverter" />
     </UserControl.Resources>
 
     <Border x:Name="Touch"
-        Width="80"
+        Width="0"
         Height="{x:Bind Touch.Width, Mode=OneWay}"
         Background="{StaticResource AssistiveTouchBackground}"
-        CornerRadius="50">
+        CornerRadius="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource HalfValueConverter}}">
         <Grid>
             <Ellipse
                 Margin="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/8}"

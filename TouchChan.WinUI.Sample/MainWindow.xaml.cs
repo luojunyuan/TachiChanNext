@@ -12,12 +12,10 @@ namespace TouchChan.WinUI.Sample
             // this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(800, 600));
             this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(1280, 720));
 
-            //this.Root.Events().Loaded.Subscribe(_ => Debug.WriteLine(Unit.Default));
-
-            // 为什么是600，如果是800 dpi*1 的游戏窗口岂不是不会用小按钮
-            //this.Root.Events().SizeChanged
-            //    .Select(x => x.NewSize)
-            //    .Subscribe(window => Touch.Width = window.Width < 600 ? 60 : 80);
+            this.Root.Events().Loaded.Select(_ => Unit.Default).Subscribe(GameContext.WindowAttached.OnNext);
         }
     }
 }
+
+// events
+// Root.SizeChanged -> TouchControl.Loaded -> Root.Loaded
