@@ -1,11 +1,11 @@
 ﻿using System.Diagnostics.Contracts;
-using System.Diagnostics;
 
 #if WinUI
 using Point = Windows.Foundation.Point;
 using Size = Windows.Foundation.Size;
 using Rect = Windows.Foundation.Rect;
 #elif Avalonia
+using System.Diagnostics;
 using Point = Avalonia.Point;
 using Size = Avalonia.Size;
 using Rect = Avalonia.Rect;
@@ -17,16 +17,51 @@ public static class PositionCalculator
 {
     private const int TouchSpace = Constants.TouchSpace;
 
+    /// <summary>
+    /// 根据窗口大小、触摸按钮停靠锚点和触摸按钮大小计算触摸按钮的停靠区域矩形。
+    /// </summary>
+    /// <param name="window">窗口大小</param>
+    /// <param name="touchDock">触摸按钮停靠位置</param>
+    /// <param name="touchSize">触摸按钮大小</param>
+    /// <returns>触摸按钮的停靠位置矩形</returns>
     [Pure]
-    public static TouchDockAnchor TouchDockTransform(TouchDockAnchor currentDock, Size windowSize, double touchSize)
+    public static Rect CalculateTouchDockRect(Size window, TouchDockAnchor touchDock, double touchSize)
     {
-        var touchVerticalMiddlePoint = currentDock.Scale * windowSize.Height;
-        var touchHorizontalMiddlePoint = currentDock.Scale * windowSize.Width;
+        var newRight = window.Width - TouchSpace - touchSize;
+        var newBottom = window.Height - TouchSpace - touchSize;
+        Point pos = touchDock switch
+        {
+            { Corner: TouchCorner.TopLeft } => new(TouchSpace, TouchSpace),
+            { Corner: TouchCorner.TopRight } => new(newRight, TouchSpace),
+            { Corner: TouchCorner.BottomLeft } => new(TouchSpace, newBottom),
+            { Corner: TouchCorner.BottomRight } => new(newRight, newBottom),
+            { Corner: TouchCorner.Left, Scale: var posScale } => new(TouchSpace, window.Height * posScale - TouchSpace - (touchSize / 2)),
+            { Corner: TouchCorner.Top, Scale: var posScale } => new(window.Width * posScale - TouchSpace - (touchSize / 2), TouchSpace),
+            { Corner: TouchCorner.Right, Scale: var posScale } => new(newRight, window.Height * posScale - TouchSpace - (touchSize / 2)),
+            { Corner: TouchCorner.Bottom, Scale: var posScale } => new(window.Width * posScale - TouchSpace - (touchSize / 2), newBottom),
+            _ => throw new UnreachableException(),
+        };
+
+        return new(pos.X, pos.Y, touchSize, touchSize);
+    }
+
+    /// <summary>
+    /// 重新计算定位触摸按钮的停靠位置，将离角落近的四边停靠重定位到角落。
+    /// </summary>
+    /// <param name="Window">窗口大小</param>
+    /// <param name="currentDock">触摸按钮当前的停靠位置</param>
+    /// <param name="touchSize">触摸按钮大小</param>
+    /// <returns>触摸按钮新的停靠位置</returns>
+    [Pure]
+    public static TouchDockAnchor TouchDockCornerRedirect(Size Window, TouchDockAnchor currentDock, double touchSize)
+    {
+        var touchVerticalMiddlePoint = currentDock.Scale * Window.Height;
+        var touchHorizontalMiddlePoint = currentDock.Scale * Window.Width;
         var limitDistance = Constants.TouchSpace * 2 + touchSize / 2;
 
         var (touchMiddlePoint, size) = currentDock.Corner is TouchCorner.Left or TouchCorner.Right
-            ? (touchVerticalMiddlePoint, windowSize.Height)
-            : (touchHorizontalMiddlePoint, windowSize.Width);
+            ? (touchVerticalMiddlePoint, Window.Height)
+            : (touchHorizontalMiddlePoint, Window.Width);
 
         var reverseTouchMiddlePoint = size - touchMiddlePoint + Constants.TouchSpace * 2;
 
@@ -56,6 +91,22 @@ public static class PositionCalculator
             : new TouchDockAnchor(dockCorner, default);
     }
 
+    /// <summary>
+    /// 按钮处于任意位置（不论窗口外还是窗口内），计算最终的停靠位置
+    /// </summary>
+    /// <param name="container">窗口大小</param>
+    /// <param name="touch">处于任意位置的触摸按钮矩形</param>
+    /// <returns>处于停靠边缘的触摸按钮矩形</returns>
+    [Pure]
+    public static TouchDockAnchor CalculateTouchFinalDockAnchor(Size container, Rect touch)
+    {
+        var finalPoint = CalculateTouchFinalPosition(container, touch);
+
+        var newRect = new Rect(finalPoint.X, finalPoint.Y, touch.Width, touch.Width);
+
+        return GetLastTouchDockAnchor(container, newRect);
+    }
+
     [Pure]
     public static TouchDockAnchor GetLastTouchDockAnchor(Size oldWindowSize, Rect touch)
     {
@@ -79,27 +130,6 @@ public static class PositionCalculator
     }
 
     [Pure]
-    public static Rect CalculateTouchDockRect(Size window, TouchDockAnchor touchDock, double touchSize)
-    {
-        var newRight = window.Width - TouchSpace - touchSize;
-        var newBottom = window.Height - TouchSpace - touchSize;
-        Point pos = touchDock switch
-        {
-            { Corner: TouchCorner.TopLeft } => new(TouchSpace, TouchSpace),
-            { Corner: TouchCorner.TopRight } => new(newRight, TouchSpace),
-            { Corner: TouchCorner.BottomLeft } => new(TouchSpace, newBottom),
-            { Corner: TouchCorner.BottomRight } => new(newRight, newBottom),
-            { Corner: TouchCorner.Left, Scale: var posScale } => new(TouchSpace, window.Height * posScale - TouchSpace - (touchSize / 2)),
-            { Corner: TouchCorner.Top, Scale: var posScale } => new(window.Width * posScale - TouchSpace - (touchSize / 2), TouchSpace),
-            { Corner: TouchCorner.Right, Scale: var posScale } => new(newRight, window.Height * posScale - TouchSpace - (touchSize / 2)),
-            { Corner: TouchCorner.Bottom, Scale: var posScale } => new(window.Width * posScale - TouchSpace - (touchSize / 2), newBottom),
-            _ => throw new UnreachableException(),
-        };
-
-        return new(pos.X, pos.Y, touchSize, touchSize);
-    }
-
-    [Pure]
     public static bool IsBeyondBoundary(Point newPos, double touchSize, Size container)
     {
         var oneThirdDistance = touchSize / 3;
@@ -116,8 +146,10 @@ public static class PositionCalculator
     }
 
     [Pure]
-    public static Point CalculateTouchFinalPosition(Size container, Point initPos, int touchSize)
+    public static Point CalculateTouchFinalPosition(Size container, Rect touch)
     {
+        var initPos = new Point(touch.X, touch.Y);
+        var touchSize = touch.Width;
         var xMidline = container.Width / 2;
         var right = container.Width - initPos.X - touchSize;
         var bottom = container.Height - initPos.Y - touchSize;

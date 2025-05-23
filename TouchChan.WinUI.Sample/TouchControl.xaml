@@ -23,14 +23,15 @@
         <SolidColorBrush x:Key="AssistiveTouchLayerThreeBackground" Color="#FEFEFE" />
         <x:Double x:Key="AssistiveTouchCircleThickness">0.8</x:Double>
         <converter:TouchLayerMarginConverter x:Key="TouchLayerMarginConverter" />
-        <converter:HalfValueConverter x:Key="HalfValueConverter" />
+        <converter:CornerRadiusHalfValueConverter x:Key="CornerRadiusHalfValueConverter" />
     </UserControl.Resources>
 
     <Border x:Name="Touch"
-        Width="0"
         Height="{x:Bind Touch.Width, Mode=OneWay}"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Top"
         Background="{StaticResource AssistiveTouchBackground}"
-        CornerRadius="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource HalfValueConverter}}">
+        CornerRadius="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource CornerRadiusHalfValueConverter}}">
         <Grid>
             <Ellipse
                 Margin="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/8}"

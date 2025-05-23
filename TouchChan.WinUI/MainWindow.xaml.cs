@@ -1,4 +1,6 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Shapes;
 using R3;
 using R3.ObservableEvents;
 using TouchChan.Interop;
@@ -35,7 +37,7 @@ public sealed partial class MainWindow : Window
 
         Touch.ResetWindowObservable = this.ResetWindowOriginalObservableRegion;
         Touch.SetWindowObservable = this.SetWindowObservableRegion;
-        OnWindowBound.Subscribe(Touch.OnWindowBound.OnNext);
+        OnWindowBound.Subscribe(Touch.OnWindowBounded.OnNext);
 
 #if DEBUG // 添加一个红色边框以确定可以点击（观测）的窗口范围
         if (this.Content is Microsoft.UI.Xaml.Controls.Grid panel)

@@ -1,14 +1,13 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using R3;
 using R3.ObservableEvents;
 using Windows.Foundation;
 
 namespace TouchChan.WinUI;
-
-// TouchControl 依赖 TouchDockAnchor, AnimationTool, TouchLayerMarginConverter(Xaml), PositionCalculator
 
 public sealed partial class TouchControl
 {
@@ -19,13 +18,10 @@ public sealed partial class TouchControl
 
 public sealed partial class TouchControl : UserControl
 {
-    private readonly static TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
-    private readonly TimeSpan OpacityFadeDelay = TimeSpan.FromMilliseconds(4000);
+    private readonly static TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(2000);
     private readonly Storyboard TranslationStoryboard = new();
     private readonly DoubleAnimation TranslateXAnimation = new() { Duration = ReleaseToEdgeDuration };
     private readonly DoubleAnimation TranslateYAnimation = new() { Duration = ReleaseToEdgeDuration };
-    private readonly Storyboard FadeInOpacityStoryboard = new();
-    private readonly Storyboard FadeOutOpacityStoryboard = new();
 
     // WAS Shit 5: Xaml Code-Behind 中 require 或 prop init 会生成错误的代码 #8723
     public Action<Size>? ResetWindowObservable { get; set; }
@@ -34,14 +30,12 @@ public sealed partial class TouchControl : UserControl
 
     public Action? RestoreFocus { get; set; }
 
-    public Subject<Unit> OnWindowBound { get; private set; } = new();
+    public Subject<Unit> OnWindowBounded { get; private set; } = new();
 
     // WAS Shit 6: DPI 改变后，XamlRoot.RasterizationScale 永远是启动时候的值
     private double DpiScale => this.XamlRoot.RasterizationScale;
 
     private Subject<Unit> OnMenuClosed { get; } = new();
-
-    private ViewModel.AssistiveTouchViewModel ViewModel { get; set; } = new();
 
     public TouchControl()
     {
@@ -53,29 +47,137 @@ public sealed partial class TouchControl : UserControl
         TouchSubscribe(container, out _currentDockHelper);
         TouchDockSubscribe(container);
 
+        // TODO: Menu的大小
+        // 以前的做法里，menu最大不能超过高度的一个间隔距离 newGameWindowHeight > EndureEdgeHeight + MaxSize
+        // 如果超过了 就设置 MaxSize  MaxSize = touchSize * 5;
+        //
+        // 现在我感觉不太好
+
         Touch.Clicked()
+            .Do(_ => (this.Parent as FrameworkElement)?.IsHitTestVisible = false)
             .Do(_ => RestoreFocus?.Invoke())
             .Subscribe(_ =>
             {
-                ViewModel.IsMenuShowed.Value = true;
+                Menu.Visibility = Visibility.Visible;
+                Touch.Visibility = Visibility.Collapsed;
+
+                var factor = GetTouchDockRect().Width / 300;
+                ScaleXAnimation.From = factor;
+                ScaleYAnimation.From = factor;
+                var mc = GetTouchDockRect().Width / 2;
+                //mc = 0;
+                var tmp = ToCenterOrigin(new(TouchTransform.X + mc, TouchTransform.Y + mc), _window);
+                (_xAnimation.From, _yAnimation.From) = (tmp.X, tmp.Y);
+                ScaleStoryboard.Begin();
             });
 
-        this.Events().Loaded
+        var whenClickBlackArea =
+            this.Events().Loaded
             .SelectMany(_ => (this.Parent as FrameworkElement).Events().PointerPressed)
-            .Where(e => e.OriginalSource is FrameworkElement { Name: "Root" } &&
-                this.Visibility == Visibility.Collapsed)
-            .Subscribe(_ => 
+            .Where(e => e.OriginalSource is FrameworkElement { Name: "Root" });
+
+        var isReversing = false;
+
+        // 1 Menu 默认在中央
+        // 此时 Translate(0, 0) 默认值应该是在窗口正中央
+        // 假设小圆点处于窗口的左上角停留，小圆点的 Translate()
+
+        // 2 重新定位 Menu To 的位置，并且考虑 scale 进行计算
+
+        whenClickBlackArea
+            .Do(_ => (this.Parent as FrameworkElement)?.IsHitTestVisible = false)
+            .Subscribe(_ =>
             {
-                // MenuClosingAnimation?.Invoke()
-                ViewModel.IsMenuShowed.Value = false;
-                OnMenuClosed.OnNext(Unit.Default);
+                ReverseStoryboard();
+                ScaleStoryboard.Begin();
+                isReversing = true;
             });
 
-        TranslationStoryboard.BindingAnimation(TranslateXAnimation, TouchTransform, AnimationTool.XProperty);
-        TranslationStoryboard.BindingAnimation(TranslateYAnimation, TouchTransform, AnimationTool.YProperty);
-        FadeInOpacityStoryboard.BindingAnimation(AnimationTool.CreateFadeInAnimation(), Touch, nameof(Opacity));
-        FadeOutOpacityStoryboard.BindingAnimation(AnimationTool.CreateFadeOutAnimation(), Touch, nameof(Opacity));
+        ScaleStoryboard.Events().Completed
+            .Do(_ => (this.Parent as FrameworkElement)?.IsHitTestVisible = true)
+            .Where(_ => isReversing == true)
+            .Subscribe(_ =>
+        {
+            OnMenuClosed.OnNext(Unit.Default);
+            Touch.Visibility = Visibility.Visible;
+            Menu.Visibility = Visibility.Collapsed;
+            isReversing = false;
+            (_xAnimation.To, _yAnimation.To) = (default, default);
+            (ScaleXAnimation.To, ScaleYAnimation.To) = (default, default);
+        });
+
+        TranslationStoryboard.BindingAnimation(TranslateXAnimation, TouchTransform, nameof(TranslateTransform.X));
+        TranslationStoryboard.BindingAnimation(TranslateYAnimation, TouchTransform, nameof(TranslateTransform.Y));
+
+        ScaleStoryboard.BindingAnimation(ScaleXAnimation, MenuScale, "ScaleX");
+        ScaleStoryboard.BindingAnimation(ScaleYAnimation, MenuScale, "ScaleY");
+        ScaleStoryboard.BindingAnimation(_xAnimation, MenuTranslate, nameof(TranslateTransform.X));
+        ScaleStoryboard.BindingAnimation(_yAnimation, MenuTranslate, nameof(TranslateTransform.Y));
+        //ScaleStoryboard.BindingAnimation(widthAnimation, Menu, "Width");
+        //ScaleStoryboard.BindingAnimation(heightAnimation, Menu, "Height");
+
+        //ScaleStoryboard.Begin();
+        //ScaleStoryboard.Stop();
     }
+    // 转换坐标系，把以窗口左上角的坐标系转化为窗口中心的坐标系的点
+    static Point ToCenterOrigin(Point pt, Size rect)
+    {
+        double centerX = 0 + rect.Width / 2;
+        double centerY = 0 + rect.Height / 2;
+        return new Point(pt.X - centerX, pt.Y - centerY);
+    }
+
+    private void ReverseStoryboard()
+    {
+        static void SwapAnimation(DoubleAnimation animation) =>
+            (animation.To, animation.From) = (animation.From, animation.To);
+
+        SwapAnimation(_xAnimation);
+        SwapAnimation(_yAnimation);
+        SwapAnimation(ScaleXAnimation);
+        SwapAnimation(ScaleYAnimation);
+    }
+
+    private readonly Storyboard ScaleStoryboard = new();
+    private static readonly PowerEase UnifiedPowerFunction = new() { EasingMode = EasingMode.EaseInOut };
+    DoubleAnimation ScaleXAnimation = new DoubleAnimation
+    {
+        To = 1,
+        Duration = new Duration(TimeSpan.FromMilliseconds(200)),
+        EasingFunction = UnifiedPowerFunction,
+    };
+
+    DoubleAnimation ScaleYAnimation = new DoubleAnimation
+    {
+        To = 1,
+        Duration = new Duration(TimeSpan.FromMilliseconds(200)),
+        EasingFunction = UnifiedPowerFunction,
+    };
+    private DoubleAnimation _xAnimation = new DoubleAnimation()
+    {
+        Duration = new Duration(TimeSpan.FromMilliseconds(200)),
+        EasingFunction = UnifiedPowerFunction,
+    };
+    private DoubleAnimation _yAnimation = new DoubleAnimation()
+    {
+        Duration = new Duration(TimeSpan.FromMilliseconds(200)),
+        EasingFunction = UnifiedPowerFunction,
+    };
+
+    private DoubleAnimation widthAnimation = new DoubleAnimation()
+    {
+        From = 80,
+        To = 300,
+        Duration = new Duration(TimeSpan.FromMilliseconds(200)),
+        EasingFunction = UnifiedPowerFunction,
+    };
+    private DoubleAnimation heightAnimation = new DoubleAnimation()
+    {
+        From = 80,
+        To = 300,
+        Duration = new Duration(TimeSpan.FromMilliseconds(200)),
+        EasingFunction = UnifiedPowerFunction,
+    };
 
     private void TouchSubscribe(FrameworkElement container,
         out ObservableAsPropertyHelper<TouchDockAnchor> dockObservable)
@@ -186,6 +288,8 @@ public sealed partial class TouchControl : UserControl
                 (TranslateXAnimation.To, TranslateYAnimation.To) = (stopPos.X, stopPos.Y);
                 TranslationStoryboard.Begin();
             });
+        // 苹果的小圆点不仅仅是依赖释放位置来判断动画和停靠，如果拖拽释放速度小于一个值，就是按照边缘动画恢复。
+        // 如果拖拽释放速度大于一个值，还有加速度作用在控件上往速度方向飞出去
 
         // 回调设置容器窗口的可观察区域
         Touch.Clicked()
@@ -198,49 +302,77 @@ public sealed partial class TouchControl : UserControl
             .Merge(OnMenuClosed)
             .Do(_ => RestoreFocus?.Invoke())
             .Select(_ => GetTouchDockRect().XDpi(DpiScale))
-            .Subscribe(rect => SetWindowObservable?.Invoke(rect));
+            .Subscribe();
+            //.Subscribe(rect => SetWindowObservable?.Invoke(rect));
 
         // 调整按钮透明度
-        pointerPressedStream
-            .Where(_ => Touch.Opacity != 1)
-            .Subscribe(_ => FadeInOpacityStoryboard.Begin());
+        AnimationTool.InitializeOpacityAnimations(Touch);
+        pointerPressedStream.Select(_ => Unit.Default)
+            // 打开 menu 或者 pointerReleasedStream 的时候保持透明度
+            .Where(_ => !Touch.IsFullyOpaque())
+            .Subscribe(_ => AnimationTool.FadeInOpacityStoryboard.Begin());
 
-        OnWindowBound
+        OnWindowBounded
             .Merge(pointerReleasedStream.Select(_ => Unit.Default))
             .Merge(moveAnimationEndedStream.Select(_ => Unit.Default))
+            .Merge(OnMenuClosed)
             .Select(_ =>
                 Observable.Timer(OpacityFadeDelay)
                 .TakeUntil(pointerPressedStream))
             .Switch()
             .ObserveOn(App.UISyncContext)
-            .Subscribe(_ => FadeOutOpacityStoryboard.Begin());
+            .Subscribe(_ => AnimationTool.FadeOutOpacityStoryboard.Begin());
 
         // 小白点停留时的位置状态
         dockObservable =
             moveAnimationEndedStream.Select(_ =>
                 PositionCalculator.GetLastTouchDockAnchor(container.ActualSize.ToSize(), GetTouchDockRect()))
             .Merge(container.Events().SizeChanged.Select(_ => CurrentDock))
-            .Select(dock => PositionCalculator.TouchDockTransform(dock, container.ActualSize.ToSize(), Touch.Width))
-            .ToProperty(new(TouchCorner.Left, 0.5));
+            .Select(dock => PositionCalculator.TouchDockCornerRedirect(dock, container.ActualSize.ToSize(), Touch.Width))
+            .ToProperty(initialValue: new(TouchCorner.Left, 0.5));
     }
+    public readonly TimeSpan OpacityFadeDelay = TimeSpan.FromMilliseconds(4000);
+
+    enum TouchOpacityState
+    {
+        /// <summary>
+        /// 透明状态
+        /// </summary>
+        Stable,
+        /// <summary>
+        /// 激活的状态，会在之后自行转移，或者重入
+        /// </summary>
+        Active,
+        /// <summary>
+        /// 拖动或按住的状态
+        /// </summary>
+        Interacting,
+    }
+
+    Size _window = default;
 
     private void TouchDockSubscribe(FrameworkElement container)
     {
-        var rectangleShape = false;
-        Touch.Events().SizeChanged
-            .Select(x => x.NewSize.Width)
-            .Subscribe(touchSize => Touch.CornerRadius = new(touchSize / (rectangleShape ? 4 : 2)));
-
+        // 这里产生 window size
+        // 我可以确定 center 坐标系和 窗口坐标系的转化方法是必须需要的
+        // 问题在于现在两个控件用的是不同坐标系，要不要统一成 center 坐标系
+        // （先不改，留白等以后尝试修改再试试效果）
         container.Events().SizeChanged
             .Select(x => x.NewSize)
+            .Do(啊 => _window = 啊)
             .Select(window => new
             {
                 WindowSize = window,
                 TouchDock = CurrentDock,
                 TouchSize = window.Width < 600 ? 60 : 80
             })
-            .Select(pair => PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize))
-            .Subscribe(SetTouchDockRect);
+            .Select(pair =>
+            {
+                return (PositionCalculator.CalculateTouchDockRect(pair.WindowSize, pair.TouchDock, pair.TouchSize), pair.WindowSize);
+                //var centerPoint = ToCenterOrigin(new (rect.X, rect.Y), pair.WindowSize);
+                //return new Rect(centerPoint.X, centerPoint.Y, rect.Width, rect.Height);
+            })
+            .Subscribe(a => SetTouchDockRect(a.Item1, a.WindowSize));
     }
 
     /// <summary>
@@ -255,21 +387,22 @@ public sealed partial class TouchControl : UserControl
     /// <summary>
     /// 设置触摸按钮停留时应处于的位置
     /// </summary>
-    private void SetTouchDockRect(Rect rect)
+    private void SetTouchDockRect(Rect rect, Size window)
     {
+        //var centerPoint = ToCenterOrigin(new Point(rect.X, rect.Y), window);
+        //(TouchTransform.X, TouchTransform.Y) = (centerPoint.X, centerPoint.Y);
+
+        (TranslateXAnimation.To, TranslateYAnimation.To) = (rect.X, rect.Y);
+
         (TouchTransform.X, TouchTransform.Y) = (rect.X, rect.Y);
         Touch.Width = rect.Width;
 
-        SetWindowObservable?.Invoke(rect.XDpi(DpiScale));
+        //SetWindowObservable?.Invoke(rect.XDpi(DpiScale));
     }
 }
 
 file static class AnimationTool
 {
-    // 在设置 storyboard 时使用并且确保绑定对象没有在 TransformGroup 里面 （需作为 RenderTransform 的单独元素使用）
-    public const string XProperty = "X";
-    public const string YProperty = "Y";
-
     /// <summary>
     /// 绑定动画到对象的属性
     /// </summary>
@@ -284,22 +417,37 @@ file static class AnimationTool
         storyboard.Children.Add(animation);
     }
 
-    private static readonly TimeSpan OpacityFadeInDuration = TimeSpan.FromMilliseconds(100);
-    private static readonly TimeSpan OpacityFadeOutDuration = TimeSpan.FromMilliseconds(400);
+    #region Touch Opacity Animations
+
+    private static readonly TimeSpan OpacityFadeInDuration = TimeSpan.FromMilliseconds(1000);
+    private static readonly TimeSpan OpacityFadeOutDuration = TimeSpan.FromMilliseconds(4000);
     private const double OpacityHalf = 0.4;
     private const double OpacityFull = 1;
-
-    public static DoubleAnimation CreateFadeInAnimation() => new()
+    private static readonly DoubleAnimation FadeInAnimation = new()
     {
         From = OpacityHalf,
         To = OpacityFull,
         Duration = OpacityFadeInDuration,
     };
-
-    public static DoubleAnimation CreateFadeOutAnimation() => new()
+    private static readonly DoubleAnimation FadeOutAnimation = new()
     {
         From = OpacityFull,
         To = OpacityHalf,
         Duration = OpacityFadeOutDuration,
     };
+    public static readonly Storyboard FadeInOpacityStoryboard = new();
+    public static readonly Storyboard FadeOutOpacityStoryboard = new();
+
+    public static readonly TimeSpan OpacityFadeDelay = TimeSpan.FromMilliseconds(4000);
+
+    public static void InitializeOpacityAnimations(FrameworkElement touch)
+    {
+        FadeInOpacityStoryboard.BindingAnimation(FadeInAnimation, touch, nameof(FrameworkElement.Opacity));
+        FadeOutOpacityStoryboard.BindingAnimation(FadeOutAnimation, touch, nameof(FrameworkElement.Opacity));
+    }
+
+    public static bool IsFullyOpaque(this UIElement element, double tolerance = 0.001)
+        => Math.Abs(element.Opacity - OpacityFull) < tolerance;
+
+    #endregion Touch Opacity Animations
 }

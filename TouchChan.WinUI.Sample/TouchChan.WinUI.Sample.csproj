@@ -12,6 +12,7 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <DefineConstants>WinUI;TRACE</DefineConstants>
 	  <WindowsPackageType>None</WindowsPackageType>
+	  <LangVersion>preview</LangVersion>
   </PropertyGroup>
 	
   <ItemGroup>

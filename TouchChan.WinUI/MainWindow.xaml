@@ -8,6 +8,7 @@
     Title="AssistiveTouch"
     mc:Ignorable="d">
 
+    <!--  Root 提供页面加载完毕的事件，暴露给 App.cs  -->
     <Grid x:Name="Root">
         <Grid.Background>
             <SolidColorBrush Color="Transparent" />
