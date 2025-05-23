@@ -1,4 +1,5 @@
 ﻿using R3;
+using System.Runtime.CompilerServices;
 
 #if WinUI
 using Microsoft.UI.Xaml;
@@ -118,6 +119,10 @@ static class TouchControlExtensions
     public static Point Subtract(this Point point, Point subPoint) => new(point.X - subPoint.X, point.Y - subPoint.Y);
 
     // 几何类型转换的扩展方法
+
+    // 问题在于我认为，这里 float int double 转换确实离谱
+    // 并且这个size 并不是不能通过 width直接拿，或许不要封装size会更好
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Size ToSize(this Vector2 size) => new((int)size.X, (int)size.Y);
 
     // XDpi 意味着将框架内部任何元素产生的点或面的值还原回真实的物理像素大小

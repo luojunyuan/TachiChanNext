@@ -15,12 +15,12 @@ public sealed partial class TouchControl // State
     private readonly ObservableAsPropertyHelper<bool> _isTouchDockedHelper;
 
     /// <summary>
-    /// Ö¸Ê¾´¥Ãş°´Å¥µ±Ç°µÄÍ£¿¿Î»ÖÃ»òÕß¼´½«Í£¿¿µÄÎ»ÖÃ¡£
+    /// æŒ‡ç¤ºè§¦æ‘¸æŒ‰é’®å½“å‰çš„åœé ä½ç½®æˆ–è€…å³å°†åœé çš„ä½ç½®ã€‚
     /// </summary>
     public TouchDockAnchor CurrentDock => _currentDockHelper.Value;
 
     /// <summary>
-    /// Ö¸Ê¾´¥Ãş°´Å¥ÊÇ·ñÍ£¿¿ÔÚ´°¿Ú±ßÔµ¡£
+    /// æŒ‡ç¤ºè§¦æ‘¸æŒ‰é’®æ˜¯å¦åœé åœ¨çª—å£è¾¹ç¼˜ã€‚
     /// </summary>
     public bool IsTouchDocked => _isTouchDockedHelper.Value;
 }
@@ -32,14 +32,12 @@ public sealed partial class TouchControl : UserControl
         InitializeComponent();
 
         TouchDockSubscribe();
-        TouchDraggingSubscribe(
-            out Observable<PointerRoutedEventArgs> whenDragStarted,
-            out Observable<PointerRoutedEventArgs> whenDragEnded);
+        TouchDraggingSubscribe( out var whenDragStarted, out var whenDragEnded);
         TouchOpacitySubscribe();
 
         _currentDockHelper = Observable.Merge(
-            whenDragEnded.Select(pointer => PositionCalculator.CalculateTouchFinalDockAnchor(
-                this.ActualSize.ToSize(), GetCurrentTouchRectByPointer(pointer))),
+            whenDragEnded.Select(_ => PositionCalculator.CalculateTouchFinalDockAnchor(
+                GetContainerSize(), GetTouchRect())),
             this.Events().SizeChanged.Select(
                 x => PositionCalculator.TouchDockCornerRedirect(x.NewSize, CurrentDock, Touch.Width)))
             .ToProperty(initialValue: new(TouchCorner.Left, 0.5));
@@ -49,26 +47,28 @@ public sealed partial class TouchControl : UserControl
             TouchReleaseStoryboard.Events().Completed.Select(_ => true))
             .ToProperty(initialValue: true);
 
-        // TODO: Ä¿Ç°Ïëµ½µÄÁ©ÖÖË¼Â·£¬ÔÚÍÏ¶¯ÊÍ·Å×ö¶¯»­µÄÊ±ºò£¬´°¿Ú´óĞ¡¸Ä±äÁË£¬ÔÚ¶¯»­½áÊøÊ±£¬ÖØĞÂÉèÖÃ Touch Î»ÖÃ
-        // »òÕßÔÚ¶¯»­½øĞĞÖĞ£¬¸Ä±ä¶¯»­µÄ To Öµ
+        // TODO: 
+        // 1 æµ‹è¯•uwpåŠ¨ç”»æ‰§è¡Œè¿‡ç¨‹ä¸­æ”¹å˜ To
+        // 2 æµ‹è¯•ç©ºé¡¹ç›®doubleè½¬intï¼Œintè½¬doubleï¼Œåˆ†åˆ«çœ‹aotå’Œjitï¼Œx32dbgè·‘èµ·æ¥æˆ–è€…IDAé™æ€
+        // 3 å•ç‹¬å»ºç«‹ Menuï¼Œå…¨æ–°æ„å»ºè¿™ä¸ªæ§ä»¶
 
-        // NOTE: ÒÔÖĞĞÄµãÎª×ø±êÏµÔ­µãÊ±£¬Ô­µãÊÇ´¥Ãş°´Å¥µÄÖĞĞÄµã£¬²»ÔÙÊÇ´¥Ãş°´Å¥µÄ×óÉÏ½Ç
+        // NOTE: ä»¥ä¸­å¿ƒç‚¹ä¸ºåæ ‡ç³»åŸç‚¹æ—¶ï¼ŒåŸç‚¹æ˜¯è§¦æ‘¸æŒ‰é’®çš„ä¸­å¿ƒç‚¹ï¼Œä¸å†æ˜¯è§¦æ‘¸æŒ‰é’®çš„å·¦ä¸Šè§’
         //var offset = new Point((this.ActualWidth - Touch.Width) / 2, (this.ActualHeight - Touch.Width) / 2);
-        // ²âÊÔÓÃµÄ´úÂë
+        // æµ‹è¯•ç”¨çš„ä»£ç 
         //.Do(_ => _isAnimating.OnNext(true))
         //Touch.Events().PointerPressed.Where(p => p.GetCurrentPoint(this).Properties.IsLeftButtonPressed).Subscribe(_ => StartTouchFadeInAnimation(Touch));
     }
 
     /// <summary>
-    /// ´¥Ãş°´Å¥Í£¿¿ÔÚ´°¿Ú±ßÔµÊ±£¬´°¿Ú´óĞ¡¸Ä±äÊ±×Ô¶¯Ë¢ĞÂ´¥Ãş°´Å¥Î»ÖÃ¡£
+    /// è§¦æ‘¸æŒ‰é’®åœé åœ¨çª—å£è¾¹ç¼˜æ—¶ï¼Œçª—å£å¤§å°æ”¹å˜æ—¶è‡ªåŠ¨åˆ·æ–°è§¦æ‘¸æŒ‰é’®ä½ç½®ã€‚
     /// </summary>
     private void TouchDockSubscribe()
     {
-        // QUES: ÎªÊ²Ã´ÊÇ 600
+        // QUES: ä¸ºä»€ä¹ˆæ˜¯ 600
         const int windowWidthThreshold = 600;
         Observable.Merge(
             this.Events().SizeChanged.Where(_ => IsTouchDocked == true).Select(x => x.NewSize),
-            TouchReleaseStoryboard.Events().Completed.Select(_ => this.ActualSize.ToSize()))
+            TouchReleaseStoryboard.Events().Completed.Select(_ => GetContainerSize()))
             .Select(window => PositionCalculator.CalculateTouchDockRect(
                 window, CurrentDock, window.Width < windowWidthThreshold ? 60 : 80))
             .Subscribe(SetTouchDockRect);
@@ -78,7 +78,7 @@ public sealed partial class TouchControl : UserControl
         out Observable<PointerRoutedEventArgs> dragStartedStream,
         out Observable<PointerRoutedEventArgs> dragEndedStream)
     {
-        // Note: Ä¬ÈÏÁËÔÚÍÏ×§Ê±´°¿Ú´óĞ¡²»»á·¢Éú¸Ä±ä
+        // Note: é»˜è®¤äº†åœ¨æ‹–æ‹½æ—¶çª—å£å¤§å°ä¸ä¼šå‘ç”Ÿæ”¹å˜
 
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
@@ -106,7 +106,9 @@ public sealed partial class TouchControl : UserControl
                     return pressPos != movePos;
                 })
                 .Take(1)
-                .TakeUntil(pointerReleasedStream));
+                .TakeUntil(pointerReleasedStream))
+            .Do(a => Debug.WriteLine(a.GetPosition()))
+            .Do(_ => StartTouchFadeInAnimation(Touch));
 
         dragEndedStream =
             dragStartedStream
@@ -123,12 +125,12 @@ public sealed partial class TouchControl : UserControl
         // | x -*--*---------*------->
         // |       Released  Released
         // |      (by raise)
-        // |                 ¡ı
+        // |                 â†“
         // |                 DragEnded
         // |                -*---------------------*|-->
         // |                 Start    Animation    End
 
-        // Touch µÄÍÏ×§Âß¼­
+        // Touch çš„æ‹–æ‹½é€»è¾‘
         var draggingStream =
             dragStartedStream
             .SelectMany(pressedEvent =>
@@ -155,11 +157,11 @@ public sealed partial class TouchControl : UserControl
             .Subscribe(newPos =>
                 (TouchTransform.X, TouchTransform.Y) = (newPos.X, newPos.Y));
 
-        // Touch ÍÏ¶¯±ß½ç¼ì²â
+        // Touch æ‹–åŠ¨è¾¹ç•Œæ£€æµ‹
         var boundaryExceededStream =
             draggingStream
             .Where(item => PositionCalculator.IsBeyondBoundary(
-                item.Delta, Touch.Width, this.ActualSize.ToSize()))
+                item.Delta, Touch.Width, GetContainerSize()))
             .Select(item => item.MovedEvent);
 
         boundaryExceededStream
@@ -167,11 +169,11 @@ public sealed partial class TouchControl : UserControl
 
         var moveAnimationStartedStream = dragEndedStream;
 
-        // Touch ÍÏ×§ÊÍ·ÅÍ£¿¿µ½±ßÔµµÄ¶¯»­
+        // Touch æ‹–æ‹½é‡Šæ”¾åœé åˆ°è¾¹ç¼˜çš„åŠ¨ç”»
         BindingDraggingReleaseAnimations();
         moveAnimationStartedStream
-            .Select(pointer => PositionCalculator.CalculateTouchFinalPosition(
-                this.ActualSize.ToSize(), GetCurrentTouchRectByPointer(pointer)))
+            .Select(_ => PositionCalculator.CalculateTouchFinalPosition(
+                GetContainerSize(), GetTouchRect()))
             .Subscribe(StartTranslateAnimation);
     }
 
@@ -179,26 +181,24 @@ public sealed partial class TouchControl : UserControl
     {
         BindingOpacityAnimations(Touch);
 
-        GameContext.WindowAttached
+        Observable.Merge(
+            TouchReleaseStoryboard.Events().Completed.Select(_ => Unit.Default),
+            GameContext.WindowAttached)
             .Select(_ => Observable.Timer(OpacityFadeDelay))
             .Switch()
+            .Where(_ => IsTouchDocked == true)
             .ObserveOn(App.UISyncContext)
             .Subscribe(StartTouchFadeOutAnimation);
     }
 
-    private Rect GetCurrentTouchRectByPointer(PointerRoutedEventArgs pointer)
-    {
-        var distanceToOrigin = pointer.GetPosition();
-        var distanceToElement = pointer.GetPosition(Touch);
-        var touchPos = distanceToOrigin.Subtract(distanceToElement);
+    private Size GetContainerSize() => new(this.ActualWidth, this.ActualHeight);
 
-        return new(touchPos, Touch.ActualSize.ToSize());
-    }
+    private Rect GetTouchRect() => new(TouchTransform.X, TouchTransform.Y, Touch.Width, Touch.Width);
 
     /// <summary>
-    /// ÉèÖÃ´¥Ãş°´Å¥Í£Áô±ßÔµÊ±Ó¦´¦ÓÚµÄÎ»ÖÃ¡£
+    /// è®¾ç½®è§¦æ‘¸æŒ‰é’®åœç•™è¾¹ç¼˜æ—¶åº”å¤„äºçš„ä½ç½®ã€‚
     /// </summary>
-    /// <param name="touchRect">ÃèÊö Touch µÄ×ø±êÎ»ÖÃ</param>
+    /// <param name="touchRect">æè¿° Touch çš„åæ ‡ä½ç½®</param>
     private void SetTouchDockRect(Rect touchRect) =>
         (TouchTransform.X, TouchTransform.Y, Touch.Width)
             = (touchRect.X, touchRect.Y, touchRect.Width);
@@ -206,7 +206,7 @@ public sealed partial class TouchControl : UserControl
 
 public sealed partial class TouchControl // Animation Dragging Release
 {
-    private readonly static TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(2000);
+    private readonly static TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
     private readonly Storyboard TouchReleaseStoryboard = new();
     private readonly DoubleAnimation ReleaseXAnimation = new() { Duration = ReleaseToEdgeDuration };
     private readonly DoubleAnimation ReleaseYAnimation = new() { Duration = ReleaseToEdgeDuration };
@@ -216,6 +216,12 @@ public sealed partial class TouchControl // Animation Dragging Release
         TouchReleaseStoryboard.BindingAnimation(ReleaseXAnimation, TouchTransform, nameof(TranslateTransform.X));
         TouchReleaseStoryboard.BindingAnimation(ReleaseYAnimation, TouchTransform, nameof(TranslateTransform.Y));
         TouchReleaseStoryboard.Events().Completed.Subscribe(_ => AnimationTool.InputBlocked.OnNext(false));
+        this.Events().SizeChanged.Where(_ => IsTouchDocked == false).Subscribe(_ =>
+        {
+            var before = GetTouchRect();
+            var after = PositionCalculator.CalculateTouchFinalPosition(GetContainerSize(), before);
+            (ReleaseXAnimation.To, ReleaseYAnimation.To) = (after.X, after.Y);
+        });
     }
 
     private void StartTranslateAnimation(Point destination)
@@ -259,13 +265,11 @@ public sealed partial class TouchControl // Animation Opacity
     }
 
     /// <summary>
-    /// ´¥Ãş°´Å¥µ­Èë¶¯»­£¬ÊµÏÖÁË¶¯Ì¬´Óµ±Ç°Í¸Ã÷¶È¿ªÊ¼±ä»¯¡£
+    /// è§¦æ‘¸æŒ‰é’®æ·¡å…¥åŠ¨ç”»ï¼Œå®ç°äº†åŠ¨æ€ä»å½“å‰é€æ˜åº¦å¼€å§‹å˜åŒ–ã€‚
     /// </summary>
-    /// <remarks>FadeIn ¶¯»­¹ı³ÌÖĞ»áËø¶¨´¥Ãş°´Å¥²»¿Éµã»÷</remarks>
+    /// <remarks>FadeIn åŠ¨ç”»è¿‡ç¨‹ä¸­ä¼šé”å®šè§¦æ‘¸æŒ‰é’®ä¸å¯ç‚¹å‡»</remarks>
     private void StartTouchFadeInAnimation(UIElement element)
     {
-        element.IsHitTestVisible = false;
-
         var currentOpacity = element.Opacity;
 
         var distance = OpacityFull - currentOpacity;
@@ -276,6 +280,7 @@ public sealed partial class TouchControl // Animation Opacity
             OpacityFadeInDuration.TotalMilliseconds * (distance / (OpacityFull - OpacityHalf))
         ));
 
+        element.IsHitTestVisible = false;
         FadeInOpacityStoryboard.Begin();
     }
 
@@ -285,12 +290,12 @@ public sealed partial class TouchControl // Animation Opacity
 public static partial class AnimationTool
 {
     /// <summary>
-    /// Ö¸Ê¾ÊÇ·ñĞèÒª×èÖ¹Õû¸ö´°¿ÚµÄÓÃ»§ÊäÈë¡£
+    /// æŒ‡ç¤ºæ˜¯å¦éœ€è¦é˜»æ­¢æ•´ä¸ªçª—å£çš„ç”¨æˆ·è¾“å…¥ã€‚
     /// </summary>
     public static Subject<bool> InputBlocked { get; } = new();
 
     /// <summary>
-    /// °ó¶¨¶¯»­µ½¶ÔÏóµÄÊôĞÔ¡£
+    /// ç»‘å®šåŠ¨ç”»åˆ°å¯¹è±¡çš„å±æ€§ã€‚
     /// </summary>
     public static void BindingAnimation(
         this Storyboard storyboard,
