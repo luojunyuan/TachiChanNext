@@ -21,6 +21,8 @@ public static partial class XamlConverter
         return new(value * factor);
     }
 
+    public static double SizeMultiply(double value, double factor) => value * factor;
+
     private static bool TryParseFraction(string fraction, out double factor)
     {
         string[] parts = fraction.Split('/');
@@ -41,6 +43,7 @@ public sealed partial class TouchControl // State
 {
     private readonly ObservableAsPropertyHelper<TouchDockAnchor> _currentDockHelper;
     private readonly ObservableAsPropertyHelper<bool> _isTouchDockedHelper;
+    private readonly ObservableAsPropertyHelper<bool> _isMenuOpenedHelper;
 
     /// <summary>
     /// 指示触摸按钮当前的停靠位置或者即将停靠的位置。
@@ -51,13 +54,15 @@ public sealed partial class TouchControl // State
     /// 指示触摸按钮是否停靠在窗口边缘。
     /// </summary>
     public bool IsTouchDocked => _isTouchDockedHelper.Value;
+
+    /// <summary>
+    /// 指示菜单是否处于打开状态。
+    /// </summary>
+    public bool IsMenuOpened => _isMenuOpenedHelper.Value;
 }
 
 public sealed partial class TouchControl : UserControl
 {
-    // 在TouchControl类中添加此方法
-    public double Multiply(double value, double factor) => value * factor;
-
     public TouchControl()
     {
         InitializeComponent();
@@ -78,11 +83,11 @@ public sealed partial class TouchControl : UserControl
             TouchReleaseStoryboard.Events().Completed.Select(_ => true))
             .ToProperty(initialValue: true);
 
+        _isMenuOpenedHelper = MenuTransistCompleted
+            .ToProperty(initialValue: false);
+
+        // TODO: 窗口大小改变后的from不对。老生话题了
         BindingMenuTransitionAnimations();
-        MenuBackground.Events().PointerPressed.Subscribe(_ =>
-        {
-            StartMenuTransitionAnimation();
-        });
 
         // TODO: 
         // 1 测试uwp动画执行过程中改变 To
@@ -209,17 +214,91 @@ public sealed partial class TouchControl : UserControl
         moveAnimationStartedStream
             .Select(_ => PositionCalculator.CalculateTouchFinalPosition(
                 this.Size(), TouchRect))
-            .Subscribe(StartTranslateAnimation);
+            .Subscribe(StartTouchTranslateAnimation);
+
+
+        // 定义点击检测需要的参数
+        const int holdTimeThreshold = 500; // 长按触发阈值 (ms)
+        dragStartedStream.Do(_ => Debug.WriteLine("dragStartedStream")).Subscribe();
+        dragEndedStream.Do(_ => Debug.WriteLine("dragEndedStream")).Subscribe();
+
+        var dragStartedAlias = dragStartedStream;
+
+        // 普通点击流：在hold时间内释放
+        var clickStream = pointerPressedStream
+            .SelectMany(pressEvent => {
+                // 记录按下时间
+                var pressTime = DateTimeOffset.Now;
+
+                return pointerReleasedStream
+                    .Take(1)
+                    .TakeUntil(dragStartedAlias) // 如果开始拖动，取消点击
+                    .Where(_ => (DateTimeOffset.Now - pressTime).TotalMilliseconds < holdTimeThreshold); // 判断是否在阈值内释放
+            })
+            .Share();
+
+        // 长按释放流：超过hold时间后释放
+        var holdReleaseStream = pointerPressedStream
+            .SelectMany(pressEvent => {
+                // 记录按下时间
+                var pressTime = DateTimeOffset.Now;
+
+                return pointerReleasedStream
+                    .Take(1)
+                    .TakeUntil(dragStartedAlias) // 如果开始拖动，取消
+                    .Where(_ => (DateTimeOffset.Now - pressTime).TotalMilliseconds >= holdTimeThreshold); // 判断是否超过阈值
+            })
+            .Share();
+
+        clickStream.Do(_ => Debug.WriteLine("clickStream")).Subscribe();
+
+        clickStream.ObserveOn(App.UISyncContext).Subscribe(_ =>
+        {
+            Menu.Visibility = Visibility.Visible;
+            Touch.Visibility = Visibility.Collapsed;
+            FakeTouchOpacityAnimation.From = OpacityFull;
+            FakeTouchOpacityAnimation.To = 0;
+            StartMenuTransitionAnimation();
+        });
+
+        Menu.Events().PointerPressed.Subscribe(_ =>
+        {
+            StartMenuTransitionAnimationReverse();
+        });
+        MenuTransistCompleted
+            .Where(isOpend => isOpend == false)
+            .Subscribe(_ =>
+            {
+                Menu.Visibility = Visibility.Collapsed;
+                Touch.Visibility = Visibility.Visible;
+                Menu.Width = TouchRect.Width * 5;
+                MenuTransXAnimation.To = 0;
+                MenuTransYAnimation.To = 0;
+            });
+
+
+        holdReleaseStream.Select(_ => Unit.Default).Do(_ => Debug.WriteLine("holdReleaseStream"))
+           .Subscribe(TouchHoldReleaseSubject.OnNext);
+
+        pointerPressedStream.Select(_ => Unit.Default).Subscribe(TouchPreviewPressedSubject.OnNext);
     }
+
+    private readonly Subject<Unit> TouchPreviewPressedSubject = new ();
+    private readonly Subject<Unit> TouchHoldReleaseSubject = new ();
 
     private void TouchOpacitySubscribe()
     {
         BindingOpacityAnimations(Touch);
 
+        TouchPreviewPressedSubject.Subscribe(_ => StartTouchFadeInAnimation(Touch));
+
         Observable.Merge(
             TouchReleaseStoryboard.Events().Completed.Select(_ => Unit.Default),
+            TouchHoldReleaseSubject,
             GameContext.WindowAttached)
-            .Select(_ => Observable.Timer(OpacityFadeDelay))
+            .Select(_ =>
+                Observable.Timer(OpacityFadeDelay)
+                .TakeUntil(TouchPreviewPressedSubject))
             .Switch()
             .Where(_ => IsTouchDocked == true)
             .ObserveOn(App.UISyncContext)
@@ -233,9 +312,12 @@ public sealed partial class TouchControl : UserControl
     }
 }
 
+/// <summary>
+/// 触摸按钮的动画逻辑，包含拖拽、释放、菜单过渡等动画。
+/// </summary>
 public sealed partial class TouchControl // Animation Dragging Release
 {
-    private readonly static TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
     private readonly Storyboard TouchReleaseStoryboard = new();
     private readonly DoubleAnimation ReleaseXAnimation = new() { Duration = ReleaseToEdgeDuration };
     private readonly DoubleAnimation ReleaseYAnimation = new() { Duration = ReleaseToEdgeDuration };
@@ -253,94 +335,70 @@ public sealed partial class TouchControl // Animation Dragging Release
         });
     }
 
-    private void StartTranslateAnimation(Point destination)
+    private void StartTouchTranslateAnimation(Point destination)
     {
-        ReleaseXAnimation.To = destination.X;
-        ReleaseYAnimation.To = destination.Y;
         AnimationTool.InputBlocked.OnNext(true);
+        (ReleaseXAnimation.To, ReleaseYAnimation.To) = (destination.X, destination.Y);
         TouchReleaseStoryboard.Begin();
     }
 }
 
 public sealed partial class TouchControl // Animation Menu Transition
 {
-    private readonly static TimeSpan MenuTransistDuration = TimeSpan.FromMilliseconds(20000);
+    private readonly static TimeSpan MenuTransistDuration = TimeSpan.FromMilliseconds(200);
     private readonly Storyboard MenuTransitionStoryboard = new();
     private readonly static PowerEase UnifiedPowerFunction = new() { EasingMode = EasingMode.EaseInOut };
-    private readonly DoubleAnimation ScaleXAnimation = new() { From = 0.2, To = 1, Duration = MenuTransistDuration,/* EasingFunction = UnifiedPowerFunction*/ };
-    private readonly DoubleAnimation ScaleYAnimation = new() { From = 0.2, To = 1, Duration = MenuTransistDuration,/* EasingFunction = UnifiedPowerFunction*/ };
-    private readonly DoubleAnimation MenuTransXAnimation = new() { Duration = MenuTransistDuration, /*EasingFunction = UnifiedPowerFunction*/ };
-    private readonly DoubleAnimation MenuTransYAnimation = new() { Duration = MenuTransistDuration, /*EasingFunction = UnifiedPowerFunction*/ };
+    private readonly DoubleAnimation MenuWidthAnimation = new() { EnableDependentAnimation = true, Duration = MenuTransistDuration, EasingFunction = UnifiedPowerFunction };
+    private readonly DoubleAnimation MenuHeightAnimation = new() { EnableDependentAnimation = true, Duration = MenuTransistDuration, EasingFunction = UnifiedPowerFunction };
+    private readonly DoubleAnimation MenuTransXAnimation = new() { Duration = MenuTransistDuration, EasingFunction = UnifiedPowerFunction };
+    private readonly DoubleAnimation MenuTransYAnimation = new() { Duration = MenuTransistDuration, EasingFunction = UnifiedPowerFunction };
+    private readonly DoubleAnimation FakeTouchOpacityAnimation = new()
+    {
+        From = OpacityFull,
+        To = 0,
+        Duration = MenuTransistDuration,
+    };
+
+    private readonly Subject<bool> MenuTransistCompleted = new();
 
     private void BindingMenuTransitionAnimations()
     {
-        MenuTransitionStoryboard.BindingAnimation(ScaleXAnimation, ScaleTransform, nameof(ScaleTransform.ScaleX));
-        MenuTransitionStoryboard.BindingAnimation(ScaleYAnimation, ScaleTransform, nameof(ScaleTransform.ScaleY));
-        MenuTransitionStoryboard.BindingAnimation(MenuTransXAnimation, MenuTranslate, nameof(TranslateTransform.X));
-        MenuTransitionStoryboard.BindingAnimation(MenuTransYAnimation, MenuTranslate, nameof(TranslateTransform.Y));
-
-        // 400 -> 40
-        // 80 -> 40
-        // TODO: WARNIGN: 与scale动画的对抗本质上是要算出当前size的时候， corner被放大到了多少，我们要减回来
-        // init: 400 -> 200
-        var cornerRadiusAnimation = CreateAntiCornerScaleAnimation();
-        MenuTransitionStoryboard.BindingAnimation(cornerRadiusAnimation, MenuBackground, nameof(Border.CornerRadius));
+        MenuTransitionStoryboard.BindingAnimation(MenuWidthAnimation, Menu, nameof(Width));
+        MenuTransitionStoryboard.BindingAnimation(MenuHeightAnimation, Menu, nameof(Height));
+        MenuTransitionStoryboard.BindingAnimation(MenuTransXAnimation, MenuTransform, nameof(TranslateTransform.X));
+        MenuTransitionStoryboard.BindingAnimation(MenuTransYAnimation, MenuTransform, nameof(TranslateTransform.Y));
+        MenuTransitionStoryboard.BindingAnimation(FakeTouchOpacityAnimation, FakeTouch, nameof(Opacity));
+        MenuTransitionStoryboard.Events().Completed.Subscribe(_ =>
+        {
+            AnimationTool.InputBlocked.OnNext(false);
+            MenuTransistCompleted.OnNext(!IsMenuOpened);
+        });
     }
 
     private void StartMenuTransitionAnimation()
     {
+        AnimationTool.InputBlocked.OnNext(true);
+        MenuWidthAnimation.To = MenuHeightAnimation.To = Menu.Width;
+        MenuWidthAnimation.From = MenuHeightAnimation.From = TouchRect.Width;
         // NOTE: 以中心点为坐标系原点时，原点是触摸按钮的中心点，不再是触摸按钮的左上角
         (MenuTransXAnimation.From, MenuTransYAnimation.From) =
             (TouchRect.X - (this.Size().Width - TouchRect.Width) / 2,
             TouchRect.Y - (this.Size().Height - TouchRect.Height) / 2);
         MenuTransitionStoryboard.Begin();
-
-        Task.Run(async () =>
-        {
-            while(true)
-            {
-                await Task.Delay(1000);
-                Observable.Return(Unit.Default)
-                    .ObserveOn(App.UISyncContext)
-                    .Do(_ => Debug.WriteLine($"{Menu.ActualHeight} {MenuBackground.ActualHeight}"))
-                    .Subscribe();
-                //Debug.WriteLine($"{Menu.ActualHeight} {MenuBackground.ActualHeight}");
-            }
-        });
     }
 
-    private ObjectAnimationUsingKeyFrames CreateAntiCornerScaleAnimation()
+    private void StartMenuTransitionAnimationReverse()
     {
-        // TODO: Definitions
-        double startRadius = 200;    // 初始角度
-        double endRadius = 40;     // 结束角度
-        const int fps = 60;
-        var totalDuration = MenuTransistDuration.TotalMilliseconds;
+        AnimationTool.InputBlocked.OnNext(true);
+        SwapAnimation(MenuWidthAnimation);
+        SwapAnimation(MenuHeightAnimation);
+        SwapAnimation(MenuTransXAnimation);
+        SwapAnimation(MenuTransYAnimation);
+        SwapAnimation(FakeTouchOpacityAnimation);
+        MenuTransitionStoryboard.Begin();
 
-        var cornerRadiusAnimation = new ObjectAnimationUsingKeyFrames
-        {
-            Duration = MenuTransistDuration,
-        };
-        var frames = totalDuration / (1.0 / fps * 1000);
-        var millisecondPerFrame = totalDuration / frames;
-
-        for (var i = 0; i < frames; i++)
-        {
-            var progress = i / (frames - 1);
-            //var frameTimeMillseconds = easeFunction.Ease(progress) * totalDuration;
-            var frameTimeMillseconds = i * millisecondPerFrame;
-            var currentRadius = startRadius + (endRadius - startRadius) * progress;
-
-            var keyFrame = new DiscreteObjectKeyFrame
-            {
-                KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(frameTimeMillseconds)),
-                Value = new CornerRadius(currentRadius, currentRadius, currentRadius, currentRadius)
-            };
-
-            cornerRadiusAnimation.KeyFrames.Add(keyFrame);
-        }
-
-        return cornerRadiusAnimation;
+        static void SwapAnimation(DoubleAnimation animation) =>
+            (animation.To, animation.From) = (animation.From, animation.To);
     }
 }
 
@@ -371,7 +429,6 @@ public sealed partial class TouchControl // Animation Opacity
     {
         FadeInOpacityStoryboard.BindingAnimation(FadeInAnimation, element, nameof(Opacity));
         FadeOutOpacityStoryboard.BindingAnimation(FadeOutAnimation, element, nameof(Opacity));
-
         FadeInOpacityStoryboard.Events().Completed.Subscribe(_ => element.IsHitTestVisible = true);
     }
 

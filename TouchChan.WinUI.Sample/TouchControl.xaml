@@ -60,25 +60,22 @@
         </Border>
 
         <!--  NOTE: Menu 和 Touch 的 Width 不同决定了他们必然是俩个控件  -->
-        <Grid x:Name="Menu" Width="400" Height="400">
-            <Border x:Name="MenuBackground"
-                Background="{StaticResource AssistiveTouchBackground}"
-                CornerRadius="40"
-                RenderTransformOrigin="0.5,0.5">
-                <Border.RenderTransform>
-                    <TransformGroup>
-                        <!--  这个顺序决定了 Translate 不会被 Scale 作用影响  -->
-                        <ScaleTransform x:Name="ScaleTransform" />
-                        <TranslateTransform x:Name="MenuTranslate" />
-                    </TransformGroup>
-                </Border.RenderTransform>
-            </Border>
+        <Grid x:Name="Menu"
+            Width="{x:Bind cv:XamlConverter.SizeMultiply(Touch.Width, 5), Mode=OneWay}"
+            Height="{x:Bind Menu.Width, Mode=OneWay}"
+            Background="{StaticResource AssistiveTouchBackground}"
+            CornerRadius="{x:Bind Touch.CornerRadius, Mode=OneWay}"
+            Visibility="Collapsed">
 
-            <ContentPresenter
+            <ContentPresenter x:Name="FakeTouch"
                 Width="{x:Bind Touch.Width, Mode=OneWay}"
                 Height="{x:Bind Touch.Width, Mode=OneWay}"
                 Content="{x:Bind Touch.Width, Mode=OneWay}"
                 ContentTemplate="{StaticResource TouchCirclesTemplate}" />
+
+            <Grid.RenderTransform>
+                <TranslateTransform x:Name="MenuTransform" />
+            </Grid.RenderTransform>
         </Grid>
 
     </Grid>
