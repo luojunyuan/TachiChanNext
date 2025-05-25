@@ -7,9 +7,9 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Controls;
 using R3.ObservableEvents;
 using TouchChan.Interop;
-using Windows.Foundation;
 using Rect = Windows.Foundation.Rect;
 using Size = Windows.Foundation.Size;
+using Point = Windows.Foundation.Point;
 #elif Avalonia
 using Size = Avalonia.Size;
 using Rect = Avalonia.Rect;
@@ -86,6 +86,14 @@ static class FluentWinUIExtensions
 
 static class TouchControlExtensions
 {
+    // 简化 pointerEvent.GetCurrentPoint(visual).Position -> pointerEvent.GetPosition(visual)
+    public static Point GetPosition(this PointerRoutedEventArgs pointerEvent, UIElement? visual = null) =>
+        pointerEvent.GetCurrentPoint(visual).Position;
+
+    public static Size Size(this FrameworkElement element) => new(element.ActualWidth, element.ActualHeight);
+
+    public static Size Size(this Rect rect) => new(rect.Width, rect.Height);
+
     public static Observable<Unit> Clicked(this Border border)
     {
         const double clickThreshold = 0;
@@ -110,10 +118,6 @@ static class TouchControlExtensions
                     .Select(_ => Unit.Default);
             });
     }
-
-    // 简化 pointerEvent.GetCurrentPoint(visual).Position -> pointerEvent.GetPosition(visual)
-    public static Point GetPosition(this PointerRoutedEventArgs pointerEvent, UIElement? visual = null) =>
-        pointerEvent.GetCurrentPoint(visual).Position;
 
     // 用于扩展 Windows.Foundation.Point 之间的减法运算操作符
     public static Point Subtract(this Point point, Point subPoint) => new(point.X - subPoint.X, point.Y - subPoint.Y);

@@ -2,9 +2,8 @@
 <UserControl x:Class="TouchChan.WinUI.Sample.TouchControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:converter="using:TouchChan.WinUI.Converters"
+    xmlns:cv="using:TouchChan.WinUI.Sample"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="using:TouchChan.WinUI.Sample"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
     <!--  NOTE: 默认对齐为 Stretch 才会使得 SizeChanged 生效  -->
@@ -22,24 +21,22 @@
         <SolidColorBrush x:Key="AssistiveTouchLayerThreeLine" Color="#808080" />
         <SolidColorBrush x:Key="AssistiveTouchLayerThreeBackground" Color="#FEFEFE" />
         <x:Double x:Key="AssistiveTouchCircleThickness">0.8</x:Double>
-        <converter:TouchLayerMarginConverter x:Key="TouchLayerMarginConverter" />
-        <converter:CornerRadiusHalfValueConverter x:Key="CornerRadiusHalfValueConverter" />
         <DataTemplate x:Key="TouchCirclesTemplate" x:DataType="x:Double">
             <Grid>
                 <Ellipse
-                    Margin="{x:Bind Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/8}"
+                    Margin="{x:Bind cv:XamlConverter.TouchLayerMargin((x:Double), '1/8'), Mode=OneWay}"
                     Fill="{StaticResource AssistiveTouchLayerOneBackground}"
                     Stroke="{StaticResource AssistiveTouchLayerOneLine}"
                     StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
 
                 <Ellipse
-                    Margin="{x:Bind Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=3/16}"
+                    Margin="{x:Bind cv:XamlConverter.TouchLayerMargin((x:Double), '3/16'), Mode=OneWay}"
                     Fill="{StaticResource AssistiveTouchLayerTwoBackground}"
                     Stroke="{StaticResource AssistiveTouchLayerTwoLine}"
                     StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
 
                 <Ellipse
-                    Margin="{x:Bind Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/4}"
+                    Margin="{x:Bind cv:XamlConverter.TouchLayerMargin((x:Double), '1/4'), Mode=OneWay}"
                     Fill="{StaticResource AssistiveTouchLayerThreeBackground}"
                     Stroke="{StaticResource AssistiveTouchLayerThreeLine}"
                     StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
@@ -53,7 +50,7 @@
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
             Background="{StaticResource AssistiveTouchBackground}"
-            CornerRadius="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource CornerRadiusHalfValueConverter}}">
+            CornerRadius="{x:Bind cv:XamlConverter.CircleCorner(Touch.Width, 0.5), Mode=OneWay}">
 
             <ContentPresenter Content="{x:Bind Touch.Width, Mode=OneWay}" ContentTemplate="{StaticResource TouchCirclesTemplate}" />
 
@@ -62,11 +59,18 @@
             </Border.RenderTransform>
         </Border>
 
-        <Grid x:Name="Menu" Width="350" Height="350">
-            <Border Background="{StaticResource AssistiveTouchBackground}" CornerRadius="50" RenderTransformOrigin="0.5,0.5">
-
+        <!--  NOTE: Menu 和 Touch 的 Width 不同决定了他们必然是俩个控件  -->
+        <Grid x:Name="Menu" Width="400" Height="400">
+            <Border x:Name="MenuBackground"
+                Background="{StaticResource AssistiveTouchBackground}"
+                CornerRadius="40"
+                RenderTransformOrigin="0.5,0.5">
                 <Border.RenderTransform>
-                    <ScaleTransform ScaleX="0.3" ScaleY="0.3" />
+                    <TransformGroup>
+                        <!--  这个顺序决定了 Translate 不会被 Scale 作用影响  -->
+                        <ScaleTransform x:Name="ScaleTransform" />
+                        <TranslateTransform x:Name="MenuTranslate" />
+                    </TransformGroup>
                 </Border.RenderTransform>
             </Border>
 

@@ -37,3 +37,4 @@ partial class TouchLayerMarginConverter : IValueConverter
         return false;
     }
 }
+

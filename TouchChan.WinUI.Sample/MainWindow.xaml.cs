@@ -1,3 +1,4 @@
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using R3;
 using R3.ObservableEvents;
@@ -6,11 +7,21 @@ namespace TouchChan.WinUI.Sample
 {
     public sealed partial class MainWindow : Window
     {
+        public static void Mine()
+        {
+            var a = Instance. AppWindow.ClientSize;
+            Instance.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(a.Width + 10, a.Height + 10));
+        }
+
+        public static MainWindow Instance { get; private set; } = null!;
+
         public MainWindow()
         {
+            Instance = this;
             InitializeComponent();
-            // this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(800, 600));
-            this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(1280, 720));
+            //this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(800, 600));
+            //this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(1280, 720));
+            this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(1920, 1080));
 
             // TODO: 仅测试，实际情况应该在外部窗口循环触发
             this.Root.Events().Loaded.Select(_ => Unit.Default).Subscribe(GameContext.WindowAttached.OnNext);

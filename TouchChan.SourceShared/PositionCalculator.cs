@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics.Contracts;
+using System.Reflection;
+
 
 #if WinUI
 using Point = Windows.Foundation.Point;
@@ -39,7 +41,7 @@ public static class PositionCalculator
             { Corner: TouchCorner.Top, Scale: var posScale } => new(window.Width * posScale - TouchSpace - (touchSize / 2), TouchSpace),
             { Corner: TouchCorner.Right, Scale: var posScale } => new(newRight, window.Height * posScale - TouchSpace - (touchSize / 2)),
             { Corner: TouchCorner.Bottom, Scale: var posScale } => new(window.Width * posScale - TouchSpace - (touchSize / 2), newBottom),
-            _ => throw new UnreachableException(),
+            _ => default,
         };
 
         return new(pos.X, pos.Y, touchSize, touchSize);
@@ -97,7 +99,6 @@ public static class PositionCalculator
     /// <param name="container">窗口大小</param>
     /// <param name="touch">处于任意位置的触摸按钮矩形</param>
     /// <returns>处于停靠边缘的触摸按钮矩形</returns>
-    [Pure]
     public static TouchDockAnchor CalculateTouchFinalDockAnchor(Size container, Rect touch)
     {
         var finalPoint = CalculateTouchFinalPosition(container, touch);
@@ -107,7 +108,14 @@ public static class PositionCalculator
         return GetLastTouchDockAnchor(container, newRect);
     }
 
-    [Pure]
+    /// <summary>
+    /// 根据旧窗口大小和触摸按钮位置，计算触摸按钮的最后停靠锚点。
+    /// </summary>
+    /// <param name="oldWindowSize"></param>
+    /// <param name="touch"></param>
+    /// <remarks>touch 必须在 window 合法停靠位置上，如果超出了会报错</remarks>
+    /// <returns></returns>
+    /// <exception cref="UnreachableException"></exception>
     public static TouchDockAnchor GetLastTouchDockAnchor(Size oldWindowSize, Rect touch)
     {
         var touchSize = touch.Width;

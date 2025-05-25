@@ -9,6 +9,34 @@ using Windows.Foundation;
 
 namespace TouchChan.WinUI.Sample;
 
+public static partial class XamlConverter
+{
+    public static CornerRadius CircleCorner(double value, double factor) => double.IsNaN(value) ? default : new(value * factor);
+
+    public static Thickness TouchLayerMargin(double value, string fractionFactor)
+    {
+        if (value is double.NaN || TryParseFraction(fractionFactor, out double factor) == false)
+            return default;
+
+        return new(value * factor);
+    }
+
+    private static bool TryParseFraction(string fraction, out double factor)
+    {
+        string[] parts = fraction.Split('/');
+        if (parts.Length == 2 &&
+            double.TryParse(parts[0], out double numerator) &&
+            double.TryParse(parts[1], out double denominator))
+        {
+            factor = numerator / denominator;
+            return true;
+        }
+
+        factor = default;
+        return false;
+    }
+}
+
 public sealed partial class TouchControl // State
 {
     private readonly ObservableAsPropertyHelper<TouchDockAnchor> _currentDockHelper;
@@ -27,19 +55,22 @@ public sealed partial class TouchControl // State
 
 public sealed partial class TouchControl : UserControl
 {
+    // 在TouchControl类中添加此方法
+    public double Multiply(double value, double factor) => value * factor;
+
     public TouchControl()
     {
         InitializeComponent();
 
         TouchDockSubscribe();
-        TouchDraggingSubscribe( out var whenDragStarted, out var whenDragEnded);
+        TouchDraggingSubscribe(out var whenDragStarted, out var whenDragEnded);
         TouchOpacitySubscribe();
 
         _currentDockHelper = Observable.Merge(
             whenDragEnded.Select(_ => PositionCalculator.CalculateTouchFinalDockAnchor(
-                GetContainerSize(), GetTouchRect())),
+                this.Size(), TouchRect)),
             this.Events().SizeChanged.Select(
-                x => PositionCalculator.TouchDockCornerRedirect(x.NewSize, CurrentDock, Touch.Width)))
+                x => PositionCalculator.TouchDockCornerRedirect(x.NewSize, CurrentDock, TouchRect.Width)))
             .ToProperty(initialValue: new(TouchCorner.Left, 0.5));
 
         _isTouchDockedHelper = Observable.Merge(
@@ -47,14 +78,17 @@ public sealed partial class TouchControl : UserControl
             TouchReleaseStoryboard.Events().Completed.Select(_ => true))
             .ToProperty(initialValue: true);
 
+        BindingMenuTransitionAnimations();
+        MenuBackground.Events().PointerPressed.Subscribe(_ =>
+        {
+            StartMenuTransitionAnimation();
+        });
+
         // TODO: 
         // 1 测试uwp动画执行过程中改变 To
         // 2 测试空项目double转int，int转double，分别看aot和jit，x32dbg跑起来或者IDA静态
         // 3 单独建立 Menu，全新构建这个控件
 
-        // NOTE: 以中心点为坐标系原点时，原点是触摸按钮的中心点，不再是触摸按钮的左上角
-        //var offset = new Point((this.ActualWidth - Touch.Width) / 2, (this.ActualHeight - Touch.Width) / 2);
-        // 测试用的代码
         //.Do(_ => _isAnimating.OnNext(true))
         //Touch.Events().PointerPressed.Where(p => p.GetCurrentPoint(this).Properties.IsLeftButtonPressed).Subscribe(_ => StartTouchFadeInAnimation(Touch));
     }
@@ -68,18 +102,16 @@ public sealed partial class TouchControl : UserControl
         const int windowWidthThreshold = 600;
         Observable.Merge(
             this.Events().SizeChanged.Where(_ => IsTouchDocked == true).Select(x => x.NewSize),
-            TouchReleaseStoryboard.Events().Completed.Select(_ => GetContainerSize()))
+            TouchReleaseStoryboard.Events().Completed.Select(_ => this.Size()))
             .Select(window => PositionCalculator.CalculateTouchDockRect(
                 window, CurrentDock, window.Width < windowWidthThreshold ? 60 : 80))
-            .Subscribe(SetTouchDockRect);
+            .Subscribe(touchRect => TouchRect = touchRect);
     }
 
     private void TouchDraggingSubscribe(
         out Observable<PointerRoutedEventArgs> dragStartedStream,
         out Observable<PointerRoutedEventArgs> dragEndedStream)
     {
-        // Note: 默认了在拖拽时窗口大小不会发生改变
-
         var raisePointerReleasedSubject = new Subject<PointerRoutedEventArgs>();
 
         var pointerPressedStream =
@@ -158,14 +190,13 @@ public sealed partial class TouchControl : UserControl
 
         draggingStream
             .Select(item => item.Delta)
-            .Subscribe(newPos =>
-                (TouchTransform.X, TouchTransform.Y) = (newPos.X, newPos.Y));
+            .Subscribe(newPos => (TouchTransform.X, TouchTransform.Y) = (newPos.X, newPos.Y));
 
         // Touch 拖动边界检测
         var boundaryExceededStream =
             draggingStream
             .Where(item => PositionCalculator.IsBeyondBoundary(
-                item.Delta, Touch.Width, GetContainerSize()))
+                item.Delta, TouchRect.Width, this.Size()))
             .Select(item => item.MovedEvent);
 
         boundaryExceededStream
@@ -177,7 +208,7 @@ public sealed partial class TouchControl : UserControl
         BindingDraggingReleaseAnimations();
         moveAnimationStartedStream
             .Select(_ => PositionCalculator.CalculateTouchFinalPosition(
-                GetContainerSize(), GetTouchRect()))
+                this.Size(), TouchRect))
             .Subscribe(StartTranslateAnimation);
     }
 
@@ -195,17 +226,11 @@ public sealed partial class TouchControl : UserControl
             .Subscribe(StartTouchFadeOutAnimation);
     }
 
-    private Size GetContainerSize() => new(this.ActualWidth, this.ActualHeight);
-
-    private Rect GetTouchRect() => new(TouchTransform.X, TouchTransform.Y, Touch.Width, Touch.Width);
-
-    /// <summary>
-    /// 设置触摸按钮停留边缘时应处于的位置。
-    /// </summary>
-    /// <param name="touchRect">描述 Touch 的坐标位置</param>
-    private void SetTouchDockRect(Rect touchRect) =>
-        (TouchTransform.X, TouchTransform.Y, Touch.Width)
-            = (touchRect.X, touchRect.Y, touchRect.Width);
+    private Rect TouchRect
+    {
+        get => new(TouchTransform.X, TouchTransform.Y, Touch.Width, Touch.Width);
+        set => (TouchTransform.X, TouchTransform.Y, Touch.Width) = (value.X, value.Y, value.Width);
+    }
 }
 
 public sealed partial class TouchControl // Animation Dragging Release
@@ -220,10 +245,10 @@ public sealed partial class TouchControl // Animation Dragging Release
         TouchReleaseStoryboard.BindingAnimation(ReleaseXAnimation, TouchTransform, nameof(TranslateTransform.X));
         TouchReleaseStoryboard.BindingAnimation(ReleaseYAnimation, TouchTransform, nameof(TranslateTransform.Y));
         TouchReleaseStoryboard.Events().Completed.Subscribe(_ => AnimationTool.InputBlocked.OnNext(false));
+        // TODO
         this.Events().SizeChanged.Where(_ => IsTouchDocked == false).Subscribe(_ =>
         {
-            var before = GetTouchRect();
-            var after = PositionCalculator.CalculateTouchFinalPosition(GetContainerSize(), before);
+            var after = PositionCalculator.CalculateTouchFinalPosition(this.Size(), TouchRect);
             (ReleaseXAnimation.To, ReleaseYAnimation.To) = (after.X, after.Y);
         });
     }
@@ -234,6 +259,88 @@ public sealed partial class TouchControl // Animation Dragging Release
         ReleaseYAnimation.To = destination.Y;
         AnimationTool.InputBlocked.OnNext(true);
         TouchReleaseStoryboard.Begin();
+    }
+}
+
+public sealed partial class TouchControl // Animation Menu Transition
+{
+    private readonly static TimeSpan MenuTransistDuration = TimeSpan.FromMilliseconds(20000);
+    private readonly Storyboard MenuTransitionStoryboard = new();
+    private readonly static PowerEase UnifiedPowerFunction = new() { EasingMode = EasingMode.EaseInOut };
+    private readonly DoubleAnimation ScaleXAnimation = new() { From = 0.2, To = 1, Duration = MenuTransistDuration,/* EasingFunction = UnifiedPowerFunction*/ };
+    private readonly DoubleAnimation ScaleYAnimation = new() { From = 0.2, To = 1, Duration = MenuTransistDuration,/* EasingFunction = UnifiedPowerFunction*/ };
+    private readonly DoubleAnimation MenuTransXAnimation = new() { Duration = MenuTransistDuration, /*EasingFunction = UnifiedPowerFunction*/ };
+    private readonly DoubleAnimation MenuTransYAnimation = new() { Duration = MenuTransistDuration, /*EasingFunction = UnifiedPowerFunction*/ };
+
+    private void BindingMenuTransitionAnimations()
+    {
+        MenuTransitionStoryboard.BindingAnimation(ScaleXAnimation, ScaleTransform, nameof(ScaleTransform.ScaleX));
+        MenuTransitionStoryboard.BindingAnimation(ScaleYAnimation, ScaleTransform, nameof(ScaleTransform.ScaleY));
+        MenuTransitionStoryboard.BindingAnimation(MenuTransXAnimation, MenuTranslate, nameof(TranslateTransform.X));
+        MenuTransitionStoryboard.BindingAnimation(MenuTransYAnimation, MenuTranslate, nameof(TranslateTransform.Y));
+
+        // 400 -> 40
+        // 80 -> 40
+        // TODO: WARNIGN: 与scale动画的对抗本质上是要算出当前size的时候， corner被放大到了多少，我们要减回来
+        // init: 400 -> 200
+        var cornerRadiusAnimation = CreateAntiCornerScaleAnimation();
+        MenuTransitionStoryboard.BindingAnimation(cornerRadiusAnimation, MenuBackground, nameof(Border.CornerRadius));
+    }
+
+    private void StartMenuTransitionAnimation()
+    {
+        // NOTE: 以中心点为坐标系原点时，原点是触摸按钮的中心点，不再是触摸按钮的左上角
+        (MenuTransXAnimation.From, MenuTransYAnimation.From) =
+            (TouchRect.X - (this.Size().Width - TouchRect.Width) / 2,
+            TouchRect.Y - (this.Size().Height - TouchRect.Height) / 2);
+        MenuTransitionStoryboard.Begin();
+
+        Task.Run(async () =>
+        {
+            while(true)
+            {
+                await Task.Delay(1000);
+                Observable.Return(Unit.Default)
+                    .ObserveOn(App.UISyncContext)
+                    .Do(_ => Debug.WriteLine($"{Menu.ActualHeight} {MenuBackground.ActualHeight}"))
+                    .Subscribe();
+                //Debug.WriteLine($"{Menu.ActualHeight} {MenuBackground.ActualHeight}");
+            }
+        });
+    }
+
+    private ObjectAnimationUsingKeyFrames CreateAntiCornerScaleAnimation()
+    {
+        // TODO: Definitions
+        double startRadius = 200;    // 初始角度
+        double endRadius = 40;     // 结束角度
+        const int fps = 60;
+        var totalDuration = MenuTransistDuration.TotalMilliseconds;
+
+        var cornerRadiusAnimation = new ObjectAnimationUsingKeyFrames
+        {
+            Duration = MenuTransistDuration,
+        };
+        var frames = totalDuration / (1.0 / fps * 1000);
+        var millisecondPerFrame = totalDuration / frames;
+
+        for (var i = 0; i < frames; i++)
+        {
+            var progress = i / (frames - 1);
+            //var frameTimeMillseconds = easeFunction.Ease(progress) * totalDuration;
+            var frameTimeMillseconds = i * millisecondPerFrame;
+            var currentRadius = startRadius + (endRadius - startRadius) * progress;
+
+            var keyFrame = new DiscreteObjectKeyFrame
+            {
+                KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(frameTimeMillseconds)),
+                Value = new CornerRadius(currentRadius, currentRadius, currentRadius, currentRadius)
+            };
+
+            cornerRadiusAnimation.KeyFrames.Add(keyFrame);
+        }
+
+        return cornerRadiusAnimation;
     }
 }
 
