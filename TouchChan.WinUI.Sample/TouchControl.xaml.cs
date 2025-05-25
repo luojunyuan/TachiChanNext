@@ -85,14 +85,17 @@ public sealed partial class TouchControl : UserControl
         var pointerPressedStream =
             Touch.Events().PointerPressed
             .Where(e => e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
-            .Do(e => Touch.CapturePointer(e.Pointer));
+            .Do(e => Touch.CapturePointer(e.Pointer))
+            .Share();
         var pointerMovedStream =
             Touch.Events().PointerMoved
-            .Where(e => e.GetCurrentPoint(null).Properties.IsLeftButtonPressed);
+            .Where(e => e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            .Share();
         var pointerReleasedStream =
             Touch.Events().PointerReleased
             .Merge(raisePointerReleasedSubject)
-            .Do(e => Touch.ReleasePointerCapture(e.Pointer));
+            .Do(e => Touch.ReleasePointerCapture(e.Pointer))
+            .Share();
 
         dragStartedStream =
             pointerPressedStream
@@ -107,14 +110,14 @@ public sealed partial class TouchControl : UserControl
                 })
                 .Take(1)
                 .TakeUntil(pointerReleasedStream))
-            .Do(a => Debug.WriteLine(a.GetPosition()))
-            .Do(_ => StartTouchFadeInAnimation(Touch));
+            .Share();
 
         dragEndedStream =
             dragStartedStream
             .SelectMany(_ =>
                 pointerReleasedStream
-                .Take(1));
+                .Take(1))
+            .Share();
 
         // Timeline -->
         // |
@@ -150,7 +153,8 @@ public sealed partial class TouchControl : UserControl
 
                         return new { Delta = delta, MovedEvent = movedEvent };
                     });
-            });
+            })
+            .Share();
 
         draggingStream
             .Select(item => item.Delta)

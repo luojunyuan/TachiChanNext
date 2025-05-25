@@ -24,36 +24,58 @@
         <x:Double x:Key="AssistiveTouchCircleThickness">0.8</x:Double>
         <converter:TouchLayerMarginConverter x:Key="TouchLayerMarginConverter" />
         <converter:CornerRadiusHalfValueConverter x:Key="CornerRadiusHalfValueConverter" />
+        <DataTemplate x:Key="TouchCirclesTemplate" x:DataType="x:Double">
+            <Grid>
+                <Ellipse
+                    Margin="{x:Bind Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/8}"
+                    Fill="{StaticResource AssistiveTouchLayerOneBackground}"
+                    Stroke="{StaticResource AssistiveTouchLayerOneLine}"
+                    StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+
+                <Ellipse
+                    Margin="{x:Bind Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=3/16}"
+                    Fill="{StaticResource AssistiveTouchLayerTwoBackground}"
+                    Stroke="{StaticResource AssistiveTouchLayerTwoLine}"
+                    StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+
+                <Ellipse
+                    Margin="{x:Bind Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/4}"
+                    Fill="{StaticResource AssistiveTouchLayerThreeBackground}"
+                    Stroke="{StaticResource AssistiveTouchLayerThreeLine}"
+                    StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+            </Grid>
+        </DataTemplate>
     </UserControl.Resources>
 
-    <Border x:Name="Touch"
-        Height="{x:Bind Touch.Width, Mode=OneWay}"
-        HorizontalAlignment="Left"
-        VerticalAlignment="Top"
-        Background="{StaticResource AssistiveTouchBackground}"
-        CornerRadius="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource CornerRadiusHalfValueConverter}}">
-        <Grid>
-            <Ellipse
-                Margin="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/8}"
-                Fill="{StaticResource AssistiveTouchLayerOneBackground}"
-                Stroke="{StaticResource AssistiveTouchLayerOneLine}"
-                StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+    <Grid>
+        <Border x:Name="Touch"
+            Height="{x:Bind Touch.Width, Mode=OneWay}"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Background="{StaticResource AssistiveTouchBackground}"
+            CornerRadius="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource CornerRadiusHalfValueConverter}}">
 
-            <Ellipse
-                Margin="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=3/16}"
-                Fill="{StaticResource AssistiveTouchLayerTwoBackground}"
-                Stroke="{StaticResource AssistiveTouchLayerTwoLine}"
-                StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+            <ContentPresenter Content="{x:Bind Touch.Width, Mode=OneWay}" ContentTemplate="{StaticResource TouchCirclesTemplate}" />
 
-            <Ellipse
-                Margin="{x:Bind Touch.Width, Mode=OneWay, Converter={StaticResource TouchLayerMarginConverter}, ConverterParameter=1/4}"
-                Fill="{StaticResource AssistiveTouchLayerThreeBackground}"
-                Stroke="{StaticResource AssistiveTouchLayerThreeLine}"
-                StrokeThickness="{StaticResource AssistiveTouchCircleThickness}" />
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="TouchTransform" />
+            </Border.RenderTransform>
+        </Border>
+
+        <Grid x:Name="Menu" Width="350" Height="350">
+            <Border Background="{StaticResource AssistiveTouchBackground}" CornerRadius="50" RenderTransformOrigin="0.5,0.5">
+
+                <Border.RenderTransform>
+                    <ScaleTransform ScaleX="0.3" ScaleY="0.3" />
+                </Border.RenderTransform>
+            </Border>
+
+            <ContentPresenter
+                Width="{x:Bind Touch.Width, Mode=OneWay}"
+                Height="{x:Bind Touch.Width, Mode=OneWay}"
+                Content="{x:Bind Touch.Width, Mode=OneWay}"
+                ContentTemplate="{StaticResource TouchCirclesTemplate}" />
         </Grid>
 
-        <Border.RenderTransform>
-            <TranslateTransform x:Name="TouchTransform" />
-        </Border.RenderTransform>
-    </Border>
+    </Grid>
 </UserControl>
