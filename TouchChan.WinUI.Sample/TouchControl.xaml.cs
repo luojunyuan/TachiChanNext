@@ -83,19 +83,16 @@ public sealed partial class TouchControl : UserControl
             TouchReleaseStoryboard.Events().Completed.Select(_ => true))
             .ToProperty(initialValue: true);
 
-        _isMenuOpenedHelper = MenuTransistCompleted
+        _isMenuOpenedHelper = MenuTransitsCompleted
             .ToProperty(initialValue: false);
 
-        // TODO: 窗口大小改变后的from不对。老生话题了
-        BindingMenuTransitionAnimations();
+        //BindingMenuTransitionAnimations();
 
         // TODO: 
-        // 1 测试uwp动画执行过程中改变 To
+        // 1 测试 uwp 动画执行过程中改变 To
         // 2 测试空项目double转int，int转double，分别看aot和jit，x32dbg跑起来或者IDA静态
-        // 3 单独建立 Menu，全新构建这个控件
-
-        //.Do(_ => _isAnimating.OnNext(true))
-        //Touch.Events().PointerPressed.Where(p => p.GetCurrentPoint(this).Properties.IsLeftButtonPressed).Subscribe(_ => StartTouchFadeInAnimation(Touch));
+        // * (In Progress) 单独建立 Menu，全新构建这个控件
+        // 4 窗口大小改变后的 from 不对。老生话题了
     }
 
     /// <summary>
@@ -216,6 +213,11 @@ public sealed partial class TouchControl : UserControl
                 this.Size(), TouchRect))
             .Subscribe(StartTouchTranslateAnimation);
 
+        //NewMethod(dragStartedStream, dragEndedStream, pointerPressedStream, pointerReleasedStream);
+    }
+
+    private void NewMethod(Observable<PointerRoutedEventArgs> dragStartedStream, Observable<PointerRoutedEventArgs> dragEndedStream, Observable<PointerRoutedEventArgs> pointerPressedStream, Observable<PointerRoutedEventArgs> pointerReleasedStream)
+    {
 
         // 定义点击检测需要的参数
         const int holdTimeThreshold = 500; // 长按触发阈值 (ms)
@@ -226,7 +228,8 @@ public sealed partial class TouchControl : UserControl
 
         // 普通点击流：在hold时间内释放
         var clickStream = pointerPressedStream
-            .SelectMany(pressEvent => {
+            .SelectMany(pressEvent =>
+            {
                 // 记录按下时间
                 var pressTime = DateTimeOffset.Now;
 
@@ -239,7 +242,8 @@ public sealed partial class TouchControl : UserControl
 
         // 长按释放流：超过hold时间后释放
         var holdReleaseStream = pointerPressedStream
-            .SelectMany(pressEvent => {
+            .SelectMany(pressEvent =>
+            {
                 // 记录按下时间
                 var pressTime = DateTimeOffset.Now;
 
@@ -252,7 +256,17 @@ public sealed partial class TouchControl : UserControl
 
         clickStream.Do(_ => Debug.WriteLine("clickStream")).Subscribe();
 
-        clickStream.ObserveOn(App.UISyncContext).Subscribe(_ =>
+        BehaviorSubject<bool> _clickInProgress = new(false);
+        var delayedClickStream = clickStream
+            .ObserveOn(App.UISyncContext)
+            // 只有当没有正在处理的点击时才允许新的点击
+            .Where(_ => !_clickInProgress.Value)
+            // 标记点击处理已开始
+            .Do(_ => _clickInProgress.OnNext(true))
+            // 延迟200毫秒
+            .SelectMany(_ => Observable.Timer(TimeSpan.FromMilliseconds(200)).Select(__ => Unit.Default));
+
+        delayedClickStream.ObserveOn(App.UISyncContext).Subscribe(_ =>
         {
             Menu.Visibility = Visibility.Visible;
             Touch.Visibility = Visibility.Collapsed;
@@ -265,13 +279,16 @@ public sealed partial class TouchControl : UserControl
         {
             StartMenuTransitionAnimationReverse();
         });
-        MenuTransistCompleted
-            .Where(isOpend => isOpend == false)
+
+        MenuTransitsCompleted
+            .Do(_ => _clickInProgress.OnNext(false))
+            .Do(isOpened => Debug.WriteLine($"{(isOpened ? "MenuOpened" : "MenuClosed")}"))
+            .Where(isOpened => isOpened == false)
             .Subscribe(_ =>
             {
                 Menu.Visibility = Visibility.Collapsed;
                 Touch.Visibility = Visibility.Visible;
-                Menu.Width = TouchRect.Width * 5;
+                //Menu.Width = TouchRect.Width * 5;
                 MenuTransXAnimation.To = 0;
                 MenuTransYAnimation.To = 0;
             });
@@ -293,6 +310,7 @@ public sealed partial class TouchControl : UserControl
         TouchPreviewPressedSubject.Subscribe(_ => StartTouchFadeInAnimation(Touch));
 
         Observable.Merge(
+            MenuTransitsCompleted.Where(isOpened => isOpened == false).Select(_ => Unit.Default),
             TouchReleaseStoryboard.Events().Completed.Select(_ => Unit.Default),
             TouchHoldReleaseSubject,
             GameContext.WindowAttached)
@@ -345,21 +363,41 @@ public sealed partial class TouchControl // Animation Dragging Release
 
 public sealed partial class TouchControl // Animation Menu Transition
 {
-    private readonly static TimeSpan MenuTransistDuration = TimeSpan.FromMilliseconds(200);
+    private readonly static TimeSpan MenuTransitsDuration = TimeSpan.FromMilliseconds(200);
     private readonly Storyboard MenuTransitionStoryboard = new();
-    private readonly static PowerEase UnifiedPowerFunction = new() { EasingMode = EasingMode.EaseInOut };
-    private readonly DoubleAnimation MenuWidthAnimation = new() { EnableDependentAnimation = true, Duration = MenuTransistDuration, EasingFunction = UnifiedPowerFunction };
-    private readonly DoubleAnimation MenuHeightAnimation = new() { EnableDependentAnimation = true, Duration = MenuTransistDuration, EasingFunction = UnifiedPowerFunction };
-    private readonly DoubleAnimation MenuTransXAnimation = new() { Duration = MenuTransistDuration, EasingFunction = UnifiedPowerFunction };
-    private readonly DoubleAnimation MenuTransYAnimation = new() { Duration = MenuTransistDuration, EasingFunction = UnifiedPowerFunction };
+    private readonly static PowerEase? UnifiedPowerFunction = null; // new() { EasingMode = EasingMode.EaseInOut, };
+    private readonly DoubleAnimation MenuWidthAnimation = new() 
+    { 
+        EnableDependentAnimation = true, 
+        Duration = MenuTransitsDuration,
+        //EasingFunction = new PowerEase() { EasingMode = EasingMode.EaseInOut, Power = 3 },
+    };
+    private readonly DoubleAnimation MenuHeightAnimation = new() 
+    { 
+        EnableDependentAnimation = true, 
+        Duration = MenuTransitsDuration, 
+        //EasingFunction = new PowerEase() { EasingMode = EasingMode.EaseInOut, Power = 3 },
+    };
+    private readonly DoubleAnimation MenuTransXAnimation = new()
+    { 
+        EnableDependentAnimation = true, 
+        Duration = MenuTransitsDuration, 
+        //EasingFunction = new PowerEase() { EasingMode = EasingMode.EaseInOut, Power = 3 }, 
+    };
+    private readonly DoubleAnimation MenuTransYAnimation = new()
+    {
+        EnableDependentAnimation = true, 
+        Duration = MenuTransitsDuration, 
+        //EasingFunction = new PowerEase() { EasingMode = EasingMode.EaseInOut, Power = 3 },
+    };
     private readonly DoubleAnimation FakeTouchOpacityAnimation = new()
     {
         From = OpacityFull,
         To = 0,
-        Duration = MenuTransistDuration,
+        Duration = MenuTransitsDuration,
     };
 
-    private readonly Subject<bool> MenuTransistCompleted = new();
+    private readonly Subject<bool> MenuTransitsCompleted = new();
 
     private void BindingMenuTransitionAnimations()
     {
@@ -371,7 +409,7 @@ public sealed partial class TouchControl // Animation Menu Transition
         MenuTransitionStoryboard.Events().Completed.Subscribe(_ =>
         {
             AnimationTool.InputBlocked.OnNext(false);
-            MenuTransistCompleted.OnNext(!IsMenuOpened);
+            MenuTransitsCompleted.OnNext(!IsMenuOpened);
         });
     }
 
