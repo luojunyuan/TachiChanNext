@@ -65,7 +65,7 @@
             Height="{x:Bind Menu.Width, Mode=OneWay}"
             Background="{StaticResource AssistiveTouchBackground}"
             CornerRadius="{x:Bind Touch.CornerRadius, Mode=OneWay}"
-            Visibility="Collapsed">
+            Visibility="{x:Bind cv:XamlConverter.VisibleInverse(Touch.Visibility), Mode=OneWay}">
 
             <ContentPresenter x:Name="FakeTouch"
                 Width="{x:Bind Touch.Width, Mode=OneWay}"
