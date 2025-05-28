@@ -71,7 +71,7 @@ public sealed partial class TouchControl : UserControl
             this.Events().SizeChanged.Where(_ => IsTouchDocked == true).Select(x => x.NewSize),
             // 小白点释放后
             _touchAnimationsController.TouchDockCompleted.Select(_ => this.Size()))
-            .Select(window => PositionCalculator.CalculateTouchDockRect(window, CurrentDock, 
+            .Select(window => PositionCalculator.CalculateTouchDockRect(window, CurrentDock,
                 window.Width < windowSizeThreshold || window.Height < windowSizeThreshold ? 60 : 80))
             .Subscribe(touchRect => TouchRect = touchRect);
     }
@@ -243,7 +243,7 @@ public sealed partial class TouchControl // Menu Definition
         //_menuAnimationsController.BindingMenuTransitionAnimations(
         //    Menu, MenuTransform, FakeTouch,
         //    this.Events().SizeChanged.Select(x => TouchRectToCenterCoordinate(x.NewSize)));
-        _menuAnimationsController.BindingMenuTransitionAnimations(FakeTouch, 
+        _menuAnimationsController.BindingMenuTransitionAnimations(FakeTouch,
             MenuBackground, ScaleTransform, MenuTransform);
 
         const int holdTimeThreshold = 500;
@@ -478,13 +478,7 @@ public static partial class AnimationTool
     {
         Storyboard.SetTarget(animation, target);
         Storyboard.SetTargetProperty(animation, path);
-        try
-        {
-            storyboard.Children.Add(animation);
-        } catch (Exception ex)
-        {
-            ;
-        }
+        storyboard.Children.Add(animation);
     }
 }
 
@@ -544,16 +538,16 @@ public class MenuScaleTransitsAnimations
     private const double ScaleOrigin = 1.0;
     private const double ScaleFrom = ScaleOrigin / TouchControl.MenuTouchSizeRatio;
     private readonly DoubleAnimation _menuScaleXAnimation = new()
-    { 
-        From = ScaleFrom, 
-        To = ScaleOrigin, 
-        Duration = MenuTransitsDuration, 
+    {
+        From = ScaleFrom,
+        To = ScaleOrigin,
+        Duration = MenuTransitsDuration,
     };
     private readonly DoubleAnimation _menuScaleYAnimation = new()
-    { 
-        From = ScaleFrom, 
-        To = ScaleOrigin, 
-        Duration = MenuTransitsDuration, 
+    {
+        From = ScaleFrom,
+        To = ScaleOrigin,
+        Duration = MenuTransitsDuration,
     };
     private readonly DoubleAnimation _fakeTouchOpacityAnimation = new()
     {
@@ -633,6 +627,7 @@ public class MenuScaleTransitsAnimations
 
     private static ObjectAnimationUsingKeyFrames CreateAntiCornerScaleAnimation()
     {
+        // NOTE: touch menu 大小变化了理应是圆角变化的，但是没法重建动画，目前来说可以勉强接受 30-150 的圆角变化
         double startRadius = 200;    // 初始角度
         double endRadius = 40;       // 结束角度
 
@@ -680,7 +675,7 @@ public class MenuScaleTransitsAnimations
             var newKeyFrame = new DiscreteObjectKeyFrame
             {
                 KeyTime = originalKeyFrames[i].KeyTime,
-                Value = originalKeyFrames[^(i+1)].Value
+                Value = originalKeyFrames[^(i + 1)].Value
             };
 
             reverseAnimation.KeyFrames.Add(newKeyFrame);
