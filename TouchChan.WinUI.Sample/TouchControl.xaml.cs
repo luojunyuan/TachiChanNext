@@ -27,6 +27,8 @@ public sealed partial class TouchControl // State
 
 public sealed partial class TouchControl : UserControl
 {
+    public const double MenuTouchSizeRatio = 5.0;
+
     public TouchControl()
     {
         InitializeComponent();
@@ -47,12 +49,12 @@ public sealed partial class TouchControl : UserControl
             _touchAnimationsController.TouchDockCompleted.Select(_ => true))
             .ToProperty(initialValue: true);
 
-        // TODO: 
         // * 单独建立 Menu，全新构建这个控件，保留 scale 和 width 两套动画，保证可替换的代码质量
         // * Menu 动画窗口大小改变后的 from 不对。老生话题了
         // * 测试触控上的 Dragging 以及各个交互的触发 log 情况
+        // TODO: 
         // Perf
-        // A 复原 ScaleTransform 的动画以备不需
+        // * 复原 ScaleTransform 的动画以备不需
         // B 测试空白 uwp 动画执行过程中改变 To 怎么做并应用到 TouchControl
         // - 性能测试空项目 double 转 int，分别看 aot 和 jit，x32dbg跑起来或者IDA静态分析
     }
@@ -185,7 +187,6 @@ public sealed partial class TouchControl : UserControl
     private readonly Subject<Unit> _touchPreviewPressedSubject = new();
     private readonly Subject<Unit> _touchHoldReleaseSubject = new();
     private readonly TouchAnimations _touchAnimationsController = new();
-    private readonly MenuAnimations _menuAnimationsController = new();
 
     private void TouchOpacitySubscribe()
     {
@@ -231,14 +232,19 @@ public sealed partial class TouchControl : UserControl
 
 public sealed partial class TouchControl // Menu Definition
 {
+    //private readonly MenuAnimations _menuAnimationsController = new();
+    private readonly MenuScaleTransitsAnimations _menuAnimationsController = new();
+
     private void MenuSubscribe(
         Observable<PointerRoutedEventArgs> dragStartedStream,
         Observable<PointerRoutedEventArgs> pointerPressedStream,
         Observable<PointerRoutedEventArgs> pointerReleasedStream)
     {
-        _menuAnimationsController.BindingMenuTransitionAnimations(
-            Menu, MenuTransform, FakeTouch,
-            this.Events().SizeChanged.Select(x => TouchRectToCenterCoordinate(x.NewSize)));
+        //_menuAnimationsController.BindingMenuTransitionAnimations(
+        //    Menu, MenuTransform, FakeTouch,
+        //    this.Events().SizeChanged.Select(x => TouchRectToCenterCoordinate(x.NewSize)));
+        _menuAnimationsController.BindingMenuTransitionAnimations(FakeTouch, 
+            MenuBackground, ScaleTransform, MenuTransform);
 
         const int holdTimeThreshold = 500;
 
@@ -274,7 +280,8 @@ public sealed partial class TouchControl // Menu Definition
         });
 
         Menu.Events().PointerPressed.Subscribe(_ =>
-            _menuAnimationsController.StartMenuTransitionAnimation());
+            _menuAnimationsController.StartMenuTransitionAnimationReverse(
+                TouchRectToCenterCoordinate(this.Size())));
 
         _menuAnimationsController.MenuClosed
             .Subscribe(_ => Touch.Visibility = Visibility.Visible);
@@ -315,7 +322,7 @@ public class TouchAnimations
     }
 }
 
-public class MenuAnimations
+public class MenuTransitsAnimations
 {
     public Observable<Unit> MenuOpened => _menuOpenedSubject
         .Where(isOpened => isOpened == true)
@@ -390,7 +397,7 @@ public class MenuAnimations
     public void StartMenuTransitionAnimation(Rect touchRectCenter)
     {
         AnimationTool.InputBlocked.OnNext(true);
-        _menuWidthAnimation.To = _menuHeightAnimation.To = touchRectCenter.Width * 5;
+        _menuWidthAnimation.To = _menuHeightAnimation.To = touchRectCenter.Width * TouchControl.MenuTouchSizeRatio;
         _menuWidthAnimation.From = _menuHeightAnimation.From = touchRectCenter.Width;
         // NOTE: 以中心点为坐标系原点时，原点是触摸按钮的中心点，不再是触摸按钮的左上角
         (_menuTransXAnimation.From, _menuTransYAnimation.From) = (touchRectCenter.X, touchRectCenter.Y);
@@ -471,7 +478,13 @@ public static partial class AnimationTool
     {
         Storyboard.SetTarget(animation, target);
         Storyboard.SetTargetProperty(animation, path);
-        storyboard.Children.Add(animation);
+        try
+        {
+            storyboard.Children.Add(animation);
+        } catch (Exception ex)
+        {
+            ;
+        }
     }
 }
 
@@ -506,5 +519,173 @@ public static partial class XamlConverter
 
         factor = default;
         return false;
+    }
+}
+
+
+public class MenuScaleTransitsAnimations
+{
+    public Observable<Unit> MenuOpened => _menuOpenedSubject
+        .Where(isOpened => isOpened == true)
+        .Select(_ => Unit.Default)
+        .Share();
+
+    public Observable<Unit> MenuClosed => _menuOpenedSubject
+        .Where(isOpened => isOpened == false)
+        .Select(_ => Unit.Default)
+        .Share();
+
+    // NOTE: 单 ObjectAnimationUsingKeyFrames 无法 reverse 反转，并且 Storyboard 执行后没法 remove 它重建
+
+    private readonly static TimeSpan MenuTransitsDuration = TimeSpan.FromMilliseconds(200);
+    private readonly Storyboard _menuTransitionStoryboard = new();
+    private readonly DoubleAnimation _menuTransXAnimation = new() { Duration = MenuTransitsDuration, };
+    private readonly DoubleAnimation _menuTransYAnimation = new() { Duration = MenuTransitsDuration, };
+    private const double ScaleOrigin = 1.0;
+    private const double ScaleFrom = ScaleOrigin / TouchControl.MenuTouchSizeRatio;
+    private readonly DoubleAnimation _menuScaleXAnimation = new()
+    { 
+        From = ScaleFrom, 
+        To = ScaleOrigin, 
+        Duration = MenuTransitsDuration, 
+    };
+    private readonly DoubleAnimation _menuScaleYAnimation = new()
+    { 
+        From = ScaleFrom, 
+        To = ScaleOrigin, 
+        Duration = MenuTransitsDuration, 
+    };
+    private readonly DoubleAnimation _fakeTouchOpacityAnimation = new()
+    {
+        From = 1,
+        To = 0,
+        Duration = MenuTransitsDuration,
+    };
+    private readonly Storyboard _storyboardReverse = new();
+    private readonly DoubleAnimation _menuTransXAnimationReverse = new() { Duration = MenuTransitsDuration, };
+    private readonly DoubleAnimation _menuTransYAnimationReverse = new() { Duration = MenuTransitsDuration, };
+    private readonly DoubleAnimation _menuScaleXAnimationReverse = new()
+    {
+        From = ScaleOrigin,
+        To = ScaleFrom,
+        Duration = MenuTransitsDuration,
+    };
+    private readonly DoubleAnimation _menuScaleYAnimationReverse = new()
+    {
+        From = ScaleOrigin,
+        To = ScaleFrom,
+        Duration = MenuTransitsDuration,
+    };
+    private readonly DoubleAnimation _fakeTouchOpacityAnimationReverse = new()
+    {
+        From = 0,
+        To = 1,
+        Duration = MenuTransitsDuration,
+    };
+
+    private readonly BehaviorSubject<bool> _menuOpenedSubject = new(false);
+
+
+    public void BindingMenuTransitionAnimations(
+        UIElement fakeTouch,
+        Border background, ScaleTransform scaleTransform, Transform translateTransform)
+    {
+        var cornerRadiusAnimation = CreateAntiCornerScaleAnimation();
+        _menuTransitionStoryboard.BindingAnimation(_menuScaleXAnimation, scaleTransform, nameof(ScaleTransform.ScaleX));
+        _menuTransitionStoryboard.BindingAnimation(_menuScaleYAnimation, scaleTransform, nameof(ScaleTransform.ScaleY));
+        _menuTransitionStoryboard.BindingAnimation(_menuTransXAnimation, translateTransform, nameof(TranslateTransform.X));
+        _menuTransitionStoryboard.BindingAnimation(_menuTransYAnimation, translateTransform, nameof(TranslateTransform.Y));
+        _menuTransitionStoryboard.BindingAnimation(_fakeTouchOpacityAnimation, fakeTouch, nameof(UIElement.Opacity));
+        _menuTransitionStoryboard.BindingAnimation(cornerRadiusAnimation, background, nameof(Border.CornerRadius));
+
+        var cornerRadiusAnimationReverse = CreateReverseCornerAnimation(cornerRadiusAnimation);
+        _storyboardReverse.BindingAnimation(_menuScaleXAnimationReverse, scaleTransform, nameof(ScaleTransform.ScaleX));
+        _storyboardReverse.BindingAnimation(_menuScaleYAnimationReverse, scaleTransform, nameof(ScaleTransform.ScaleY));
+        _storyboardReverse.BindingAnimation(_menuTransXAnimationReverse, translateTransform, nameof(TranslateTransform.X));
+        _storyboardReverse.BindingAnimation(_menuTransYAnimationReverse, translateTransform, nameof(TranslateTransform.Y));
+        _storyboardReverse.BindingAnimation(_fakeTouchOpacityAnimationReverse, fakeTouch, nameof(UIElement.Opacity));
+        _storyboardReverse.BindingAnimation(cornerRadiusAnimationReverse, background, nameof(Border.CornerRadius));
+
+        Observable.Merge(
+            _menuTransitionStoryboard.Events().Completed,
+            _storyboardReverse.Events().Completed)
+            .Subscribe(_ =>
+            {
+                AnimationTool.InputBlocked.OnNext(false);
+                _menuOpenedSubject.OnNext(!_menuOpenedSubject.Value);
+            });
+    }
+
+    public void StartMenuTransitionAnimation(Rect touchRectCenter)
+    {
+        AnimationTool.InputBlocked.OnNext(true);
+        // NOTE: 以中心点为坐标系原点时，原点是触摸按钮的中心点，不再是触摸按钮的左上角
+        (_menuTransXAnimation.From, _menuTransYAnimation.From) = (touchRectCenter.X, touchRectCenter.Y);
+        _menuTransitionStoryboard.Begin();
+    }
+
+    public void StartMenuTransitionAnimationReverse(Rect touchRectCenter)
+    {
+        AnimationTool.InputBlocked.OnNext(true);
+        (_menuTransXAnimationReverse.To, _menuTransYAnimationReverse.To) = (touchRectCenter.X, touchRectCenter.Y);
+        _storyboardReverse.Begin();
+    }
+
+    private static ObjectAnimationUsingKeyFrames CreateAntiCornerScaleAnimation()
+    {
+        double startRadius = 200;    // 初始角度
+        double endRadius = 40;       // 结束角度
+
+        const int fps = 120;
+        var totalDuration = MenuTransitsDuration.TotalMilliseconds;
+
+        var cornerRadiusAnimation = new ObjectAnimationUsingKeyFrames
+        {
+            Duration = MenuTransitsDuration,
+        };
+        var frames = totalDuration / (1.0 / fps * 1000);
+        var millisecondPerFrame = totalDuration / frames;
+
+        for (var i = 0; i < frames; i++)
+        {
+            var progress = i / (frames - 1);
+            //var frameTimeMilliseconds = easeFunction.Ease(progress) * totalDuration;
+            var frameTimeMilliseconds = i * millisecondPerFrame;
+            var currentRadius = startRadius + (endRadius - startRadius) * progress;
+
+            var keyFrame = new DiscreteObjectKeyFrame
+            {
+                KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(frameTimeMilliseconds)),
+                Value = new CornerRadius(currentRadius, currentRadius, currentRadius, currentRadius)
+            };
+
+            cornerRadiusAnimation.KeyFrames.Add(keyFrame);
+        }
+
+        return cornerRadiusAnimation;
+    }
+
+    private static ObjectAnimationUsingKeyFrames CreateReverseCornerAnimation(
+        ObjectAnimationUsingKeyFrames originalAnimation)
+    {
+        var reverseAnimation = new ObjectAnimationUsingKeyFrames
+        {
+            Duration = originalAnimation.Duration
+        };
+
+        var originalKeyFrames = originalAnimation.KeyFrames.ToList();
+
+        for (int i = 0; i < originalKeyFrames.Count; i++)
+        {
+            var newKeyFrame = new DiscreteObjectKeyFrame
+            {
+                KeyTime = originalKeyFrames[i].KeyTime,
+                Value = originalKeyFrames[^(i+1)].Value
+            };
+
+            reverseAnimation.KeyFrames.Add(newKeyFrame);
+        }
+
+        return reverseAnimation;
     }
 }

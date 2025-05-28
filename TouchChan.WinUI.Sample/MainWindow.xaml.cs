@@ -19,8 +19,8 @@ namespace TouchChan.WinUI.Sample
         {
             Instance = this;
             InitializeComponent();
-            this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(800, 600));
-            //this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(1280, 720));
+            //this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(800, 600));
+            this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(1280, 720));
             //this.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32(1920, 1080));
 
             // TODO: 仅测试，实际情况应该在外部窗口循环触发

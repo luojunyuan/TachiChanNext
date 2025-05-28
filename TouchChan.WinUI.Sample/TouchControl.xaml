@@ -61,11 +61,17 @@
 
         <!--  NOTE: Menu 和 Touch 的 Width 不同决定了他们必然是俩个控件  -->
         <Grid x:Name="Menu"
-            Width="{x:Bind cv:XamlConverter.SizeMultiply(Touch.Width, 5), Mode=OneWay}"
+            Width="{x:Bind cv:XamlConverter.SizeMultiply(Touch.Width, cv:TouchControl.MenuTouchSizeRatio), Mode=OneWay}"
             Height="{x:Bind Menu.Width, Mode=OneWay}"
-            Background="{StaticResource AssistiveTouchBackground}"
-            CornerRadius="{x:Bind Touch.CornerRadius, Mode=OneWay}"
             Visibility="{x:Bind cv:XamlConverter.VisibleInverse(Touch.Visibility), Mode=OneWay}">
+            <Border x:Name="MenuBackground"
+                Background="{StaticResource AssistiveTouchBackground}"
+                CornerRadius="{x:Bind Touch.CornerRadius, Mode=OneWay}"
+                RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="ScaleTransform" />
+                </Border.RenderTransform>
+            </Border>
 
             <ContentPresenter x:Name="FakeTouch"
                 Width="{x:Bind Touch.Width, Mode=OneWay}"
