@@ -103,9 +103,9 @@ public static class PositionCalculator
     {
         var finalPoint = CalculateTouchFinalPosition(container, touch);
 
-        var newRect = new Rect(finalPoint.X, finalPoint.Y, touch.Width, touch.Width);
+        var dockRect = new Rect(finalPoint.X, finalPoint.Y, touch.Width, touch.Width);
 
-        return GetLastTouchDockAnchor(container, newRect);
+        return GetLastTouchDockAnchor(container, dockRect);
     }
 
     /// <summary>
