@@ -48,11 +48,12 @@ public sealed partial class TouchControl : UserControl
             .ToProperty(initialValue: true);
 
         // TODO: 
-        // 1 测试空白 uwp 动画执行过程中改变 To 怎么做并应用到 TouchControl
         // * 单独建立 Menu，全新构建这个控件，保留 scale 和 width 两套动画，保证可替换的代码质量
-        // 3 Menu 动画窗口大小改变后的 from 不对。老生话题了
-        // 4 复原ScaleTransform的动画以备不需
+        // * Menu 动画窗口大小改变后的 from 不对。老生话题了
         // * 测试触控上的 Dragging 以及各个交互的触发 log 情况
+        // Perf
+        // A 复原 ScaleTransform 的动画以备不需
+        // B 测试空白 uwp 动画执行过程中改变 To 怎么做并应用到 TouchControl
         // - 性能测试空项目 double 转 int，分别看 aot 和 jit，x32dbg跑起来或者IDA静态分析
     }
 
@@ -61,15 +62,15 @@ public sealed partial class TouchControl : UserControl
     /// </summary>
     private void TouchDockSubscribe()
     {
-        // QUES: 为什么是 600
-        const int windowWidthThreshold = 600;
+        // QUES: 为什么选择 600
+        const int windowSizeThreshold = 600;
         Observable.Merge(
             // 小白点停靠时
             this.Events().SizeChanged.Where(_ => IsTouchDocked == true).Select(x => x.NewSize),
             // 小白点释放后
             _touchAnimationsController.TouchDockCompleted.Select(_ => this.Size()))
-            .Select(window => PositionCalculator.CalculateTouchDockRect(
-                window, CurrentDock, window.Width < windowWidthThreshold ? 60 : 80))
+            .Select(window => PositionCalculator.CalculateTouchDockRect(window, CurrentDock, 
+                window.Width < windowSizeThreshold || window.Height < windowSizeThreshold ? 60 : 80))
             .Subscribe(touchRect => TouchRect = touchRect);
     }
 
@@ -178,17 +179,17 @@ public sealed partial class TouchControl : UserControl
 
         pointerPressedStream.Select(_ => Unit.Default).Subscribe(_touchPreviewPressedSubject.OnNext);
 
-        MenuSubscribe(dragStartedStream, dragEndedStream, pointerPressedStream, pointerReleasedStream);
+        MenuSubscribe(dragStartedStream, pointerPressedStream, pointerReleasedStream);
     }
 
-    private readonly Subject<Unit> _touchPreviewPressedSubject = new ();
-    private readonly Subject<Unit> _touchHoldReleaseSubject = new ();
+    private readonly Subject<Unit> _touchPreviewPressedSubject = new();
+    private readonly Subject<Unit> _touchHoldReleaseSubject = new();
     private readonly TouchAnimations _touchAnimationsController = new();
     private readonly MenuAnimations _menuAnimationsController = new();
 
     private void TouchOpacitySubscribe()
     {
-        var touchOpacityController = new TouchOpacityAnimation();    
+        var touchOpacityController = new TouchOpacityAnimation();
 
         touchOpacityController.BindingOpacityAnimations(Touch);
 
@@ -216,13 +217,28 @@ public sealed partial class TouchControl : UserControl
         get => new(TouchTransform.X, TouchTransform.Y, Touch.Width, Touch.Width);
         set => (TouchTransform.X, TouchTransform.Y, Touch.Width) = (value.X, value.Y, value.Width);
     }
+
+    private Rect TouchRectToCenterCoordinate(Size container)
+    {
+        var touchRect = TouchRect;
+        return new(
+            touchRect.X - (container.Width - touchRect.Width) / 2,
+            touchRect.Y - (container.Height - touchRect.Height) / 2,
+            touchRect.Width,
+            touchRect.Width);
+    }
 }
 
 public sealed partial class TouchControl // Menu Definition
 {
-    private void MenuSubscribe(Observable<PointerRoutedEventArgs> dragStartedStream, Observable<PointerRoutedEventArgs> dragEndedStream, Observable<PointerRoutedEventArgs> pointerPressedStream, Observable<PointerRoutedEventArgs> pointerReleasedStream)
+    private void MenuSubscribe(
+        Observable<PointerRoutedEventArgs> dragStartedStream,
+        Observable<PointerRoutedEventArgs> pointerPressedStream,
+        Observable<PointerRoutedEventArgs> pointerReleasedStream)
     {
-        _menuAnimationsController.BindingMenuTransitionAnimations(Menu, MenuTransform, FakeTouch);
+        _menuAnimationsController.BindingMenuTransitionAnimations(
+            Menu, MenuTransform, FakeTouch,
+            this.Events().SizeChanged.Select(x => TouchRectToCenterCoordinate(x.NewSize)));
 
         const int holdTimeThreshold = 500;
 
@@ -241,13 +257,11 @@ public sealed partial class TouchControl // Menu Definition
 
         var clickStream =
             pressedHoldTimeStream
-            .Where(holdTime => holdTime < holdTimeThreshold)
-            .Share();
+            .Where(holdTime => holdTime < holdTimeThreshold);
 
         var holdReleaseStream =
             pressedHoldTimeStream
-            .Where(holdTime => holdTime >= holdTimeThreshold)
-            .Share();
+            .Where(holdTime => holdTime >= holdTimeThreshold);
 
         holdReleaseStream.Select(_ => Unit.Default)
             .Subscribe(_touchHoldReleaseSubject.OnNext);
@@ -255,10 +269,11 @@ public sealed partial class TouchControl // Menu Definition
         clickStream.ObserveOn(App.UISyncContext).Subscribe(_ =>
         {
             Touch.Visibility = Visibility.Collapsed;
-            _menuAnimationsController.StartMenuTransitionAnimation(TouchRect, this.Size());
+            _menuAnimationsController.StartMenuTransitionAnimation(
+                TouchRectToCenterCoordinate(this.Size()));
         });
 
-        Menu.Events().PointerPressed.Subscribe(_ => 
+        Menu.Events().PointerPressed.Subscribe(_ =>
             _menuAnimationsController.StartMenuTransitionAnimation());
 
         _menuAnimationsController.MenuClosed
@@ -275,7 +290,7 @@ public class TouchAnimations
         .Select(_ => Unit.Default)
         .Share();
 
-    private static readonly TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(2000);
+    private static readonly TimeSpan ReleaseToEdgeDuration = TimeSpan.FromMilliseconds(200);
     private readonly Storyboard _touchReleaseStoryboard = new();
     private readonly DoubleAnimation _releaseXAnimation = new() { Duration = ReleaseToEdgeDuration };
     private readonly DoubleAnimation _releaseYAnimation = new() { Duration = ReleaseToEdgeDuration };
@@ -302,12 +317,12 @@ public class TouchAnimations
 
 public class MenuAnimations
 {
-    public Observable<Unit> MenuOpened => _menuOpendSubject
+    public Observable<Unit> MenuOpened => _menuOpenedSubject
         .Where(isOpened => isOpened == true)
         .Select(_ => Unit.Default)
         .Share();
 
-    public Observable<Unit> MenuClosed => _menuOpendSubject
+    public Observable<Unit> MenuClosed => _menuOpenedSubject
         .Where(isOpened => isOpened == false)
         .Select(_ => Unit.Default)
         .Share();
@@ -316,15 +331,15 @@ public class MenuAnimations
 
     private readonly static TimeSpan MenuTransitsDuration = TimeSpan.FromMilliseconds(200);
     private readonly Storyboard _menuTransitionStoryboard = new();
-    private readonly DoubleAnimation _menuWidthAnimation = new() 
-    { 
-        EnableDependentAnimation = true, 
+    private readonly DoubleAnimation _menuWidthAnimation = new()
+    {
+        EnableDependentAnimation = true,
         Duration = MenuTransitsDuration,
     };
-    private readonly DoubleAnimation _menuHeightAnimation = new() 
-    { 
-        EnableDependentAnimation = true, 
-        Duration = MenuTransitsDuration, 
+    private readonly DoubleAnimation _menuHeightAnimation = new()
+    {
+        EnableDependentAnimation = true,
+        Duration = MenuTransitsDuration,
     };
     private readonly DoubleAnimation _menuTransXAnimation = new() { Duration = MenuTransitsDuration, };
     private readonly DoubleAnimation _menuTransYAnimation = new() { Duration = MenuTransitsDuration, };
@@ -335,9 +350,13 @@ public class MenuAnimations
         Duration = MenuTransitsDuration,
     };
 
-    private readonly BehaviorSubject<bool> _menuOpendSubject = new(false);
+    private readonly BehaviorSubject<bool> _menuOpenedSubject = new(false);
 
-    public void BindingMenuTransitionAnimations(FrameworkElement menu, TranslateTransform transform, UIElement fakeTouch)
+    public void BindingMenuTransitionAnimations(
+        FrameworkElement menu,
+        TranslateTransform transform,
+        UIElement fakeTouch,
+        Observable<Rect> touchRectOnWindowResize)
     {
         _menuTransitionStoryboard.BindingAnimation(_menuWidthAnimation, menu, nameof(FrameworkElement.Width));
         _menuTransitionStoryboard.BindingAnimation(_menuHeightAnimation, menu, nameof(FrameworkElement.Height));
@@ -347,7 +366,6 @@ public class MenuAnimations
         _menuTransitionStoryboard.Events().Completed.Subscribe(_ =>
         {
             AnimationTool.InputBlocked.OnNext(false);
-            _menuOpendSubject.OnNext(!_menuOpendSubject.Value);
 
             SwapAnimation(_menuWidthAnimation);
             SwapAnimation(_menuHeightAnimation);
@@ -355,20 +373,27 @@ public class MenuAnimations
             SwapAnimation(_menuTransYAnimation);
             SwapAnimation(_fakeTouchOpacityAnimation);
 
+            _menuOpenedSubject.OnNext(!_menuOpenedSubject.Value);
+
             static void SwapAnimation(DoubleAnimation animation) =>
                 (animation.To, animation.From) = (animation.From, animation.To);
         });
+        touchRectOnWindowResize
+            .Where(_ => _menuOpenedSubject.Value == true)
+            .Subscribe(touchRectCenter =>
+            {
+                _menuWidthAnimation.To = _menuHeightAnimation.To = touchRectCenter.Width;
+                (_menuTransXAnimation.To, _menuTransYAnimation.To) = (touchRectCenter.X, touchRectCenter.Y);
+            });
     }
 
-    public void StartMenuTransitionAnimation(Rect touch, Size container)
+    public void StartMenuTransitionAnimation(Rect touchRectCenter)
     {
         AnimationTool.InputBlocked.OnNext(true);
-        _menuWidthAnimation.To = _menuHeightAnimation.To = touch.Width * 5;
-        _menuWidthAnimation.From = _menuHeightAnimation.From = touch.Width;
+        _menuWidthAnimation.To = _menuHeightAnimation.To = touchRectCenter.Width * 5;
+        _menuWidthAnimation.From = _menuHeightAnimation.From = touchRectCenter.Width;
         // NOTE: 以中心点为坐标系原点时，原点是触摸按钮的中心点，不再是触摸按钮的左上角
-        (_menuTransXAnimation.From, _menuTransYAnimation.From) =
-            (touch.X - (container.Width - touch.Width) / 2,
-            touch.Y - (container.Height - touch.Height) / 2);
+        (_menuTransXAnimation.From, _menuTransYAnimation.From) = (touchRectCenter.X, touchRectCenter.Y);
         _menuTransitionStoryboard.Begin();
     }
 
@@ -452,10 +477,10 @@ public static partial class AnimationTool
 
 public static partial class XamlConverter
 {
-    public static Visibility VisibleInverse(Visibility value) => 
+    public static Visibility VisibleInverse(Visibility value) =>
         value == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
 
-    public static CornerRadius CircleCorner(double value, double factor) => 
+    public static CornerRadius CircleCorner(double value, double factor) =>
         double.IsNaN(value) ? default : new(value * factor);
 
     public static Thickness TouchLayerMargin(double value, string fractionFactor)
