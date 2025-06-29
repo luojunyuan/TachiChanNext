@@ -24,7 +24,10 @@
 
 使用先创建窗口，再设置 WS_EX_LAYERED，指定 #FF00800(Green) 颜色为透明通道的方式建立的透明窗口。实践中发现有出现透明效果有失效的情景的可能性。
 
+可能有用的链接作为参考为将来使用 https://gist.github.com/lxfly2000/f31182868679ff6cf84ec505970bc1e4
+
 ## 大小占用
 
 * 39kb .dll release build (包含 CSWin32 生成的方法)
 * 475kb System.Drawing.Common
+
