@@ -9,20 +9,23 @@
     <File Path="Settings.XamlStyler" />
   </Folder>
   <Project Path="TouchChan.Ava/TouchChan.Ava.csproj" />
-  <Project Path="TouchChan.ShellMenuHandler/TouchChan.ShellMenuHandler.vcxproj" Id="9cbdbb82-75d3-4491-9528-2be3cb32dc44">
-    <Platform Project="x64" />
-  </Project>
+  <Project Path="TouchChan.ShellMenuHandler/TouchChan.ShellMenuHandler.vcxproj" />
   <Project Path="TouchChan.SourceShared/TouchChan.SourceShared.shproj" />
   <Project Path="TouchChan.SplashScreenGdiPlus/TouchChan.SplashScreenGdiPlus.csproj" />
   <Project Path="TouchChan.ViewModel/TouchChan.ViewModel.csproj" />
-  <Project Path="TouchChan.WinUI.Sample/TouchChan.WinUI.Sample.csproj" Id="38e83539-91e9-4314-92af-932436dc611d">
-    <Platform Solution="*|ARM64" Project="ARM64" />
-    <Platform Solution="*|x64" Project="x64" />
-    <Deploy />
-  </Project>
-  <Project Path="TouchChan.WinUI/TouchChan.WinUI.csproj">
-    <Platform Solution="*|ARM64" Project="ARM64" />
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
+  <Project Path="TouchChan.WinUI.Sample/TouchChan.WinUI.Sample.csproj" />
+  <Project Path="TouchChan.WinUI/TouchChan.WinUI.csproj" />
   <Project Path="TouchChan/TouchChan.csproj" />
+  <Project Path="TouchChanX.Win32\TouchChanX.Win32.csproj" Type="Classic C#">
+    <Configuration Solution="Debug|ARM64" Project="Debug|Any CPU" />
+    <Configuration Solution="Debug|x64" Project="Debug|Any CPU" />
+    <Configuration Solution="Release|ARM64" Project="Release|Any CPU" />
+    <Configuration Solution="Release|x64" Project="Release|Any CPU" />
+  </Project>
+  <Project Path="TouchChanX\TouchChanX.csproj" Type="Classic C#">
+    <Configuration Solution="Debug|ARM64" Project="Debug|Any CPU" />
+    <Configuration Solution="Debug|x64" Project="Debug|Any CPU" />
+    <Configuration Solution="Release|ARM64" Project="Release|Any CPU" />
+    <Configuration Solution="Release|x64" Project="Release|Any CPU" />
+  </Project>
 </Solution>
