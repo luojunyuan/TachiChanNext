@@ -19,5 +19,6 @@ SetForegroundWindow
 MessageBox
 GetConsoleWindow
 EnumChildWindows
+GetWindowRect
 
 SetWindowPos

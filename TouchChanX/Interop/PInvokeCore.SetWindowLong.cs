@@ -5,14 +5,14 @@ using System.Runtime.InteropServices;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
 
-namespace Windows.Win32;
+namespace TouchChanX.Interop;
 
 internal static class Libraries
 {
     public const string User32 = "user32.dll";
 }
 
-internal static partial class PInvokeCore
+internal static class PInvokeCore
 {
     [DllImport(Libraries.User32, SetLastError = true)]
     private static extern nint SetWindowLongW(HWND hWnd, WINDOW_LONG_PTR_INDEX nIndex, nint dwNewLong);

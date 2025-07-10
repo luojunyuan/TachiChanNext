@@ -5,10 +5,10 @@
     <TargetFramework>net48</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <LangVersion>preview</LangVersion>
     <UseWpf>true</UseWpf>
-    <PreferNativeArm64>true</PreferNativeArm64>
+    <LangVersion>preview</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PreferNativeArm64>true</PreferNativeArm64>
   </PropertyGroup>
 
   <ItemGroup>

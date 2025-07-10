@@ -11,7 +11,7 @@ public class Test
         WINDOW_STYLE.WS_VISIBLE;
         WINDOW_STYLE.WS_OVERLAPPED;
         WINDOW_EX_STYLE.WS_EX_TOOLWINDOW;
-        PInvoke.GetWindowLong();
-            PInvoke.SetParent()
+        PInvoke.GetWindowRect();
+            PInvoke.GetWindowThreadProcessId()
     }
 }
